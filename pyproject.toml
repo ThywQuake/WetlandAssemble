@@ -1,0 +1,54 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "wa"
+version = "0.1.0"
+description = "Wetland Assemble loader and comparison toolkit"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "dask[distributed]>=2024.8",
+    "netCDF4>=1.7",
+    "numpy>=2.0",
+    "pandas>=2.2",
+    "pyproj>=3.7",
+    "pyyaml>=6.0",
+    "rasterio>=1.4",
+    "rioxarray>=0.17",
+    "xarray>=2024.9",
+]
+
+[project.optional-dependencies]
+dev = [
+    "mypy>=1.11",
+    "pytest>=8.3",
+    "ruff>=0.6",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/WA"]
+
+[tool.pytest.ini_options]
+addopts = "-ra"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "N", "C4"]
+ignore = ["N999"]
+
+[tool.mypy]
+python_version = "3.13"
+mypy_path = ["src"]
+strict = true
+warn_unused_configs = true
+disable_error_code = ["import-untyped"]
+
+[[tool.mypy.overrides]]
+module = ["yaml", "pandas", "rasterio", "rasterio.*", "rioxarray", "rioxarray.*"]
+ignore_missing_imports = true
