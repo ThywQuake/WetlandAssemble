@@ -1,0 +1,1 @@
+bash .claude/skills/sync-hpc/scripts/sync_up.sh

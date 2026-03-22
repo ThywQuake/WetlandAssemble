@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import xarray as xr
+from rasterio.enums import Resampling
 
 from WA.loaders._shared import open_single_band_raster
 from WA.loaders.base import BBox, DatasetLoader, DatasetMetadata, TimeRange
@@ -38,10 +39,13 @@ class G2017Loader(DatasetLoader):
         time_range: TimeRange | None = None,
     ) -> xr.Dataset:
         files = self.config.get("files", {})
-        rasters = []
-        for variable_name in ("wetland", "wetland_nolake", "peatland"):
-            raster = open_single_band_raster(self.base_path / str(files[variable_name]))
-            rasters.append(raster.rename(variable_name).to_dataset())
+        ref_raster = open_single_band_raster(self.base_path / str(files["wetland"]), bbox=bbox)
+        rasters = [ref_raster.rename("wetland").to_dataset()]
 
-        dataset = xr.merge(rasters, join="outer", compat="override")
+        for variable_name in ("wetland_nolake", "peatland"):
+            raster = open_single_band_raster(self.base_path / str(files[variable_name]), bbox=bbox)
+            aligned = raster.rio.reproject_match(ref_raster, resampling=Resampling.nearest)
+            rasters.append(aligned.rename(variable_name).to_dataset())
+
+        dataset = xr.merge(rasters, join="inner", compat="override")
         return self.finalize_dataset(dataset, bbox=bbox, time_range=time_range)

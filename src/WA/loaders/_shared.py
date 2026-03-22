@@ -17,19 +17,52 @@ from rioxarray.merge import merge_arrays
 from WA.loaders.base import BBox
 
 
-def open_single_band_raster(path: Path, *, reproject_to_wgs84: bool = True) -> xr.DataArray:
+def open_single_band_raster(
+    path: Path,
+    *,
+    reproject_to_wgs84: bool = True,
+    bbox: BBox | None = None,
+) -> xr.DataArray:
     """Open a single-band raster as a 2D DataArray."""
 
     raster = cast(xr.DataArray, open_rasterio(path, masked=True)).squeeze("band", drop=True)
+    if bbox is not None and raster.rio.crs is not None:
+        raster = cast(
+            xr.DataArray,
+            raster.rio.clip_box(
+                *bbox,
+                crs="EPSG:4326",
+                auto_expand=True,
+                allow_one_dimensional_raster=True,
+            ),
+        )
     if reproject_to_wgs84 and raster.rio.crs is not None and str(raster.rio.crs) != "EPSG:4326":
         raster = raster.rio.reproject("EPSG:4326")
     return raster
 
 
-def open_multiband_raster(path: Path, *, reproject_to_wgs84: bool = True) -> xr.DataArray:
+def open_multiband_raster(
+    path: Path,
+    *,
+    reproject_to_wgs84: bool = True,
+    bbox: BBox | None = None,
+    band_indexes: Sequence[int] | None = None,
+) -> xr.DataArray:
     """Open a multi-band raster, optionally reprojecting it to WGS84."""
 
     raster = cast(xr.DataArray, open_rasterio(path, masked=True))
+    if band_indexes is not None:
+        raster = raster.isel(band=list(band_indexes))
+    if bbox is not None and raster.rio.crs is not None:
+        raster = cast(
+            xr.DataArray,
+            raster.rio.clip_box(
+                *bbox,
+                crs="EPSG:4326",
+                auto_expand=True,
+                allow_one_dimensional_raster=True,
+            ),
+        )
     if reproject_to_wgs84 and raster.rio.crs is not None and str(raster.rio.crs) != "EPSG:4326":
         raster = raster.rio.reproject("EPSG:4326")
     return raster

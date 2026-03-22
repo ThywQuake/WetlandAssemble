@@ -44,3 +44,33 @@ def test_berkeley_loader_parses_time_and_subsets(tmp_path: Path) -> None:
     assert dataset.sizes["time"] == 1
     assert dataset.sizes["lon"] == 1
     assert str(dataset.time.values[0])[:10] == "2020-01-01"
+
+
+def test_berkeley_loader_falls_back_to_watermask_variable_name(tmp_path: Path) -> None:
+    base_path = tmp_path / "berkeley"
+    coords = {
+        "time": [-2147483647],
+        "lat": [-1.0, 1.0],
+        "lon": [100.0, 101.0],
+    }
+    january = xr.Dataset(
+        {"watermask": (("time", "lat", "lon"), np.array([[[0, 1], [1, 0]]], dtype=np.int16))},
+        coords=coords,
+    )
+
+    write_netcdf(base_path / "cyg_202001_watermask.nc", january)
+
+    loader = get_loader(
+        "berkeley_rwawc",
+        with_common_fields(
+            base_path,
+            loader_type="berkeley",
+            variables={"watermask": "water_mask"},
+            pattern="*.nc",
+        ),
+    )
+
+    dataset = loader.load(time_range=("2020-01-01", "2020-01-31"))
+
+    assert list(dataset.data_vars) == ["watermask"]
+    assert dataset.sizes["time"] == 1

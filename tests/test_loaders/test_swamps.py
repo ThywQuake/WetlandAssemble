@@ -9,6 +9,35 @@ from tests.test_loaders.conftest import with_common_fields, write_netcdf
 from WA.loaders import get_loader
 
 
+def test_swamps_loader_masks_fill_values(tmp_path: Path) -> None:
+    base_path = tmp_path / "swamps"
+    data_with_fill = xr.Dataset(
+        {
+            "fw": (("lat", "lon"), np.array([[0.5, -9999.0, 0.1, -9999.0]], dtype=np.float32)),
+        },
+        coords={"lat": [0.5], "lon": [100.0, 101.0, 102.0, 103.0]},
+    )
+    write_netcdf(base_path / "stable/2010/01/SWAMPS.FW.F13.QUIKSCAT.20100101.nc", data_with_fill)
+
+    loader = get_loader(
+        "swamps",
+        with_common_fields(
+            base_path,
+            loader_type="swamps",
+            pattern="stable/{year}/{month}/*.nc",
+            sensor_shift_year=2000,
+        ),
+    )
+
+    result = loader.load()
+
+    wf = result["wetland_fraction"].values.flatten()
+    assert np.isnan(wf[1]), "fill value -9999 should be masked to NaN"
+    assert np.isnan(wf[3]), "fill value -9999 should be masked to NaN"
+    assert wf[0] == np.float32(0.5), "valid value should be preserved"
+    assert wf[2] == np.float32(0.1), "valid value should be preserved"
+
+
 def test_swamps_loader_handles_sensor_shift_patterns(tmp_path: Path) -> None:
     base_path = tmp_path / "swamps"
     december_1999 = xr.Dataset(

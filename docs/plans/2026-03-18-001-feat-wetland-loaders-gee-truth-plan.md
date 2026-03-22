@@ -584,14 +584,14 @@ Do not hide these decisions inside one-off scripts.
 - [x] `src/WA/loaders/g2017.py` loads the G2017 GeoTIFF bundle.
 - [x] `src/WA/loaders/glwd.py` loads GLWD v2 combined and area-by-class products with the documented scale factor rules.
 - [x] `src/WA/loaders/gwd30.py` supports tile filtering and VRT-based access for GWD30.
-- [ ] `src/WA/comparison/rough_binary.py` produces harmonized wetland/non-wetland metrics for all eligible datasets.
+- [x] `src/WA/comparison/rough_binary.py` produces harmonized wetland/non-wetland metrics for all eligible datasets.
 - [ ] `src/WA/comparison/fine_grained.py` produces harmonized fine-grained class comparison for G2017, GLWD v2, and GWD30.
 - [ ] `src/WA/comparison/hotspots.py` computes Shannon entropy and extracts hotspot AOIs.
-- [ ] `src/WA/comparison/focus_areas.py` derives rough-scale focus AOIs from disagreement outputs.
+- [x] `src/WA/comparison/focus_areas.py` derives rough-scale focus AOIs from disagreement outputs.
 - [ ] `src/WA/comparison/trends.py` computes annual, seasonal, and monthly wetland time-series aggregates plus short-term and long-term trend outputs.
 - [ ] `src/WA/comparison/trend_agreement.py` summarizes cross-dataset trend agreement for dynamic datasets.
-- [ ] `src/WA/validation/gee_client.py` authenticates and initializes GEE with the configured project id.
-- [ ] `src/WA/validation/modis_reference.py` downloads MODIS reference chips for rough AOIs through GEE.
+- [x] `src/WA/validation/gee_client.py` authenticates and initializes GEE with the configured project id.
+- [x] `src/WA/validation/modis_reference.py` downloads MODIS reference chips for rough AOIs through GEE.
 - [ ] `src/WA/validation/s2_reference.py` downloads Cloud Score+-masked Sentinel-2 reference chips for hotspot AOIs through GEE.
 - [ ] `src/WA/validation/manifests.py` persists deterministic manifest rows covering AOI id, data source, time window, cloud threshold, output paths, and terminal status.
 - [ ] `results/rough_truth/`, `results/fine_truth/`, `results/quicklooks/`, and `results/manifests/` are populated by the workflow.
@@ -602,10 +602,10 @@ Do not hide these decisions inside one-off scripts.
 ### Non-Functional Requirements
 
 - [ ] Loader outputs remain lazy for large datasets unless eager materialization is explicitly justified.
-- [ ] GEE collection filters apply spatial and temporal constraints as early as possible.
+- [x] GEE collection filters apply spatial and temporal constraints as early as possible.
 - [ ] Synchronous download requests respect Earth Engine size limits.
-- [ ] The workflow is idempotent for repeated AOI downloads.
-- [ ] Unsupported temporal windows are surfaced explicitly instead of being silently skipped.
+- [x] The workflow is idempotent for repeated AOI downloads.
+- [x] Unsupported temporal windows are surfaced explicitly instead of being silently skipped.
 - [ ] Trend inference is never computed on time series that fail minimum-length requirements.
 - [ ] Sensor or semantic discontinuities are documented whenever they can affect trend interpretation.
 
@@ -614,7 +614,7 @@ Do not hide these decisions inside one-off scripts.
 - [ ] Unit tests cover loader semantics, class mapping, AOI selection, trend aggregation, and manifest state transitions.
 - [ ] GEE-dependent tests are isolated behind a marker such as `@pytest.mark.gee`.
 - [ ] HPC integration tests are isolated behind `@pytest.mark.hpc`.
-- [ ] `pytest`, `ruff`, and `mypy` pass for implementation work derived from this plan.
+- [x] `pytest`, `ruff`, and `mypy` pass for implementation work derived from this plan.
 
 ## Success Metrics
 

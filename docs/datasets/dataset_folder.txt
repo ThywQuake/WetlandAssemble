@@ -1,0 +1,458 @@
+./
+    code/
+    data/
+        Berkeley/
+            data/
+                cyg.ddmi.2018-08.l3.uc-berkeley-watermask-monthly.a31.d32.nc
+                cyg.ddmi.2018-09.l3.uc-berkeley-watermask-monthly.a31.d32.nc
+                cyg.ddmi.2018-10.l3.uc-berkeley-watermask-monthly.a31.d32.nc
+                cyg.ddmi.2018-11.l3.uc-berkeley-watermask-monthly.a31.d32.nc
+                cyg.ddmi.2018-12.l3.uc-berkeley-watermask-monthly.a31.d32.nc
+                cyg.ddmi.2019-01.l3.uc-berkeley-watermask-monthly.a31.d32.nc
+                cyg.ddmi.2019-02.l3.uc-berkeley-watermask-monthly.a31.d32.nc
+                cyg.ddmi.2019-03.l3.uc-berkeley-watermask-monthly.a31.d32.nc
+                cyg.ddmi.2019-04.l3.uc-berkeley-watermask-monthly.a31.d32.nc
+                cyg.ddmi.2019-05.l3.uc-berkeley-watermask-monthly.a31.d32.nc
+                ... (111 more files)
+        G2017/
+            peatland/
+                fpeat05deg.tif
+                nohup.out
+                TROP-SUBTROP_PeatV21_2016_CIFOR.tif
+            wetland/
+                fwet05deg_nolake.tif
+                fwet05deg.tif
+                mask_nolake.tif
+                mask.tif
+                nohup.out
+                TROP-SUBTROP_WetlandV3b_2016_CIFOR.lyr
+                TROP-SUBTROP_WetlandV3b_2016_CIFOR.tfw
+                TROP-SUBTROP_WetlandV3b_2016_CIFOR.tif
+                TROP-SUBTROP_WetlandV3b_2016_CIFOR.tif.aux.xml
+                TROP-SUBTROP_WetlandV3b_2016_CIFOR.tif.ovr
+                ... (2 more files)
+        GIEMS_MC/
+            GIEMS-MC_compressed_v1.1.nc
+        GLWD_v2/
+            GLWD_Legend_v2_0.csv
+            GLWD_TechDoc_v2_0.pdf
+            legend_abc_pct_tif.csv
+            ... (4 more files)
+            GLWD_v2_0_area_by_class_ha/
+                GLWD_v2_0_class_00_ha_x10.tfw
+                GLWD_v2_0_class_00_ha_x10.tif
+                GLWD_v2_0_class_00_ha_x10.tif.ovr
+                GLWD_v2_0_class_00_ha_x10.tif.vat.cpg
+                GLWD_v2_0_class_00_ha_x10.tif.vat.dbf
+                GLWD_v2_0_class_01_ha_x10.tfw
+                GLWD_v2_0_class_01_ha_x10.tif
+                GLWD_v2_0_class_01_ha_x10.tif.ovr
+                GLWD_v2_0_class_01_ha_x10.tif.vat.cpg
+                GLWD_v2_0_class_01_ha_x10.tif.vat.dbf
+                ... (160 more files)
+            GLWD_v2_0_area_by_class_pct/
+                GLWD_v2_0_class_00_pct.tfw
+                GLWD_v2_0_class_00_pct.tif
+                GLWD_v2_0_class_00_pct.tif.ovr
+                GLWD_v2_0_class_00_pct.tif.vat.cpg
+                GLWD_v2_0_class_00_pct.tif.vat.dbf
+                GLWD_v2_0_class_01_pct.tfw
+                GLWD_v2_0_class_01_pct.tif
+                GLWD_v2_0_class_01_pct.tif.ovr
+                GLWD_v2_0_class_01_pct.tif.vat.cpg
+                GLWD_v2_0_class_01_pct.tif.vat.dbf
+                ... (160 more files)
+            GLWD_v2_0_combined_classes/
+                GLWD_v2_0_area_ha_x10.tfw
+                GLWD_v2_0_area_ha_x10.tif
+                GLWD_v2_0_area_ha_x10.tif.ovr
+                GLWD_v2_0_area_ha_x10.tif.vat.cpg
+                GLWD_v2_0_area_ha_x10.tif.vat.dbf
+                GLWD_v2_0_area_pct.tfw
+                GLWD_v2_0_area_pct.tif
+                GLWD_v2_0_area_pct.tif.ovr
+                GLWD_v2_0_area_pct.tif.vat.cpg
+                GLWD_v2_0_area_pct.tif.vat.dbf
+                ... (10 more files)
+        GWD30/
+            download.py
+            GWD30_file_list_2013.json
+            GWD30_file_list_2014.json
+            GWD30_file_list_2015.json
+            GWD30_file_list_2016.json
+            GWD30_file_list_2017.json
+            GWD30_file_list_2018.json
+            GWD30_file_list_2019.json
+            GWD30_file_list_2020.json
+            GWD30_file_list_2021.json
+            ... (1 more files)
+            2013/
+                01KAA_wetland_2013.tif
+                01KAB_wetland_2013.tif
+                01KAU_wetland_2013.tif
+                01KAV_wetland_2013.tif
+                01LAC_wetland_2013.tif
+                01RCM_wetland_2013.tif
+                01RDM_wetland_2013.tif
+                01RGJ_wetland_2013.tif
+                01UBS_wetland_2013.tif
+                01UBT_wetland_2013.tif
+                ... (18438 more files)
+            2014/
+                ... (same as above)
+            2015/
+                ... (same as above)
+            2016/
+                ... (same as above)
+            2017/
+                ... (same as above)
+            2018/
+                ... (same as above)
+            2019/
+                ... (same as above)
+            2020/
+                ... (same as above)
+            2021/
+                ... (same as above)
+            2022/
+                ... (same as above)
+        SWAMPS/
+            ancil/
+                PERMANENT_WATER_FRACTIONS_EASE25KM.nc
+                SWAMPSv3.2.README_updated20190214.pdf
+            stable/
+                1992/
+                    01/
+                        SWAMPS.FW.F11.ERS.19920101.nc
+                        SWAMPS.FW.F11.ERS.19920116.nc
+                    02/
+                        SWAMPS.FW.F11.ERS.19920201.nc
+                        SWAMPS.FW.F11.ERS.19920216.nc
+                    03/
+                        SWAMPS.FW.F11.ERS.19920301.nc
+                        SWAMPS.FW.F11.ERS.19920316.nc
+                    04/
+                        SWAMPS.FW.F11.ERS.19920401.nc
+                        SWAMPS.FW.F11.ERS.19920416.nc
+                    05/
+                        SWAMPS.FW.F11.ERS.19920501.nc
+                        SWAMPS.FW.F11.ERS.19920516.nc
+                    06/
+                        SWAMPS.FW.F11.ERS.19920601.nc
+                        SWAMPS.FW.F11.ERS.19920616.nc
+                    07/
+                        SWAMPS.FW.F11.ERS.19920701.nc
+                        SWAMPS.FW.F11.ERS.19920716.nc
+                    08/
+                        SWAMPS.FW.F11.ERS.19920801.nc
+                        SWAMPS.FW.F11.ERS.19920816.nc
+                    09/
+                        SWAMPS.FW.F11.ERS.19920901.nc
+                        SWAMPS.FW.F11.ERS.19920916.nc
+                    10/
+                        SWAMPS.FW.F11.ERS.19921001.nc
+                        SWAMPS.FW.F11.ERS.19921016.nc
+                    11/
+                        SWAMPS.FW.F11.ERS.19921101.nc
+                        SWAMPS.FW.F11.ERS.19921116.nc
+                    12/
+                        SWAMPS.FW.F11.ERS.19921201.nc
+                        SWAMPS.FW.F11.ERS.19921216.nc
+                1993/
+                ... (same as above)
+                1994/
+                ... (same as above)
+                1995/
+                  ... (same as above)
+                1996/
+                ... (same as above)
+                1997/
+                ... (same as above)
+                1998/
+                ... (same as above)
+                1999/
+                ... (same as above)
+                2000/
+                    01/
+                        SWAMPS.FW.F13.QUIKSCAT.20000101.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000102.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000103.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000104.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000105.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000106.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000107.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000108.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000109.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000110.nc
+                        ... (21 more files)
+                    02/
+                        SWAMPS.FW.F13.QUIKSCAT.20000201.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000202.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000203.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000204.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000205.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000206.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000207.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000208.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000209.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000210.nc
+                        ... (19 more files)
+                    03/
+                        SWAMPS.FW.F13.QUIKSCAT.20000301.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000302.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000303.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000304.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000305.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000306.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000307.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000308.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000309.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000310.nc
+                        ... (21 more files)
+                    04/
+                        SWAMPS.FW.F13.QUIKSCAT.20000401.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000402.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000403.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000404.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000405.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000406.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000407.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000408.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000409.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000410.nc
+                        ... (20 more files)
+                    05/
+                        SWAMPS.FW.F13.QUIKSCAT.20000501.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000502.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000503.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000504.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000505.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000506.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000507.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000508.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000509.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000510.nc
+                        ... (21 more files)
+                    06/
+                        SWAMPS.FW.F13.QUIKSCAT.20000601.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000602.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000603.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000604.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000605.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000606.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000607.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000608.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000609.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000610.nc
+                        ... (20 more files)
+                    07/
+                        SWAMPS.FW.F13.QUIKSCAT.20000701.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000702.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000703.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000704.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000705.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000706.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000707.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000708.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000709.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000710.nc
+                        ... (21 more files)
+                    08/
+                        SWAMPS.FW.F13.QUIKSCAT.20000801.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000802.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000803.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000804.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000805.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000806.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000807.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000808.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000809.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000810.nc
+                        ... (21 more files)
+                    09/
+                        SWAMPS.FW.F13.QUIKSCAT.20000901.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000902.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000903.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000904.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000905.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000906.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000907.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000908.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000909.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20000910.nc
+                        ... (20 more files)
+                    10/
+                        SWAMPS.FW.F13.QUIKSCAT.20001001.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20001002.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20001003.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20001004.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20001005.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20001006.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20001007.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20001008.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20001009.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20001010.nc
+                        ... (21 more files)
+                    11/
+                        SWAMPS.FW.F13.QUIKSCAT.20001101.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20001102.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20001103.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20001104.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20001105.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20001106.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20001107.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20001108.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20001109.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20001110.nc
+                        ... (19 more files)
+                    12/
+                        SWAMPS.FW.F13.QUIKSCAT.20001202.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20001203.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20001204.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20001205.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20001206.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20001207.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20001208.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20001209.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20001210.nc
+                        SWAMPS.FW.F13.QUIKSCAT.20001211.nc
+                        ... (20 more files)
+                2001/
+                    ... (same as above)
+                2002/
+                    ... (same as above)
+                2003/
+                    ... (same as above)
+                2004/
+                    ... (same as above)
+                2005/
+                    ... (same as above)
+                2006/
+                    ... (same as above)
+                2007/
+                    ... (same as above)
+                2008/
+                    ... (same as above)
+                2009/
+                    ... (same as above)
+                2010/
+                    ... (same as above)
+                2011/
+                    ... (same as above)
+                2012/
+                    ... (same as above)
+                2013/
+                    ... (same as above)
+                2014/
+                    ... (same as above)
+                2015/
+                    ... (same as above)
+                2016/
+                    ... (same as above)
+                2017/
+                    ... (same as above)
+                2018/
+                    ... (same as above)
+                2019/
+                    ... (same as above)
+                2020/
+                    ... (same as above)
+        TOPMODEL/
+            G2017_max/
+                ERA5/
+                    fwet_G2017_max_ERA5_reso025_1980.nc
+                    fwet_G2017_max_ERA5_reso025_1981.nc
+                    fwet_G2017_max_ERA5_reso025_1982.nc
+                    fwet_G2017_max_ERA5_reso025_1983.nc
+                    fwet_G2017_max_ERA5_reso025_1984.nc
+                    fwet_G2017_max_ERA5_reso025_1985.nc
+                    fwet_G2017_max_ERA5_reso025_1986.nc
+                    fwet_G2017_max_ERA5_reso025_1987.nc
+                    fwet_G2017_max_ERA5_reso025_1988.nc
+                    fwet_G2017_max_ERA5_reso025_1989.nc
+                    ... (31 more files)
+                ERA5-Land/
+                    fwet_G2017_max_ERA5-Land_reso025_1981.nc
+                    fwet_G2017_max_ERA5-Land_reso025_1982.nc
+                    fwet_G2017_max_ERA5-Land_reso025_1983.nc
+                    fwet_G2017_max_ERA5-Land_reso025_1984.nc
+                    fwet_G2017_max_ERA5-Land_reso025_1985.nc
+                    fwet_G2017_max_ERA5-Land_reso025_1986.nc
+                    fwet_G2017_max_ERA5-Land_reso025_1987.nc
+                    fwet_G2017_max_ERA5-Land_reso025_1988.nc
+                    fwet_G2017_max_ERA5-Land_reso025_1989.nc
+                    fwet_G2017_max_ERA5-Land_reso025_1990.nc
+                    ... (30 more files)
+                GLDAS-Noahv2.0/
+                    fwet_G2017_max_GLDAS-Noahv2.0_reso025_1980.nc
+                    fwet_G2017_max_GLDAS-Noahv2.0_reso025_1981.nc
+                    fwet_G2017_max_GLDAS-Noahv2.0_reso025_1982.nc
+                    fwet_G2017_max_GLDAS-Noahv2.0_reso025_1983.nc
+                    fwet_G2017_max_GLDAS-Noahv2.0_reso025_1984.nc
+                    fwet_G2017_max_GLDAS-Noahv2.0_reso025_1985.nc
+                    fwet_G2017_max_GLDAS-Noahv2.0_reso025_1986.nc
+                    fwet_G2017_max_GLDAS-Noahv2.0_reso025_1987.nc
+                    fwet_G2017_max_GLDAS-Noahv2.0_reso025_1988.nc
+                    fwet_G2017_max_GLDAS-Noahv2.0_reso025_1989.nc
+                    ... (25 more files)
+                GLDAS-Noahv2.1/
+                    fwet_G2017_max_GLDAS-Noahv2.1_reso025_2000.nc
+                    fwet_G2017_max_GLDAS-Noahv2.1_reso025_2001.nc
+                    fwet_G2017_max_GLDAS-Noahv2.1_reso025_2002.nc
+                    fwet_G2017_max_GLDAS-Noahv2.1_reso025_2003.nc
+                    fwet_G2017_max_GLDAS-Noahv2.1_reso025_2004.nc
+                    fwet_G2017_max_GLDAS-Noahv2.1_reso025_2005.nc
+                    fwet_G2017_max_GLDAS-Noahv2.1_reso025_2006.nc
+                    fwet_G2017_max_GLDAS-Noahv2.1_reso025_2007.nc
+                    fwet_G2017_max_GLDAS-Noahv2.1_reso025_2008.nc
+                    fwet_G2017_max_GLDAS-Noahv2.1_reso025_2009.nc
+                    ... (11 more files)
+                MERRA-2/
+                    fwet_G2017_max_MERRA-2_reso025_1980.nc
+                    fwet_G2017_max_MERRA-2_reso025_1981.nc
+                    fwet_G2017_max_MERRA-2_reso025_1982.nc
+                    fwet_G2017_max_MERRA-2_reso025_1983.nc
+                    fwet_G2017_max_MERRA-2_reso025_1984.nc
+                    fwet_G2017_max_MERRA-2_reso025_1985.nc
+                    fwet_G2017_max_MERRA-2_reso025_1986.nc
+                    fwet_G2017_max_MERRA-2_reso025_1987.nc
+                    fwet_G2017_max_MERRA-2_reso025_1988.nc
+                    fwet_G2017_max_MERRA-2_reso025_1989.nc
+                    ... (31 more files)
+                MERRA-Land/
+                    fwet_G2017_max_MERRA-Land_reso025_1980.nc
+                    fwet_G2017_max_MERRA-Land_reso025_1981.nc
+                    fwet_G2017_max_MERRA-Land_reso025_1982.nc
+                    fwet_G2017_max_MERRA-Land_reso025_1983.nc
+                    fwet_G2017_max_MERRA-Land_reso025_1984.nc
+                    fwet_G2017_max_MERRA-Land_reso025_1985.nc
+                    fwet_G2017_max_MERRA-Land_reso025_1986.nc
+                    fwet_G2017_max_MERRA-Land_reso025_1987.nc
+                    fwet_G2017_max_MERRA-Land_reso025_1988.nc
+                    fwet_G2017_max_MERRA-Land_reso025_1989.nc
+                    ... (26 more files)
+                NCEP-DOE/
+                    fwet_G2017_max_NCEP-DOE_reso025_1980.nc
+                    fwet_G2017_max_NCEP-DOE_reso025_1981.nc
+                    fwet_G2017_max_NCEP-DOE_reso025_1982.nc
+                    fwet_G2017_max_NCEP-DOE_reso025_1983.nc
+                    fwet_G2017_max_NCEP-DOE_reso025_1984.nc
+                    fwet_G2017_max_NCEP-DOE_reso025_1985.nc
+                    fwet_G2017_max_NCEP-DOE_reso025_1986.nc
+                    fwet_G2017_max_NCEP-DOE_reso025_1987.nc
+                    fwet_G2017_max_NCEP-DOE_reso025_1988.nc
+                    fwet_G2017_max_NCEP-DOE_reso025_1989.nc
+                    ... (31 more files)
+            GIEMS-2_max/
+                ... (similar as above)
+            GIEMS-2_yrmax/
+                ... (similar as above)
+            RFW_max/
+                ... (similar as above)
+            WAD2M_max/
+                ... (similar as above)
+            WAD2M_yrmax/
+                ... (similar as above)
+        WAD2M/
+            data/
+                WAD2M_wetlands_2000-2020_025deg_Ver2.0.nc

@@ -1,0 +1,1 @@
+When starting a new conversation, read memories under `../../.claude/projects/-Users-mac-Code-WA/memory` and `docs/stashes` to understand the current state of the project. Always follow the project contract in CLAUDE.md.

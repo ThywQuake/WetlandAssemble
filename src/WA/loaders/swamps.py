@@ -5,6 +5,7 @@ from __future__ import annotations
 import itertools
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import xarray as xr
 
@@ -51,6 +52,9 @@ class SwampsLoader(DatasetLoader):
             if "flag" in source:
                 data_vars["flag"] = "flag"
             dataset = source[list(data_vars)].rename(data_vars)
+            dataset["wetland_fraction"] = dataset["wetland_fraction"].where(
+                dataset["wetland_fraction"] != -9999.0, np.nan
+            )
             if "time" not in dataset.dims:
                 dataset = dataset.expand_dims(time=[parse_compact_date(path)])
             slices.append(dataset)

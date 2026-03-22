@@ -37,27 +37,59 @@ class BerkeleyLoader(DatasetLoader):
         bbox: BBox | None = None,
         time_range: TimeRange | None = None,
     ) -> xr.Dataset:
-        file_pattern = str(self.config["pattern"])
-        candidate_files = sorted(self.base_path.glob(file_pattern))
+        candidate_files = self._candidate_files(time_range)
         if not candidate_files:
             raise FileNotFoundError(
-                f"No Berkeley files matched {file_pattern!r} under {self.base_path}"
+                f"No Berkeley files matched the requested time range under {self.base_path}"
             )
 
-        variable_name = str(self.config.get("variables", {}).get("watermask", "watermask"))
         slices: list[xr.Dataset] = []
         for path in candidate_files:
             timestamp = _parse_year_month(path)
-            source = xr.open_dataset(path, decode_times=False)
-            selected = source[variable_name]
-            if "time" in selected.dims:
-                selected = selected.isel(time=0, drop=True)
-            dataset = selected.to_dataset(name="watermask").expand_dims(time=[timestamp])
-            slices.append(dataset)
+            with xr.open_dataset(path, decode_times=False) as source:
+                variable_name = self._resolve_variable_name(source)
+                selected = source[variable_name]
+                if "time" in selected.dims:
+                    selected = selected.isel(time=0, drop=True)
+                dataset = selected.to_dataset(name="watermask").expand_dims(time=[timestamp])
+                slices.append(dataset)
 
         merged = xr.concat(slices, dim="time").sortby("time")
         merged = ensure_datetime_index(merged)
         return self.finalize_dataset(merged, bbox=bbox, time_range=time_range)
+
+    def _candidate_files(self, time_range: TimeRange | None) -> list[Path]:
+        file_pattern = str(self.config["pattern"])
+        candidate_files = sorted(self.base_path.glob(file_pattern))
+        if time_range is None:
+            return candidate_files
+
+        start = pd.Timestamp(time_range[0])
+        end = pd.Timestamp(time_range[1])
+        return [
+            path
+            for path in candidate_files
+            if start <= _parse_year_month(path) <= end
+        ]
+
+    def _resolve_variable_name(self, source: xr.Dataset) -> str:
+        configured = str(self.config.get("variables", {}).get("watermask", "watermask"))
+        candidates = [
+            configured,
+            configured.replace("_", ""),
+            configured.replace("_", "-"),
+            "watermask",
+            "water_mask",
+        ]
+        for candidate in candidates:
+            if candidate in source.data_vars:
+                return candidate
+
+        available = ", ".join(sorted(str(name) for name in source.data_vars))
+        raise KeyError(
+            f"Could not resolve Berkeley watermask variable. Tried {candidates}. "
+            f"Available variables: {available}"
+        )
 
 
 def _parse_year_month(path: Path) -> pd.Timestamp:

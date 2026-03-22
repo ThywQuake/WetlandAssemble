@@ -1,0 +1,163 @@
+# Wetland dataset configuration
+# Update paths to point to your local data directories
+
+datasets:
+  berkeley_rwawc:
+    name: "Berkeley-RWAWC"
+    description: "UC Berkeley Remote Sensing of Water Mask Monthly Data"
+    type: "monthly_watermask"
+    format: "netcdf"
+    loader_type: "berkeley"
+    # Update path to your Berkeley data directory
+    path: "/lustre/home/2200013429/Wetland_Assemble/data/Berkeley/data/"
+    pattern: "cyg.ddmi.*.l3.uc-berkeley-watermask-monthly.a31.d32.nc"
+    time_range:
+      start: "2018-08"
+      end: "2025-10"
+    resolution: "30m"
+    variables:
+      watermask: "water_mask"
+
+  g2017:
+    name: "G2017"
+    description: "Global 2017 Wetland and Peatland Dataset"
+    type: "static_wetland"
+    format: "geotiff"
+    loader_type: "geotiff"
+    # Update path to your G2017 data directory
+    path: "/lustre/home/2200013429/Wetland_Assemble/data/G2017/"
+    files:
+      wetland: "wetland/TROP-SUBTROP_WetlandV3b_2016_CIFOR.tif"
+      wetland_nolake: "wetland/fwet05deg_nolake.tif"
+      peatland: "peatland/TROP-SUBTROP_PeatV21_2016_CIFOR.tif"
+    resolution: "0.05° (~5km)"
+    region: "tropical_subtropical"
+
+  giems_mc:
+    name: "GIEMS-MC"
+    description: "Global Inundation Extent from Multi-Satellites - Monthly Climate"
+    type: "monthly_inundation"
+    format: "netcdf"
+    loader_type: "netcdf"
+    # Update path to your GIEMS-MC data directory
+    path: "/lustre/home/2200013429/Wetland_Assemble/data/GIEMS_MC/"
+    file: "GIEMS-MC_compressed_v1.1.nc"
+    time_range:
+      start: "1993-01"
+      end: "2007-12"
+    resolution: "0.25° (~25km)"
+    variables:
+      inundation: "inundation"
+
+  glwd_v2:
+    name: "GLWD v2"
+    description: "Global Lakes and Wetlands Database v2"
+    type: "static_wetland"
+    format: "geotiff"
+    loader_type: "glwd"
+    # Update path to your GLWD v2 data directory
+    path: "/lustre/home/2200013429/Wetland_Assemble/data/GLWD_v2/"
+    subdirectories:
+      area_by_class_ha: "GLWD_v2_0_area_by_class_ha/"
+      area_by_class_pct: "GLWD_v2_0_area_by_class_pct/"
+      combined_classes: "GLWD_v2_0_combined_classes/"
+    resolution: "30s (~1km)"
+    scale_factor:
+      ha: 0.1 # applied to ha_x10
+      pct: 1.0
+
+  gwd30:
+    name: "GWD30"
+    description: "Global Wetland Dataset 30m Annual"
+    type: "annual_wetland"
+    format: "geotiff"
+    loader_type: "gwd30"
+    mosaic_needed: true
+    path: "/lustre/home/2200013429/Wetland_Assemble/data/GWD30/"
+    years:
+      - 2013
+      - 2014
+      - 2015
+      - 2016
+      - 2017
+      - 2018
+      - 2019
+      - 2020
+      - 2021
+      - 2022
+    pattern: "{year}/*_wetland_{year}.tif"
+    resolution: "30m"
+
+  lstm_wetland:
+    name: "LSTM Wetland"
+    description: "LSTM-based Wetland Prediction"
+    type: "prediction"
+    format: "netcdf"
+    loader_type: "netcdf"
+    # Update path to your LSTM data directory
+    path: "/lustre/home/2200013429/Wetland_Assemble/data/LSTM/"
+    file: "prediction.nc"
+
+  swamps:
+    name: "SWAMPS"
+    description: "Surface Water Microwave Product Series"
+    type: "daily_inundation"
+    format: "netcdf"
+    loader_type: "swamps"
+    # Update path to your SWAMPS data directory
+    path: "/lustre/home/2200013429/Wetland_Assemble/data/SWAMPS/"
+    pattern: "stable/{year}/{month}/*.nc"
+    time_range:
+      start: "1992-01-01"
+      end: "2020-12-31"
+    resolution: "25km"
+    sensor_shift_year: 2000
+
+  topmodel:
+    name: "TOPMODEL"
+    description: "TOPMODEL-based Wetland Simulation"
+    type: "model_output"
+    format: "netcdf"
+    loader_type: "topmodel"
+    # Update path to your TOPMODEL data directory
+    path: "/lustre/home/2200013429/Wetland_Assemble/data/TOPMODEL/"
+    pattern: "{config}/{forcing}/fwet_{config}_{forcing}_reso025_{year}.nc"
+
+  wad2m:
+    name: "WAD2M"
+    description: "Wetland Area and Dynamics for Methane Modeling"
+    type: "monthly_wetland"
+    format: "netcdf"
+    loader_type: "netcdf"
+    # Update path to your WAD2M data directory
+    path: "/lustre/home/2200013429/Wetland_Assemble/data/WAD2M/data/"
+    file: "WAD2M_wetlands_2000-2020_025deg_Ver2.0.nc"
+    time_range:
+      start: "2000-01"
+      end: "2020-12"
+    resolution: "0.25° (~25km)"
+
+# Analysis regions
+regions:
+  tropical:
+    name: "Tropical"
+    bbox: [-180, -23.5, 180, 23.5]  # [min_lon, min_lat, max_lon, max_lat]
+
+  subtropical:
+    name: "Subtropical"
+    bbox: [-180, -35, 180, -23.5]
+
+  tropical_subtropical:
+    name: "Tropical and Subtropical"
+    bbox: [-180, -35, 180, 23.5]
+
+  global:
+    name: "Global"
+    bbox: [-180, -90, 180, 90]
+
+# Analysis parameters
+analysis:
+  spatial_metrics: ["OA", "Kappa", "PA", "UA", "IoU", "F1-Score"]
+  trend_tests: ["Mann-Kendall", "Sen's Slope"]
+  aggregation_levels: ["annual", "seasonal", "monthly"]
+  confidence_level: 0.95

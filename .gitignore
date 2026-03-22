@@ -1,0 +1,24 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+.DS_Store
+
+# Virtual environments
+.venv
+.git
+.*_cache
+__pycache__
+.vscode
+
+# Agent files
+.claude/
+CLAUDE.md
+
+# HPC template
+data/
+results/
+temp/

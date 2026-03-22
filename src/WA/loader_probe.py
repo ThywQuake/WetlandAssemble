@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import traceback
 from dataclasses import asdict, dataclass
+from datetime import datetime
 from pathlib import Path
 from time import perf_counter
 from typing import Any
@@ -53,6 +55,13 @@ class ProbeResult:
     elapsed_seconds: float
     error: str | None = None
     traceback_text: str | None = None
+
+
+def emit_progress(message: str) -> None:
+    """Print a timestamped progress line immediately."""
+
+    timestamp = datetime.now().isoformat(timespec="seconds")
+    print(f"[{timestamp}] {message}", flush=True)
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
@@ -283,6 +292,7 @@ def collect_input_discovery(
 
     candidate_files_method = getattr(loader, "_candidate_files", None)
     discover_tiles_method = getattr(loader, "_discover_tiles", None)
+    discover_files_method = getattr(loader, "_discover_files", None)
 
     if callable(candidate_files_method):
         files = list(candidate_files_method(time_range))
@@ -294,6 +304,19 @@ def collect_input_discovery(
         discovery["matched_years"] = sorted(tiles_by_year)
         discovery["matched_tiles"] = len(flattened)
         discovery["matched_tile_preview"] = flattened[:preview_items]
+    elif callable(discover_files_method):
+        discovered = discover_files_method(time_range)
+        flattened = [str(path) for entries in discovered.values() for _, path in entries]
+        discovery["matched_groups"] = len(discovered)
+        discovery["matched_files"] = len(flattened)
+        discovery["matched_group_preview"] = [
+            {
+                "group": list(group),
+                "years": [year for year, _ in entries[:preview_items]],
+            }
+            for group, entries in list(discovered.items())[:preview_items]
+        ]
+        discovery["matched_file_preview"] = flattened[:preview_items]
     elif isinstance(pattern_value, str):
         matched = sorted(loader.base_path.glob(pattern_value))
         discovery["matched_files"] = len(matched)
@@ -403,15 +426,30 @@ def probe_dataset(
     """Probe one configured dataset loader."""
 
     start_time = perf_counter()
+    emit_progress(f"{dataset_id}: instantiate loader")
     loader = get_loader(dataset_id, dataset_config)
+    emit_progress(f"{dataset_id}: collect metadata")
     metadata = loader.metadata()
     effective_time_range = derive_probe_time_range(loader, requested_time_range=options.time_range)
+    emit_progress(
+        f"{dataset_id}: effective bbox={format_progress_value(options.bbox)} "
+        f"time_range={format_progress_value(effective_time_range)}"
+    )
+    emit_progress(
+        f"{dataset_id}: metadata static={metadata.is_static} "
+        f"temporal={format_progress_value(metadata.temporal_coverage)} crs={metadata.crs}"
+    )
+    emit_progress(f"{dataset_id}: collect input discovery")
     discovery = collect_input_discovery(
         loader,
         options.bbox,
         effective_time_range,
         preview_items=options.preview_items,
     )
+    emit_progress(f"{dataset_id}: discovery {compact_discovery_summary(discovery)}")
+    preview_text = compact_discovery_preview(discovery)
+    if preview_text is not None:
+        emit_progress(f"{dataset_id}: discovery preview {preview_text}")
 
     result = ProbeResult(
         dataset_id=dataset_id,
@@ -427,25 +465,38 @@ def probe_dataset(
     )
 
     if options.metadata_only:
+        emit_progress(f"{dataset_id}: metadata-only probe finished")
         result.elapsed_seconds = perf_counter() - start_time
         return result
 
     try:
+        emit_progress(f"{dataset_id}: load dataset")
         dataset = loader.load(bbox=options.bbox, time_range=effective_time_range)
+        emit_progress(f"{dataset_id}: summarize dataset")
         result.dataset_summary = summarize_dataset(dataset, preview_items=options.preview_items)
+        emit_progress(
+            f"{dataset_id}: dataset sizes {result.dataset_summary['sizes']} "
+            f"approx_nbytes={result.dataset_summary['approx_nbytes']}"
+        )
         result.status = "loaded"
 
         if options.compute_sample:
+            emit_progress(f"{dataset_id}: materialize tiny sample")
             result.sample_summary = summarize_sample(
                 dataset,
                 sample_size=options.sample_size,
                 preview_items=options.preview_items,
             )
             result.status = "sampled"
+            emit_progress(
+                f"{dataset_id}: sample vars {list(result.sample_summary['variables'].keys())}"
+            )
+            emit_progress(f"{dataset_id}: tiny sample finished")
     except Exception as exc:
         result.status = "failed"
         result.error = f"{type(exc).__name__}: {exc}"
         result.traceback_text = traceback.format_exc()
+        emit_progress(f"{dataset_id}: failed with {type(exc).__name__}")
     finally:
         result.elapsed_seconds = perf_counter() - start_time
 
@@ -461,9 +512,11 @@ def run_probe(
 
     results: list[ProbeResult] = []
     for dataset_id in dataset_ids:
+        emit_progress(f"{dataset_id}: probe start")
         dataset_config = app_config.datasets[dataset_id]
         result = probe_dataset(dataset_id, dataset_config, options)
         results.append(result)
+        emit_progress(f"{dataset_id}: probe done with status={result.status}")
         if result.status == "failed" and options.fail_fast:
             break
     return results
@@ -472,14 +525,20 @@ def run_probe(
 def make_json_safe(value: Any) -> Any:
     """Convert common scientific Python values into JSON-safe objects."""
 
-    if isinstance(value, (str, int, float, bool)) or value is None:
+    if isinstance(value, bool) or value is None:
         return value
+    if isinstance(value, str):
+        return value
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        return value if math.isfinite(value) else None
     if isinstance(value, Path):
         return str(value)
     if isinstance(value, pd.Timestamp):
         return value.isoformat()
     if isinstance(value, np.generic):
-        return value.item()
+        return make_json_safe(value.item())
     if isinstance(value, np.ndarray):
         return [make_json_safe(item) for item in value.tolist()]
     if isinstance(value, tuple):
@@ -488,6 +547,47 @@ def make_json_safe(value: Any) -> Any:
         return [make_json_safe(item) for item in value]
     if isinstance(value, dict):
         return {str(key): make_json_safe(item) for key, item in value.items()}
+    return str(value)
+
+
+def compact_discovery_summary(discovery: dict[str, Any]) -> dict[str, Any]:
+    """Extract a short progress-friendly subset of discovery metadata."""
+
+    keys = (
+        "path_exists",
+        "matched_files",
+        "matched_tiles",
+        "matched_groups",
+        "matched_years",
+        "target_file_exists",
+    )
+    return {key: discovery[key] for key in keys if key in discovery}
+
+
+def compact_discovery_preview(discovery: dict[str, Any]) -> str | None:
+    """Build a short one-line preview for discovery progress output."""
+
+    if "matched_group_preview" in discovery:
+        groups = discovery["matched_group_preview"]
+        if groups:
+            first_group = groups[0]
+            group_name = "/".join(str(part) for part in first_group["group"])
+            return f"group={group_name} years={first_group['years']}"
+
+    for key in ("matched_file_preview", "matched_tile_preview"):
+        if key in discovery:
+            preview = discovery[key]
+            if preview:
+                return f"first={preview[0]}"
+
+    return None
+
+
+def format_progress_value(value: Any) -> str:
+    """Render compact values for single-line progress logs."""
+
+    if value is None:
+        return "None"
     return str(value)
 
 
@@ -593,9 +693,13 @@ def main(argv: list[str] | None = None) -> int:
     parser = build_arg_parser()
     args = parser.parse_args(argv)
 
+    emit_progress("load config")
     app_config = load_config(args.dataset_config, args.gee_config)
+    emit_progress("resolve dataset selection")
     dataset_ids = expand_dataset_ids(app_config, args.dataset)
+    emit_progress("resolve probe options")
     options = options_from_args(args, app_config)
+    emit_progress(f"start probe for {len(dataset_ids)} dataset(s)")
     results = run_probe(app_config, dataset_ids, options)
 
     report = render_probe_report(app_config, dataset_ids, options, results)

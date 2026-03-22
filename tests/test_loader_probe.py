@@ -10,7 +10,11 @@ from WA.config import AppConfig
 from WA.loader_probe import (
     DEFAULT_PROBE_BBOX,
     ProbeOptions,
+    collect_input_discovery,
+    compact_discovery_preview,
+    compact_discovery_summary,
     derive_probe_time_range,
+    make_json_safe,
     probe_dataset,
     render_probe_report,
     resolve_probe_bbox,
@@ -56,6 +60,19 @@ class DummyLoader(DatasetLoader):
             native_variables=("wetland_fraction",),
             semantic_mapping={"wetland_fraction": "dummy"},
         )
+
+
+class DiscoverFilesLoader(DummyLoader):
+    def _discover_files(
+        self,
+        time_range: TimeRange | None = None,
+    ) -> dict[tuple[str, str], list[tuple[int, Path]]]:
+        return {
+            ("cfg_a", "force_a"): [
+                (2000, self.base_path / "cfg_a/force_a_2000.nc"),
+                (2001, self.base_path / "cfg_a/force_a_2001.nc"),
+            ]
+        }
 
 
 def build_app_config(tmp_path: Path) -> AppConfig:
@@ -163,3 +180,49 @@ def test_probe_dataset_success_and_failure(
     assert failed.error is not None
     report = render_probe_report(build_app_config(tmp_path), ["dummy"], options, [failed])
     assert "missing HPC file" in report
+
+
+def test_collect_input_discovery_summarizes_discover_files_loader(tmp_path: Path) -> None:
+    dataset = xr.Dataset(
+        {"wetland_fraction": (("time",), np.array([1.0], dtype=np.float32))},
+        coords={"time": np.array(["2000-01-01"], dtype="datetime64[ns]")},
+    )
+    loader = DiscoverFilesLoader(
+        "dummy",
+        {"loader_type": "topmodel", "name": "Dummy", "path": str(tmp_path)},
+        dataset,
+    )
+
+    discovery = collect_input_discovery(
+        loader,
+        bbox=None,
+        time_range=("2000-01-01", "2000-01-31"),
+        preview_items=2,
+    )
+
+    assert discovery["matched_groups"] == 1
+    assert discovery["matched_files"] == 2
+    assert compact_discovery_summary(discovery) == {
+        "path_exists": True,
+        "matched_files": 2,
+        "matched_groups": 1,
+    }
+    assert compact_discovery_preview(discovery) == "group=cfg_a/force_a years=[2000, 2001]"
+
+
+def test_make_json_safe_converts_non_finite_floats_to_none() -> None:
+    payload = {
+        "plain_nan": float("nan"),
+        "plain_inf": float("inf"),
+        "numpy_nan": np.float32(np.nan),
+        "nested": [1.0, np.float64(np.inf)],
+    }
+
+    converted = make_json_safe(payload)
+
+    assert converted == {
+        "plain_nan": None,
+        "plain_inf": None,
+        "numpy_nan": None,
+        "nested": [1.0, None],
+    }

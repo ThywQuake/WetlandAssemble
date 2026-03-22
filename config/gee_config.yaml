@@ -1,0 +1,3 @@
+# Google Earth Engine Configuration
+# Replace with your actual GEE Project ID
+gee_project_id: "geopy-472814"
