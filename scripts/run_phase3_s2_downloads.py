@@ -32,7 +32,7 @@ def _main() -> int:
         )
         parser.add_argument("--phase3-root", default="results/phase3/fine")
         parser.add_argument("--results-root", default="results")
-        parser.add_argument("--target-time", default="2016-07-01")
+        parser.add_argument("--target-time", default="2017-07-01")
         parser.add_argument("--allow-interactive-auth", action="store_true")
         parser.add_argument(
             "--skip-existing",

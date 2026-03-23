@@ -70,7 +70,7 @@ def download_phase3_s2_batch(
     *,
     phase3_root: str | Path = "results/phase3/fine",
     results_root: str | Path = "results",
-    target_time: str | pd.Timestamp = "2016-07-01",
+    target_time: str | pd.Timestamp = "2017-07-01",
     allow_interactive_auth: bool = False,
     skip_existing: bool = True,
 ) -> list[Phase3S2RunOutput]:
