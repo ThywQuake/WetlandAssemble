@@ -11,6 +11,7 @@ requires-python = ">=3.13"
 dependencies = [
     "dask[distributed]>=2024.8",
     "earthengine-api>=1.7.18",
+    "matplotlib>=3.9",
     "mgrs>=1.5",
     "netCDF4>=1.7",
     "numpy>=2.0",
@@ -61,5 +62,5 @@ warn_unused_configs = true
 disable_error_code = ["import-untyped"]
 
 [[tool.mypy.overrides]]
-module = ["yaml", "pandas", "rasterio", "rasterio.*", "rioxarray", "rioxarray.*", "scipy", "scipy.*"]
+module = ["yaml", "pandas", "rasterio", "rasterio.*", "rioxarray", "rioxarray.*", "scipy", "scipy.*", "matplotlib", "matplotlib.*"]
 ignore_missing_imports = true

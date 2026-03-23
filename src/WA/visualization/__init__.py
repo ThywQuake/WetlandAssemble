@@ -1,1 +1,1 @@
-"""Visualization helpers for wetland comparison panels."""
+"""Visualization utilities for wetland comparison panels."""

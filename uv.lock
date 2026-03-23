@@ -1628,6 +1628,7 @@ source = { editable = "." }
 dependencies = [
     { name = "dask", extra = ["distributed"] },
     { name = "earthengine-api" },
+    { name = "matplotlib" },
     { name = "mgrs" },
     { name = "netcdf4" },
     { name = "numpy" },
@@ -1656,6 +1657,7 @@ viz = [
 requires-dist = [
     { name = "dask", extras = ["distributed"], specifier = ">=2024.8" },
     { name = "earthengine-api", specifier = ">=1.7.18" },
+    { name = "matplotlib", specifier = ">=3.9" },
     { name = "matplotlib", marker = "extra == 'dev'", specifier = ">=3.9" },
     { name = "matplotlib", marker = "extra == 'viz'", specifier = ">=3.9" },
     { name = "mgrs", specifier = ">=1.5" },
