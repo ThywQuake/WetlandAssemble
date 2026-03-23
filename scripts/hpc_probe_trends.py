@@ -64,6 +64,12 @@ def main() -> None:
         help="Minimum time steps required for trend (default: 5).",
     )
     parser.add_argument(
+        "--time-range",
+        nargs=2,
+        metavar=("START", "END"),
+        help="Time range to load (e.g., 2000-01-01 2020-12-31). If not specified, loads full dataset.",
+    )
+    parser.add_argument(
         "--json-out",
         type=Path,
         help="Path to write JSON result report.",
@@ -83,7 +89,8 @@ def main() -> None:
 
     print("[probe] Loading dataset...")
     loader = get_loader(args.dataset_id, dataset_config)
-    ds = loader.load(bbox=bbox)  # type: ignore[call-arg]
+    time_range = tuple(args.time_range) if args.time_range else None  # type: ignore[arg-type]
+    ds = loader.load(bbox=bbox, time_range=time_range)  # type: ignore[call-arg]
 
     print("[probe] Harmonizing to binary wetland fraction...")
     reference_grid = create_comparison_grid(bbox)  # type: ignore[arg-type]
