@@ -51,7 +51,7 @@ def download_s2_reference(
     hotspot: EntropyHotspot,
     gee_client: EarthEngineClient,
     *,
-    target_time: str | pd.Timestamp = "2019-07-01",
+    target_time: str | pd.Timestamp = "2016-07-01",
     results_root: str | Path = "results",
     allow_interactive_auth: bool = False,
     download_file_fn: DownloadFn | None = None,
