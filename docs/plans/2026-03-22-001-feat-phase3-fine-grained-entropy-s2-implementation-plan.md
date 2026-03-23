@@ -1,7 +1,7 @@
 ---
 title: "feat: Phase 3 Fine-Grained Comparison + Entropy Hotspots + Sentinel-2 — Implementation Plan"
 type: feat
-status: active
+status: completed
 date: 2026-03-22
 parent: docs/plans/2026-03-19-004-feat-phase3-fine-grained-entropy-s2-plan.md
 origin: docs/plans/2026-03-19-004-feat-phase3-fine-grained-entropy-s2-plan.md
@@ -227,12 +227,12 @@ test_fine_grained.py:
 
 ### 验收标准
 
-- [ ] 4-class 和 8-class 映射表覆盖所有已知原始值
-- [ ] G2017 / GLWD / GWD30 分别正确重映射
-- [ ] GWD30 时间维通过 mode 降维为代表分类
-- [ ] 分类数据使用 `Resampling.mode` 对齐（非 bilinear）
-- [ ] `pytest tests/test_comparison/test_fine_grained.py -q` 通过
-- [ ] `ruff check src/WA/comparison/fine_grained.py` 通过
+- [x] 4-class 和 8-class 映射表覆盖所有已知原始值
+- [x] G2017 / GLWD / GWD30 分别正确重映射
+- [x] GWD30 时间维通过 mode 降维为代表分类
+- [x] 分类数据使用 `Resampling.mode` 对齐（非 bilinear）
+- [x] `pytest tests/test_comparison/test_fine_grained.py -q` 通过
+- [x] `ruff check src/WA/comparison/fine_grained.py` 通过
 
 ---
 
@@ -323,12 +323,12 @@ test_hotspots.py:
 
 ### 验收标准
 
-- [ ] Shannon 熵正确计算（perfect agreement → 0, uniform → 1）
-- [ ] 热点聚类正确使用 `scipy.ndimage.label()`
-- [ ] 热点 AOI 满足：面积过滤 + 去重 + 区域分层
-- [ ] `class_disagreement_summary` 包含各类别频率
-- [ ] `pytest tests/test_comparison/test_hotspots.py -q` 通过
-- [ ] `ruff check src/WA/comparison/hotspots.py` 通过
+- [x] Shannon 熵正确计算（perfect agreement → 0, uniform → 1）
+- [x] 热点聚类正确使用 `scipy.ndimage.label()`
+- [x] 热点 AOI 满足：面积过滤 + 去重 + 区域分层
+- [x] `class_disagreement_summary` 包含各类别频率
+- [x] `pytest tests/test_comparison/test_hotspots.py -q` 通过
+- [x] `ruff check src/WA/comparison/hotspots.py` 通过
 
 ---
 
@@ -417,12 +417,12 @@ test_s2_batch.py:
 
 ### 验收标准
 
-- [ ] Cloud Score+ 掩膜正确应用（cs_cdf >= 0.60）
-- [ ] 7 种终态全覆盖（包括 Phase 2 缺失的 `cached`、`empty_collection` 等）
-- [ ] `download_s2_reference` 使用 `_download_utils.download_file` 带 timeout
-- [ ] HPC probe 可运行
-- [ ] 每个热点 AOI 有：熵分数 + 分类摘要 + S2 artifact 或终态
-- [ ] `pytest tests/test_validation/test_s2_reference.py tests/test_s2_batch.py -q` 通过
+- [x] Cloud Score+ 掩膜正确应用（cs_cdf >= 0.60）
+- [x] 7 种终态全覆盖（包括 Phase 2 缺失的 `cached`、`empty_collection` 等）
+- [x] `download_s2_reference` 使用 `_download_utils.download_file` 带 timeout
+- [x] HPC probe 可运行
+- [x] 每个热点 AOI 有：熵分数 + 分类摘要 + S2 artifact 或终态
+- [x] `pytest tests/test_validation/test_s2_reference.py tests/test_s2_batch.py -q` 通过
 
 ---
 

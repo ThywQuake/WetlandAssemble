@@ -15,6 +15,14 @@ from WA.validation.modis_reference import (
     download_modis_reference,
     resolve_modis_composite_window,
 )
+from WA.validation.s2_reference import (
+    S2_AVAILABLE_FROM,
+    S2_CLOUD_SCORE_ID,
+    S2_CLOUD_THRESHOLD,
+    S2_COLLECTION_ID,
+    S2ReferenceArtifact,
+    download_s2_reference,
+)
 
 __all__ = [
     "EarthEngineClient",
@@ -29,4 +37,10 @@ __all__ = [
     "ModisReferenceArtifact",
     "download_modis_reference",
     "resolve_modis_composite_window",
+    "S2_AVAILABLE_FROM",
+    "S2_CLOUD_SCORE_ID",
+    "S2_CLOUD_THRESHOLD",
+    "S2_COLLECTION_ID",
+    "S2ReferenceArtifact",
+    "download_s2_reference",
 ]
