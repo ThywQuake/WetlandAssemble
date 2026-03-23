@@ -35,11 +35,24 @@ from WA.comparison.hotspots import (
     get_representative_sites,
 )
 from WA.comparison.rough_binary import RoughBinaryResult, compute_rough_binary_metrics
+from WA.comparison.trend_agreement import (
+    TrendAgreementResult,
+    compute_overlap_window,
+    compute_trend_agreement,
+)
+from WA.comparison.trends import (
+    AggregationLevel,
+    TrendResult,
+    compute_pixel_trends,
+    compute_regional_summary,
+    compute_year_over_year_change,
+)
 
 __all__ = [
     "BINARY_WETLAND_THRESHOLD",
     "CLASSIFICATION_DATASET_IDS",
     "DEFAULT_FOCUS_REGION_BBOXES",
+    "AggregationLevel",
     "BinaryComparisonUnavailableError",
     "EmptyBinarySurfaceError",
     "FINE_4CLASS_LABELS",
@@ -51,9 +64,16 @@ __all__ = [
     "FineComparisonUnavailableError",
     "RoughBinaryResult",
     "RoughFocusArea",
+    "TrendAgreementResult",
+    "TrendResult",
     "compute_class_agreement",
+    "compute_overlap_window",
+    "compute_pixel_trends",
+    "compute_regional_summary",
     "compute_rough_binary_metrics",
     "compute_shannon_entropy",
+    "compute_trend_agreement",
+    "compute_year_over_year_change",
     "create_comparison_grid",
     "dataset_supports_binary_comparison",
     "dataset_supports_fine_comparison",
