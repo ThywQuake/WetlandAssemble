@@ -15,7 +15,6 @@ from WA.validation._download_utils import (
     collection_size,
     download_file,
     format_date,
-    month_window,
 )
 from WA.validation.gee_client import EarthEngineClient, GeeInitializationError
 
@@ -61,7 +60,12 @@ def download_s2_reference(
     """Download cloud-masked Sentinel-2 composite for one entropy hotspot AOI."""
 
     timestamp = pd.Timestamp(target_time).normalize()
-    window_start, window_end = month_window(timestamp)
+    # Use ±3 month window: tropical regions have sparse S2 coverage in a single month
+    window_start = timestamp - pd.DateOffset(months=3)
+    window_end = timestamp + pd.DateOffset(months=3)
+    # Clamp to S2 availability
+    if window_start < S2_AVAILABLE_FROM:
+        window_start = S2_AVAILABLE_FROM
     quicklook_path, chip_path = _output_paths(
         hotspot,
         results_root=Path(results_root),
@@ -69,7 +73,7 @@ def download_s2_reference(
         window_end=window_end,
     )
 
-    if timestamp < S2_AVAILABLE_FROM:
+    if window_end <= S2_AVAILABLE_FROM:
         return S2ReferenceArtifact(
             hotspot_id=hotspot.hotspot_id,
             region_slug=hotspot.region_slug,
