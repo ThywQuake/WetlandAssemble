@@ -20,7 +20,8 @@ from WA.loaders.base import BBox
 
 @dataclass(frozen=True)
 class EntropyHotspot:
-    """A high-entropy AOI where classification datasets disagree most."""
+    """A high-entropy AOI where classification datasets disagree most,
+    or a curated representative wetland site."""
 
     hotspot_id: str
     region_slug: str
@@ -31,6 +32,7 @@ class EntropyHotspot:
     max_entropy: float
     cell_count: int
     class_disagreement_summary: dict[str, float]
+    source: str = "entropy"
 
 
 def compute_shannon_entropy(
@@ -186,6 +188,148 @@ def extract_hotspots(
         )
 
     return hotspots
+
+
+# ---------------------------------------------------------------------------
+# Representative wetland sites — curated locations in major tropical basins
+# ---------------------------------------------------------------------------
+
+REPRESENTATIVE_WETLAND_SITES: list[EntropyHotspot] = [
+    # ── South America (brazil region) ──
+    EntropyHotspot(
+        hotspot_id="rep-brazil-amazon",
+        region_slug="brazil",
+        bbox=(-61.0, -4.0, -60.0, -3.0),
+        center_lon=-60.5,
+        center_lat=-3.5,
+        mean_entropy=0.0,
+        max_entropy=0.0,
+        cell_count=0,
+        class_disagreement_summary={},
+        source="representative",
+    ),
+    EntropyHotspot(
+        hotspot_id="rep-brazil-pantanal",
+        region_slug="brazil",
+        bbox=(-57.5, -18.5, -56.5, -17.5),
+        center_lon=-57.0,
+        center_lat=-18.0,
+        mean_entropy=0.0,
+        max_entropy=0.0,
+        cell_count=0,
+        class_disagreement_summary={},
+        source="representative",
+    ),
+    # ── Africa ──
+    EntropyHotspot(
+        hotspot_id="rep-africa-congo",
+        region_slug="africa",
+        bbox=(17.5, -0.5, 18.5, 0.5),
+        center_lon=18.0,
+        center_lat=0.0,
+        mean_entropy=0.0,
+        max_entropy=0.0,
+        cell_count=0,
+        class_disagreement_summary={},
+        source="representative",
+    ),
+    EntropyHotspot(
+        hotspot_id="rep-africa-sudd",
+        region_slug="africa",
+        bbox=(31.0, 7.0, 32.0, 8.0),
+        center_lon=31.5,
+        center_lat=7.5,
+        mean_entropy=0.0,
+        max_entropy=0.0,
+        cell_count=0,
+        class_disagreement_summary={},
+        source="representative",
+    ),
+    # ── Southeast Asia ──
+    EntropyHotspot(
+        hotspot_id="rep-sea-tonlesap",
+        region_slug="southeast_asia",
+        bbox=(103.5, 12.5, 104.5, 13.5),
+        center_lon=104.0,
+        center_lat=13.0,
+        mean_entropy=0.0,
+        max_entropy=0.0,
+        cell_count=0,
+        class_disagreement_summary={},
+        source="representative",
+    ),
+    EntropyHotspot(
+        hotspot_id="rep-sea-irrawaddy",
+        region_slug="southeast_asia",
+        bbox=(95.0, 15.5, 96.0, 16.5),
+        center_lon=95.5,
+        center_lat=16.0,
+        mean_entropy=0.0,
+        max_entropy=0.0,
+        cell_count=0,
+        class_disagreement_summary={},
+        source="representative",
+    ),
+    # ── Indonesia ──
+    EntropyHotspot(
+        hotspot_id="rep-indonesia-borneo",
+        region_slug="indonesia",
+        bbox=(110.5, -1.5, 111.5, -0.5),
+        center_lon=111.0,
+        center_lat=-1.0,
+        mean_entropy=0.0,
+        max_entropy=0.0,
+        cell_count=0,
+        class_disagreement_summary={},
+        source="representative",
+    ),
+    EntropyHotspot(
+        hotspot_id="rep-indonesia-papua",
+        region_slug="indonesia",
+        bbox=(136.5, -6.0, 137.5, -5.0),
+        center_lon=137.0,
+        center_lat=-5.5,
+        mean_entropy=0.0,
+        max_entropy=0.0,
+        cell_count=0,
+        class_disagreement_summary={},
+        source="representative",
+    ),
+]
+
+
+def get_representative_sites(
+    *,
+    existing_hotspots: list[EntropyHotspot] | None = None,
+    min_distance_deg: float = 3.0,
+    region_bboxes: Mapping[str, BBox] | None = None,
+) -> list[EntropyHotspot]:
+    """Return curated representative wetland sites, filtering out those too close
+    to existing entropy hotspots."""
+    region_bboxes = dict(region_bboxes or DEFAULT_FOCUS_REGION_BBOXES)
+
+    # Build existing-as-dicts for _is_far_enough compatibility
+    existing_dicts: list[dict[str, object]] = []
+    if existing_hotspots:
+        for h in existing_hotspots:
+            existing_dicts.append({
+                "lon": h.center_lon,
+                "lat": h.center_lat,
+            })
+
+    sites: list[EntropyHotspot] = []
+    for site in REPRESENTATIVE_WETLAND_SITES:
+        candidate = {"lon": site.center_lon, "lat": site.center_lat}
+        # Skip if too close to an existing entropy hotspot
+        if not _is_far_enough(candidate, existing_dicts, min_distance_deg=min_distance_deg):
+            continue
+        # Skip if too close to an already-selected representative site
+        selected_dicts = [{"lon": s.center_lon, "lat": s.center_lat} for s in sites]
+        if not _is_far_enough(candidate, selected_dicts, min_distance_deg=min_distance_deg):
+            continue
+        sites.append(site)
+
+    return sites
 
 
 def _class_disagreement_summary(

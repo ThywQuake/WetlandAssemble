@@ -60,6 +60,7 @@ def load_hotspots_from_manifest(path: str | Path) -> list[EntropyHotspot]:
                     str(k): float(v)
                     for k, v in row.get("class_disagreement_summary", {}).items()
                 },
+                source=str(row.get("source", "entropy")),
             )
         )
     return hotspots

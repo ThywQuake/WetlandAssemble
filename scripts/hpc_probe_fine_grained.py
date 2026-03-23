@@ -593,7 +593,11 @@ def _run() -> int:
         harmonize_fine_collection,
     )
     from WA.comparison.harmonize import create_comparison_grid
-    from WA.comparison.hotspots import compute_shannon_entropy, extract_hotspots
+    from WA.comparison.hotspots import (
+        compute_shannon_entropy,
+        extract_hotspots,
+        get_representative_sites,
+    )
     from WA.config import load_config
     from WA.loader_probe import make_json_safe
     bounds = tuple(args.bounds)
@@ -695,14 +699,23 @@ def _run() -> int:
         flush=True,
     )
 
-    # ── Hotspots ──
+    # ── Entropy hotspots ──
     t0 = time.time()
-    print("[probe] extracting hotspots \u2026", flush=True)
-    hotspots = extract_hotspots(entropy, harmonized_4, top_n=5)
+    print("[probe] extracting entropy hotspots \u2026", flush=True)
+    entropy_hotspots = extract_hotspots(entropy, harmonized_4, top_n=5)
     print(
-        f"[probe] found {len(hotspots)} hotspot(s) ({time.time()-t0:.0f}s)",
+        f"[probe] found {len(entropy_hotspots)} entropy hotspot(s) ({time.time()-t0:.0f}s)",
         flush=True,
     )
+
+    # ── Representative sites (curated, cross-basin coverage) ──
+    rep_sites = get_representative_sites(existing_hotspots=entropy_hotspots)
+    print(
+        f"[probe] adding {len(rep_sites)} representative site(s) "
+        f"(total: {len(entropy_hotspots) + len(rep_sites)})",
+        flush=True,
+    )
+    hotspots = list(entropy_hotspots) + list(rep_sites)
 
     # ── Manifest ──
     if hotspots:
@@ -713,6 +726,8 @@ def _run() -> int:
             "class_scheme": "4class",
             "num_datasets": len(harmonized_4),
             "hotspot_count": len(hotspots),
+            "entropy_hotspot_count": len(entropy_hotspots),
+            "representative_site_count": len(rep_sites),
             "hotspots": [asdict(h) for h in hotspots],
         }
         manifest_path = output_dir / "fine_grained_probe.json"

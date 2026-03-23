@@ -28,9 +28,11 @@ from WA.comparison.harmonize import (
     select_comparison_slice,
 )
 from WA.comparison.hotspots import (
+    REPRESENTATIVE_WETLAND_SITES,
     EntropyHotspot,
     compute_shannon_entropy,
     extract_hotspots,
+    get_representative_sites,
 )
 from WA.comparison.rough_binary import RoughBinaryResult, compute_rough_binary_metrics
 
@@ -45,6 +47,7 @@ __all__ = [
     "FINE_8CLASS_LABELS",
     "FINE_8CLASS_MAPS",
     "EntropyHotspot",
+    "REPRESENTATIVE_WETLAND_SITES",
     "FineComparisonUnavailableError",
     "RoughBinaryResult",
     "RoughFocusArea",
@@ -55,6 +58,7 @@ __all__ = [
     "dataset_supports_binary_comparison",
     "dataset_supports_fine_comparison",
     "extract_hotspots",
+    "get_representative_sites",
     "harmonize_binary_collection",
     "harmonize_binary_dataset",
     "harmonize_fine_collection",
