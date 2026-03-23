@@ -25,7 +25,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+viz = [
+    "matplotlib>=3.9",
+]
 dev = [
+    "matplotlib>=3.9",
     "mypy>=1.11",
     "pytest>=8.3",
     "ruff>=0.6",
