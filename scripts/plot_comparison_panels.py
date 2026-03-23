@@ -1,23 +1,26 @@
 #!/usr/bin/env python3
-"""Generate comparison panel figures for hotspots / focus areas.
+"""Generate Phase 2.5 comparison panel figures from Phase 2 rough probe output.
 
 Usage:
     uv run python scripts/plot_comparison_panels.py \\
-        --manifest results/phase3/fine/probe/fine_grained_probe.json \\
+        --phase2-root results/phase2/rough \\
         --output-dir results/figures \\
         --year 2016 \\
-        --region "SE Asia"
+        --region "Tropical"
+
+Reads focus_areas.csv, comparison_grids.nc from each region/YYYYMM
+subdirectory under --phase2-root.
 """
 
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 import time
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 import xarray as xr
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -27,10 +30,10 @@ if str(SRC) not in sys.path:
 
 
 def _parse_args() -> argparse.Namespace:
-    p = argparse.ArgumentParser(description="Generate comparison panel figures")
+    p = argparse.ArgumentParser(description="Generate Phase 2.5 comparison panels")
     p.add_argument(
-        "--manifest", type=str, required=True,
-        help="Path to fine_grained_probe.json or rough probe JSON",
+        "--phase2-root", type=str, default="results/phase2/rough",
+        help="Root of Phase 2 rough output (default: results/phase2/rough)",
     )
     p.add_argument(
         "--output-dir", type=str, default="results/figures",
@@ -59,6 +62,7 @@ def _run() -> int:
     args = _parse_args()
 
     print("[plot] loading config and imports …", flush=True)
+    from WA.comparison.harmonize import EXCLUDED_BINARY_DATASET_IDS
     from WA.config import load_config
     from WA.loaders import get_loader
     from WA.visualization.comparison_panel import (
@@ -67,43 +71,72 @@ def _run() -> int:
     )
 
     config = load_config("config/datasets.yaml", "config/gee_config.yaml")
-    manifest_path = Path(args.manifest)
+    phase2_root = Path(args.phase2_root)
     output_dir = Path(args.output_dir)
     results_root = Path(args.results_root)
 
-    # --- Load manifest ---
-    data = json.loads(manifest_path.read_text(encoding="utf-8"))
-    raw_hotspots = data.get("hotspots", [])
-    if not raw_hotspots:
-        print("[plot] no hotspots in manifest, nothing to plot", flush=True)
+    # --- Discover focus areas from Phase 2 rough output ---
+    focus_area_files = sorted(phase2_root.glob("*/*/focus_areas.csv"))
+    if not focus_area_files:
+        print(f"[plot] no focus_areas.csv found under {phase2_root}", flush=True)
         return 0
 
-    print(f"[plot] {len(raw_hotspots)} hotspot(s) from {manifest_path.name}", flush=True)
+    all_focus_areas: list[dict] = []
+    for fa_path in focus_area_files:
+        run_dir = fa_path.parent
+        grids_path = run_dir / "comparison_grids.nc"
+        df = pd.read_csv(fa_path)
+        for _, row in df.iterrows():
+            all_focus_areas.append({
+                "aoi_id": row["aoi_id"],
+                "region_slug": row["region_slug"],
+                "bbox": _parse_bbox(row["bbox"]),
+                "run_dir": run_dir,
+                "grids_path": grids_path,
+            })
+
+    print(
+        f"[plot] {len(all_focus_areas)} focus area(s) from "
+        f"{len(focus_area_files)} region(s)",
+        flush=True,
+    )
 
     # --- Determine participating datasets ---
-    from WA.comparison.harmonize import EXCLUDED_BINARY_DATASET_IDS
-
     ds_ids = sorted(
         ds_id for ds_id in config.datasets
         if ds_id not in EXCLUDED_BINARY_DATASET_IDS
     )
     labels = make_dataset_labels(ds_ids)
 
-    for i, raw in enumerate(raw_hotspots):
-        hotspot_id = raw["hotspot_id"]
-        bbox_raw = raw["bbox"]
-        if isinstance(bbox_raw, dict):
-            bbox = (bbox_raw["left"], bbox_raw["bottom"], bbox_raw["right"], bbox_raw["top"])
-        else:
-            bbox = tuple(float(v) for v in bbox_raw)
-
-        region_slug = raw.get("region_slug", "unknown")
+    for i, fa in enumerate(all_focus_areas):
+        aoi_id = fa["aoi_id"]
+        region_slug = fa["region_slug"]
+        bbox = fa["bbox"]
 
         print(
-            f"\n[plot] ({i+1}/{len(raw_hotspots)}) {hotspot_id} — {region_slug}",
+            f"\n[plot] ({i+1}/{len(all_focus_areas)}) {aoi_id} — {region_slug}",
             flush=True,
         )
         t0 = time.time()
+
+        # --- Load pre-computed disagreement + mean wetland from Phase 2 ---
+        grids_path: Path = fa["grids_path"]
+        if grids_path.exists():
+            grids = xr.open_dataset(grids_path)
+            # Subset to focus area bbox
+            west, south, east, north = bbox
+            disagreement = grids["disagreement_score"].sel(
+                lat=slice(north, south), lon=slice(west, east),
+            ).load()
+            mean_wetland = grids["wetland_vote_fraction"].sel(
+                lat=slice(north, south), lon=slice(west, east),
+            ).load()
+            grids.close()
+            disagreement.name = "entropy"
+            mean_wetland.name = "mean_wetland"
+        else:
+            print(f"  no comparison_grids.nc, skipping {aoi_id}", flush=True)
+            continue
 
         # --- Load datasets at native resolution within bbox ---
         dataset_surfaces: dict[str, xr.DataArray] = {}
@@ -124,48 +157,24 @@ def _run() -> int:
                 print(f"  {ds_id}: SKIP ({exc})", flush=True)
 
         if not dataset_surfaces:
-            print(f"  no datasets loaded, skipping {hotspot_id}", flush=True)
-            continue
-
-        # --- Compute entropy + mean wetland from loaded surfaces ---
-        # Use simple disagreement: 1 - |2*mean - 1|
-        binary_stack = []
-        for _ds_id, surf in dataset_surfaces.items():
-            # Resample to common grid for the summary panels
-            common_res = 0.01  # ~1km for summary
-            common_lats = np.arange(bbox[3], bbox[1], -common_res)
-            common_lons = np.arange(bbox[0], bbox[2], common_res)
-            interped = surf.interp(
-                lat=common_lats, lon=common_lons, method="nearest",
-            )
-            binary_stack.append(interped)
-
-        if binary_stack:
-            stacked = xr.concat(binary_stack, dim="dataset")
-            mean_wetland = stacked.mean(dim="dataset", skipna=True).astype(np.float32)
-            # Simple disagreement as entropy proxy
-            entropy = (1.0 - np.abs(2.0 * mean_wetland - 1.0)).astype(np.float32)
-            entropy.name = "entropy"
-            mean_wetland.name = "mean_wetland"
-        else:
-            print(f"  cannot compute summary, skipping {hotspot_id}", flush=True)
+            print(f"  no datasets loaded, skipping {aoi_id}", flush=True)
             continue
 
         # --- Find satellite quicklook ---
-        sat_path = _find_satellite_image(results_root, region_slug, hotspot_id)
+        sat_path = _find_satellite_image(results_root, region_slug, aoi_id)
 
         # --- Plot ---
-        out_file = output_dir / f"{hotspot_id}_panel.png"
+        out_file = output_dir / f"{aoi_id}_panel.png"
         plot_comparison_panel(
             bbox,
             satellite_image_path=sat_path,
-            entropy_surface=entropy,
+            entropy_surface=disagreement,
             mean_wetland_surface=mean_wetland,
             dataset_surfaces=dataset_surfaces,
             dataset_labels=labels,
             year=args.year,
             region_label=args.region,
-            hotspot_id=hotspot_id,
+            hotspot_id=aoi_id,
             output_path=out_file,
             dpi=args.dpi,
         )
@@ -179,6 +188,18 @@ def _run() -> int:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+def _parse_bbox(bbox_value: object) -> tuple[float, float, float, float]:
+    """Parse bbox from CSV cell — may be a string repr of a tuple."""
+    if isinstance(bbox_value, str):
+        # e.g. "(-60.0, -4.0, -58.0, -2.0)"
+        cleaned = bbox_value.strip("() ")
+        parts = [float(x.strip()) for x in cleaned.split(",")]
+        return (parts[0], parts[1], parts[2], parts[3])
+    # Already a sequence
+    vals = [float(v) for v in bbox_value]  # type: ignore[union-attr]
+    return (vals[0], vals[1], vals[2], vals[3])
+
 
 def _extract_native_wetland_surface(
     dataset_id: str,
@@ -238,13 +259,12 @@ def _map_to_binary(
 def _find_satellite_image(
     results_root: Path,
     region_slug: str,
-    hotspot_id: str,
+    aoi_id: str,
 ) -> Path | None:
     """Search for a satellite quicklook in results directories."""
-    # Try S2 fine_truth
     for pattern in [
-        f"fine_truth/{region_slug}/**/*{hotspot_id}*rgb*.jpg",
-        f"fine_truth/{region_slug}/**/*{hotspot_id}*rgb*.png",
+        f"phase2/rough/{region_slug}/**/*rgb*.jpg",
+        f"phase2/rough/{region_slug}/**/*rgb*.png",
         f"rough_truth/{region_slug}/**/*rgb*.jpg",
     ]:
         matches = sorted(results_root.glob(pattern))
