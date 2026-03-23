@@ -18,9 +18,9 @@ from WA.validation._download_utils import (
 )
 from WA.validation.gee_client import EarthEngineClient, GeeInitializationError
 
-S2_COLLECTION_ID = "COPERNICUS/S2_SR_HARMONIZED"
+S2_COLLECTION_ID = "COPERNICUS/S2_HARMONIZED"
 S2_CLOUD_SCORE_ID = "GOOGLE/CLOUD_SCORE_PLUS/V1/S2_HARMONIZED"
-S2_AVAILABLE_FROM = pd.Timestamp("2017-03-28")
+S2_AVAILABLE_FROM = pd.Timestamp("2015-06-23")
 S2_CLOUD_THRESHOLD = 0.60
 S2_RGB_BANDS = ("B4", "B3", "B2")
 S2_SCALE_METERS = 10
@@ -116,6 +116,11 @@ def download_s2_reference(
         )
 
     geometry = gee_client.rectangle(hotspot.bbox)
+    print(
+        f"[s2-ref] {hotspot.hotspot_id}: bbox={hotspot.bbox}, "
+        f"window={format_date(window_start)}..{format_date(window_end)}",
+        flush=True,
+    )
     composite = _build_cloud_masked_composite(
         ee,
         geometry,
@@ -205,7 +210,9 @@ def _build_cloud_masked_composite(
         .filterDate(start_str, end_str)
     )
 
-    if collection_size(s2_col) == 0:
+    n_images = collection_size(s2_col)
+    print(f"[s2-ref] S2 collection size: {n_images} images", flush=True)
+    if n_images == 0:
         return None
 
     cs_col = ee.ImageCollection(S2_CLOUD_SCORE_ID).filterDate(start_str, end_str)
