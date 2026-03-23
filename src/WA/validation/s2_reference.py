@@ -23,7 +23,7 @@ S2_CLOUD_SCORE_ID = "GOOGLE/CLOUD_SCORE_PLUS/V1/S2_HARMONIZED"
 S2_AVAILABLE_FROM = pd.Timestamp("2015-06-23")
 S2_CLOUD_THRESHOLD = 0.60
 S2_RGB_BANDS = ("B4", "B3", "B2")
-S2_SCALE_METERS = 10
+S2_SCALE_METERS = 100
 
 DownloadFn = Callable[[str, Path], None]
 
@@ -140,8 +140,9 @@ def download_s2_reference(
             status="empty_collection",
         )
 
-    preview = composite.visualize(bands=list(S2_RGB_BANDS), min=0, max=3000)
-    chip_url = composite.getDownloadURL(
+    rgb_composite = composite.select(list(S2_RGB_BANDS))
+    preview = rgb_composite.visualize(bands=list(S2_RGB_BANDS), min=0, max=3000)
+    chip_url = rgb_composite.getDownloadURL(
         {
             "region": geometry,
             "scale": scale_meters,
