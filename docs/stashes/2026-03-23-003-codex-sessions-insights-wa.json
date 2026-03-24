@@ -1,0 +1,827 @@
+{
+  "generated_at": "2026-03-23T12:01:57.606418+00:00",
+  "source_root": "/Users/mac/.codex/sessions",
+  "scope_note": "Historical Codex sessions snapshot for March 2026, excluding the current in-progress session 019d1a27-3574-7142-8556-d7aa27b5f899.",
+  "global_summary": {
+    "all_projects": {
+      "session_count": 34,
+      "user_message_count": 416,
+      "assistant_message_count": 1570,
+      "commentary_count": 1407,
+      "final_answer_count": 154,
+      "git_commit_count": 3,
+      "active_days": {
+        "2026-03-16": 2,
+        "2026-03-17": 3,
+        "2026-03-18": 4,
+        "2026-03-19": 18,
+        "2026-03-20": 4,
+        "2026-03-21": 1,
+        "2026-03-22": 2
+      },
+      "branches": {
+        "feat/phase1-loader-foundation": 4,
+        "feat/phase2-rough-binary-modis-truth": 7,
+        "main": 12,
+        "fix/research-backup-auditability": 3,
+        "feat/phase3-fine-grained-entropy-s2": 1
+      },
+      "top_tools": {
+        "exec_command": 2911,
+        "write_stdin": 296,
+        "update_plan": 219,
+        "spawn_agent": 89,
+        "wait_agent": 86,
+        "close_agent": 36,
+        "list_mcp_resources": 1,
+        "list_mcp_resource_templates": 1,
+        "view_image": 1
+      },
+      "test_counts": {
+        "pytest": 116,
+        "ruff": 103,
+        "mypy": 45
+      }
+    },
+    "wetland_lineage": {
+      "session_count": 19,
+      "user_message_count": 203,
+      "assistant_message_count": 772,
+      "commentary_count": 661,
+      "final_answer_count": 111,
+      "git_commit_count": 3,
+      "active_days": {
+        "2026-03-16": 2,
+        "2026-03-17": 3,
+        "2026-03-18": 4,
+        "2026-03-19": 6,
+        "2026-03-20": 1,
+        "2026-03-21": 1,
+        "2026-03-22": 2
+      },
+      "branches": {
+        "feat/phase1-loader-foundation": 4,
+        "feat/phase2-rough-binary-modis-truth": 7,
+        "feat/phase3-fine-grained-entropy-s2": 1
+      },
+      "top_tools": {
+        "exec_command": 1329,
+        "update_plan": 89,
+        "write_stdin": 67
+      },
+      "test_counts": {
+        "pytest": 116,
+        "ruff": 103,
+        "mypy": 45
+      }
+    },
+    "wa_only": {
+      "session_count": 14,
+      "user_message_count": 173,
+      "assistant_message_count": 683,
+      "commentary_count": 588,
+      "final_answer_count": 95,
+      "git_commit_count": 3,
+      "active_days": {
+        "2026-03-18": 4,
+        "2026-03-19": 6,
+        "2026-03-20": 1,
+        "2026-03-21": 1,
+        "2026-03-22": 2
+      },
+      "branches": {
+        "feat/phase1-loader-foundation": 4,
+        "feat/phase2-rough-binary-modis-truth": 7,
+        "feat/phase3-fine-grained-entropy-s2": 1
+      },
+      "top_tools": {
+        "exec_command": 1077,
+        "update_plan": 83,
+        "write_stdin": 50
+      },
+      "test_counts": {
+        "pytest": 106,
+        "ruff": 103,
+        "mypy": 45
+      }
+    },
+    "project_breakdown": {
+      "/Users/mac/Code/Wetland_Assemble": 5,
+      "/Users/mac/Code/WA": 14,
+      "/Users/mac/Code/Lightning": 15
+    }
+  },
+  "wa_facets_rollup": {
+    "outcomes": {
+      "fully_achieved": 6,
+      "mostly_achieved": 4,
+      "not_achieved": 3,
+      "partially_achieved": 1
+    },
+    "session_types": {
+      "context_recovery": 1,
+      "single_focus_delivery": 1,
+      "iterative_refinement": 3,
+      "minimal": 3,
+      "single_task": 2,
+      "multi_task": 3,
+      "transition_session": 1
+    },
+    "primary_success": {
+      "good_explanations": 3,
+      "correct_code_edits": 2,
+      "good_debugging": 2,
+      "none": 3,
+      "multi_file_changes": 2,
+      "documentation_closure": 1,
+      "project_insight": 1
+    },
+    "goal_categories": {
+      "memory_restoration": 2,
+      "documentation": 4,
+      "code_implementation": 3,
+      "testing": 3,
+      "git_commit": 1,
+      "bug_fix": 3,
+      "hpc_debug": 3,
+      "performance_optimization": 1,
+      "warmup_minimal": 3,
+      "data_alignment": 1,
+      "geometry_rigor": 1,
+      "workflow_rule_capture": 1,
+      "result_review": 1,
+      "reference_imagery": 1,
+      "planning": 1,
+      "state_alignment": 1,
+      "project_insights": 1
+    },
+    "friction_counts": {
+      "hpc_environment": 1,
+      "memory_pressure": 3,
+      "data_alignment": 1,
+      "user_boundary_correction": 2,
+      "missing_progress_visibility": 1,
+      "data_quality_gap": 1,
+      "state_ambiguity": 1
+    },
+    "top_code_files": {
+      "src/WA/rough_probe.py": 98,
+      "src/WA/loaders/gwd30.py": 73,
+      "src/WA/rough_batch.py": 61,
+      "src/WA/loader_probe.py": 49,
+      "src/WA/comparison/harmonize.py": 46,
+      "src/WA/loaders/glwd.py": 28,
+      "src/WA/utils/mgrs_tiling.py": 16,
+      "src/WA/loaders/_shared.py": 15,
+      "src/WA/modis_batch.py": 12,
+      "src/WA/comparison/rough_binary.py": 9,
+      "src/WA/validation/modis_reference.py": 9,
+      "src/WA/_geo_env.py": 8
+    },
+    "top_test_files": {
+      "tests/test_rough_probe.py": 103,
+      "tests/test_loaders/test_gwd30.py": 90,
+      "tests/test_rough_batch.py": 56,
+      "tests/test_comparison/test_harmonize.py": 53,
+      "tests/test_loader_probe.py": 52,
+      "tests/test_loaders/test_glwd.py": 31,
+      "tests/test_comparison/test_rough_binary.py": 23,
+      "tests/test_mgrs_tiling.py": 18,
+      "tests/test_hpc_probe_rough_binary_script.py": 15,
+      "tests/test_modis_batch.py": 13,
+      "tests/test_geo_env.py": 12,
+      "tests/test_validation/test_modis_reference.py": 12
+    }
+  },
+  "wa_sessions": [
+    {
+      "session_id": "019d0053-d39c-7562-b43f-124be5c50962",
+      "project_path": "/Users/mac/Code/WA",
+      "file": "rollout-2026-03-18T17-43-06-019d0053-d39c-7562-b43f-124be5c50962.jsonl",
+      "start_time": "2026-03-18T09:43:06.915Z",
+      "branch": null,
+      "duration_minutes": 20.5,
+      "user_message_count": 9,
+      "assistant_message_count": 22,
+      "commentary_count": 18,
+      "final_answer_count": 4,
+      "tool_counts": {
+        "exec_command": 48
+      },
+      "test_counts": {},
+      "git_counts": {
+        "status": 2
+      },
+      "first_prompt": "# AGENTS.md instructions for /Users/mac/Code/WA\n\n<INSTRUCTIONS>\n<!-- BEGIN COMPOUND CODEX TOOL MAP -->\n## Compound Codex Tool Mapping (Claude Compatibility)\n\nTh",
+      "final_excerpt": "已写入新的 stash 记录：[2026-03-18-002-project-progress-and-conversation-log.md](/Users/mac/Code/WA/docs/stashes/2026-03-18-002-project-progress-and-conversation-log.md)。\n\n这份记录包含：\n- 当前项目进展\n- 本轮对话的关键演进\n- 已确认的架构决策\n- 当前重要文件\n- 验证状态\n",
+      "tokens": {
+        "input_tokens": 2400284,
+        "cached_input_tokens": 1943424,
+        "output_tokens": 31041,
+        "reasoning_output_tokens": 11332,
+        "total_tokens": 2431325
+      },
+      "facets": {
+        "underlying_goal": "Read project docs, recover WA context, and write a reusable stash summary.",
+        "goal_categories": {
+          "memory_restoration": 1,
+          "documentation": 1
+        },
+        "outcome": "fully_achieved",
+        "session_type": "context_recovery",
+        "friction_counts": {},
+        "friction_detail": "",
+        "primary_success": "good_explanations",
+        "brief_summary": "Recovered early WA project context and wrote a stash file capturing progress, risks, and next steps."
+      }
+    },
+    {
+      "session_id": "019d0067-7d1a-7751-a86e-cd52a6ad069e",
+      "project_path": "/Users/mac/Code/WA",
+      "file": "rollout-2026-03-18T18-04-35-019d0067-7d1a-7751-a86e-cd52a6ad069e.jsonl",
+      "start_time": "2026-03-18T10:04:35.488Z",
+      "branch": null,
+      "duration_minutes": 41.8,
+      "user_message_count": 9,
+      "assistant_message_count": 47,
+      "commentary_count": 44,
+      "final_answer_count": 3,
+      "tool_counts": {
+        "exec_command": 127,
+        "update_plan": 7,
+        "write_stdin": 12
+      },
+      "test_counts": {
+        "pytest": 19,
+        "ruff": 8,
+        "mypy": 8
+      },
+      "git_counts": {
+        "status": 10,
+        "diff": 7,
+        "add": 4,
+        "commit": 2
+      },
+      "first_prompt": "# AGENTS.md instructions for /Users/mac/Code/WA\n\n<INSTRUCTIONS>\n<!-- BEGIN COMPOUND CODEX TOOL MAP -->\n## Compound Codex Tool Mapping (Claude Compatibility)\n\nTh",
+      "final_excerpt": "已在当前分支 `feat/phase1-loader-foundation` 完成，并做了本地提交 `a52308d` (`feat(hpc): add verbose loader probe script`)。\n\n核心文件是 [hpc_probe_loaders.py](/Users/mac/Code/WA/scripts/hpc_probe_loaders.py) 和 [loader_probe.py](/Users/mac/Co",
+      "tokens": {
+        "input_tokens": 19054138,
+        "cached_input_tokens": 18336256,
+        "output_tokens": 75309,
+        "reasoning_output_tokens": 31509,
+        "total_tokens": 19129447
+      },
+      "facets": {
+        "underlying_goal": "Implement and validate an HPC loader probe script, then commit the Phase 1 probe work.",
+        "goal_categories": {
+          "code_implementation": 1,
+          "testing": 1,
+          "git_commit": 1
+        },
+        "outcome": "fully_achieved",
+        "session_type": "single_focus_delivery",
+        "friction_counts": {},
+        "friction_detail": "",
+        "primary_success": "correct_code_edits",
+        "brief_summary": "Added the verbose loader probe flow, validated it with tests, and committed the probe work on the Phase 1 branch."
+      }
+    },
+    {
+      "session_id": "019d009f-d371-7652-bfa2-a80f3004140c",
+      "project_path": "/Users/mac/Code/WA",
+      "file": "rollout-2026-03-18T19-06-07-019d009f-d371-7652-bfa2-a80f3004140c.jsonl",
+      "start_time": "2026-03-18T11:06:07.610Z",
+      "branch": "feat/phase1-loader-foundation",
+      "duration_minutes": 407.8,
+      "user_message_count": 17,
+      "assistant_message_count": 68,
+      "commentary_count": 62,
+      "final_answer_count": 6,
+      "tool_counts": {
+        "exec_command": 197,
+        "write_stdin": 10
+      },
+      "test_counts": {
+        "pytest": 19,
+        "ruff": 17,
+        "mypy": 14
+      },
+      "git_counts": {
+        "status": 1,
+        "diff": 3
+      },
+      "first_prompt": "# AGENTS.md instructions for /Users/mac/Code/WA\n\n<INSTRUCTIONS>\n<!-- BEGIN COMPOUND CODEX TOOL MAP -->\n## Compound Codex Tool Mapping (Claude Compatibility)\n\nTh",
+      "final_excerpt": "这次 OOM 的下一个根因基本就是 `topmodel`。从你给的日志看，前 6 个数据集都已经过了，卡死点稳定在 `topmodel: load dataset`，而它原来没有可用的时间覆盖信息，probe 会把 `time_range` 解析成 `None`，等于把全时段都放进加载路径。\n\n我已经把 `topmodel` 收紧了。现在它会先从实际文件推导时间覆盖，再按 probe 的时间窗先过滤年份，只加载命中的年文件，而且文件发现",
+      "tokens": {
+        "input_tokens": 13766932,
+        "cached_input_tokens": 11980160,
+        "output_tokens": 78372,
+        "reasoning_output_tokens": 35127,
+        "total_tokens": 13845304
+      },
+      "facets": {
+        "underlying_goal": "Debug repeated HPC probe failures in Phase 1, especially PROJ conflicts, OOM behavior, and topmodel loading scope.",
+        "goal_categories": {
+          "bug_fix": 1,
+          "hpc_debug": 1,
+          "performance_optimization": 1
+        },
+        "outcome": "mostly_achieved",
+        "session_type": "iterative_refinement",
+        "friction_counts": {
+          "hpc_environment": 1,
+          "memory_pressure": 1
+        },
+        "friction_detail": "The session had to work through HPC-side PROJ/runtime mismatch and oversized topmodel loading before the probe path became tractable.",
+        "primary_success": "good_debugging",
+        "brief_summary": "Narrowed the main probe blocker to topmodel time coverage and tightened dataset loading, but the overall HPC hardening continued into later sessions."
+      }
+    },
+    {
+      "session_id": "019d0213-5662-7451-970f-7cff31a4653c",
+      "project_path": "/Users/mac/Code/WA",
+      "file": "rollout-2026-03-19T01-51-54-019d0213-5662-7451-970f-7cff31a4653c.jsonl",
+      "start_time": "2026-03-18T17:51:54.989Z",
+      "branch": "feat/phase1-loader-foundation",
+      "duration_minutes": 0.0,
+      "user_message_count": 3,
+      "assistant_message_count": 0,
+      "commentary_count": 0,
+      "final_answer_count": 0,
+      "tool_counts": {},
+      "test_counts": {},
+      "git_counts": {},
+      "first_prompt": "# AGENTS.md instructions for /Users/mac/Code/WA\n\n<INSTRUCTIONS>\n<!-- BEGIN COMPOUND CODEX TOOL MAP -->\n## Compound Codex Tool Mapping (Claude Compatibility)\n\nTh",
+      "final_excerpt": "",
+      "tokens": {},
+      "facets": {
+        "underlying_goal": "Minimal warm-up / interrupted session with no substantive task execution.",
+        "goal_categories": {
+          "warmup_minimal": 1
+        },
+        "outcome": "not_achieved",
+        "session_type": "minimal",
+        "friction_counts": {},
+        "friction_detail": "",
+        "primary_success": "none",
+        "brief_summary": "No substantive assistant work was recorded in this session."
+      }
+    },
+    {
+      "session_id": "019d040d-bcda-7473-a897-0a3edc04fde7",
+      "project_path": "/Users/mac/Code/WA",
+      "file": "rollout-2026-03-19T11-05-02-019d040d-bcda-7473-a897-0a3edc04fde7.jsonl",
+      "start_time": "2026-03-19T03:05:02.436Z",
+      "branch": "feat/phase1-loader-foundation",
+      "duration_minutes": 2.9,
+      "user_message_count": 2,
+      "assistant_message_count": 0,
+      "commentary_count": 0,
+      "final_answer_count": 0,
+      "tool_counts": {},
+      "test_counts": {},
+      "git_counts": {},
+      "first_prompt": "# AGENTS.md instructions for /Users/mac/Code/WA\n\n<INSTRUCTIONS>\n<!-- BEGIN COMPOUND CODEX TOOL MAP -->\n## Compound Codex Tool Mapping (Claude Compatibility)\n\nTh",
+      "final_excerpt": "",
+      "tokens": {},
+      "facets": {
+        "underlying_goal": "Minimal warm-up / interrupted session with no substantive task execution.",
+        "goal_categories": {
+          "warmup_minimal": 1
+        },
+        "outcome": "not_achieved",
+        "session_type": "minimal",
+        "friction_counts": {},
+        "friction_detail": "",
+        "primary_success": "none",
+        "brief_summary": "No substantive assistant work was recorded in this session."
+      }
+    },
+    {
+      "session_id": "019d0425-fe43-7c10-a698-362daba90dfb",
+      "project_path": "/Users/mac/Code/WA",
+      "file": "rollout-2026-03-19T11-31-32-019d0425-fe43-7c10-a698-362daba90dfb.jsonl",
+      "start_time": "2026-03-19T03:31:32.041Z",
+      "branch": "feat/phase1-loader-foundation",
+      "duration_minutes": 296.9,
+      "user_message_count": 16,
+      "assistant_message_count": 63,
+      "commentary_count": 53,
+      "final_answer_count": 10,
+      "tool_counts": {
+        "exec_command": 163,
+        "update_plan": 7,
+        "write_stdin": 8
+      },
+      "test_counts": {
+        "pytest": 10,
+        "ruff": 13,
+        "mypy": 11
+      },
+      "git_counts": {
+        "status": 3,
+        "diff": 4
+      },
+      "first_prompt": "# AGENTS.md instructions for /Users/mac/Code/WA\n\n<INSTRUCTIONS>\n<!-- BEGIN COMPOUND CODEX TOOL MAP -->\n## Compound Codex Tool Mapping (Claude Compatibility)\n\nTh",
+      "final_excerpt": "我们把这组关键 bug 修掉了，重点落在这几处：\n\n- [harmonize.py](/Users/mac/Code/WA/src/WA/comparison/harmonize.py) 现在支持 month-aware 时间选择，`WAD2M` 这种月中时间戳可以被 `2000-03-01` 这样的 target month 正确命中，并会记录 `comparison_source_time`。\n- [glwd.py](/Users/",
+      "tokens": {
+        "input_tokens": 19106054,
+        "cached_input_tokens": 17571840,
+        "output_tokens": 114247,
+        "reasoning_output_tokens": 41528,
+        "total_tokens": 19220301
+      },
+      "facets": {
+        "underlying_goal": "Fix core Phase 1/2 comparison bugs around month-aware selection, loader behavior, and temporal harmonization.",
+        "goal_categories": {
+          "bug_fix": 1,
+          "testing": 1,
+          "data_alignment": 1
+        },
+        "outcome": "fully_achieved",
+        "session_type": "iterative_refinement",
+        "friction_counts": {
+          "data_alignment": 1
+        },
+        "friction_detail": "The main complexity was making target-time selection month-aware across datasets with mismatched timestamp conventions.",
+        "primary_success": "good_debugging",
+        "brief_summary": "Resolved a cluster of comparison-time bugs, especially month-aware target matching, and validated the fixes through repeated test runs."
+      }
+    },
+    {
+      "session_id": "019d051d-18e7-74f2-9171-e63ad933531e",
+      "project_path": "/Users/mac/Code/WA",
+      "file": "rollout-2026-03-19T16-01-26-019d051d-18e7-74f2-9171-e63ad933531e.jsonl",
+      "start_time": "2026-03-19T08:01:26.250Z",
+      "branch": "feat/phase2-rough-binary-modis-truth",
+      "duration_minutes": 2.1,
+      "user_message_count": 2,
+      "assistant_message_count": 0,
+      "commentary_count": 0,
+      "final_answer_count": 0,
+      "tool_counts": {},
+      "test_counts": {},
+      "git_counts": {},
+      "first_prompt": "# AGENTS.md instructions for /Users/mac/Code/WA\n\n<INSTRUCTIONS>\n<!-- BEGIN COMPOUND CODEX TOOL MAP -->\n## Compound Codex Tool Mapping (Claude Compatibility)\n\nTh",
+      "final_excerpt": "",
+      "tokens": {
+        "input_tokens": 0,
+        "cached_input_tokens": 0,
+        "output_tokens": 0,
+        "reasoning_output_tokens": 0,
+        "total_tokens": 0
+      },
+      "facets": {
+        "underlying_goal": "Minimal warm-up / interrupted session with no substantive task execution.",
+        "goal_categories": {
+          "warmup_minimal": 1
+        },
+        "outcome": "not_achieved",
+        "session_type": "minimal",
+        "friction_counts": {},
+        "friction_detail": "",
+        "primary_success": "none",
+        "brief_summary": "No substantive assistant work was recorded in this session."
+      }
+    },
+    {
+      "session_id": "019d053b-d5d9-7d03-8bf3-a3d2f6cf66e4",
+      "project_path": "/Users/mac/Code/WA",
+      "file": "rollout-2026-03-19T16-35-00-019d053b-d5d9-7d03-8bf3-a3d2f6cf66e4.jsonl",
+      "start_time": "2026-03-19T08:35:00.707Z",
+      "branch": "feat/phase2-rough-binary-modis-truth",
+      "duration_minutes": 11.5,
+      "user_message_count": 2,
+      "assistant_message_count": 20,
+      "commentary_count": 19,
+      "final_answer_count": 1,
+      "tool_counts": {
+        "exec_command": 45,
+        "write_stdin": 2
+      },
+      "test_counts": {
+        "pytest": 3,
+        "ruff": 3,
+        "mypy": 1
+      },
+      "git_counts": {
+        "diff": 2,
+        "status": 1
+      },
+      "first_prompt": "# AGENTS.md instructions for /Users/mac/Code/WA\n\n<INSTRUCTIONS>\n<!-- BEGIN COMPOUND CODEX TOOL MAP -->\n## Compound Codex Tool Mapping (Claude Compatibility)\n\nTh",
+      "final_excerpt": "`bbox_to_tiles()` 已经按严谨方式重写了，不再做 `0.5°` 采样。现在的实现会先对 bbox 做显式校验，再按 UTM `zone`/`hemisphere` 枚举 100 km MGRS 候选格网，把 bbox 边界致密化后投到对应 UTM，并做 polygon-rectangle 判交，所以能正确保留 GWD30 shifted footprint 在东/北方向产生的重叠 tile，不会再漏掉只靠 overlap",
+      "tokens": {
+        "input_tokens": 2702927,
+        "cached_input_tokens": 2599808,
+        "output_tokens": 30426,
+        "reasoning_output_tokens": 18895,
+        "total_tokens": 2733353
+      },
+      "facets": {
+        "underlying_goal": "Rewrite `bbox_to_tiles()` rigorously so shifted GWD30 footprints are not lost during tile selection.",
+        "goal_categories": {
+          "bug_fix": 1,
+          "geometry_rigor": 1,
+          "testing": 1
+        },
+        "outcome": "fully_achieved",
+        "session_type": "single_task",
+        "friction_counts": {},
+        "friction_detail": "",
+        "primary_success": "correct_code_edits",
+        "brief_summary": "Replaced the loose tile selection logic with explicit UTM/MGRS intersection handling and validated the geometry behavior."
+      }
+    },
+    {
+      "session_id": "019d0555-887b-7111-9194-ad5aa90cd4ea",
+      "project_path": "/Users/mac/Code/WA",
+      "file": "rollout-2026-03-19T17-03-04-019d0555-887b-7111-9194-ad5aa90cd4ea.jsonl",
+      "start_time": "2026-03-19T09:03:04.833Z",
+      "branch": "feat/phase2-rough-binary-modis-truth",
+      "duration_minutes": 248.1,
+      "user_message_count": 25,
+      "assistant_message_count": 131,
+      "commentary_count": 111,
+      "final_answer_count": 20,
+      "tool_counts": {
+        "update_plan": 18,
+        "exec_command": 102,
+        "write_stdin": 3
+      },
+      "test_counts": {
+        "pytest": 22,
+        "ruff": 18
+      },
+      "git_counts": {
+        "status": 3
+      },
+      "first_prompt": "# AGENTS.md instructions for /Users/mac/Code/WA\n\n<INSTRUCTIONS>\n<!-- BEGIN COMPOUND CODEX TOOL MAP -->\n## Compound Codex Tool Mapping (Claude Compatibility)\n\nTh",
+      "final_excerpt": "已总结并写入 stash：\n\n- `docs/stashes/2026-03-19-009-phase2-batch-generation-and-gwd30-oom-hardening.md:1`\n\n这份 stash 包含：\n- Phase 2 批量数据生成实现\n- `config/priority_regions.yaml` 配置迁移\n- `job07` OOM 根因\n- GWD30 低内存直达 coarse grid 的新策略\n-",
+      "tokens": {
+        "input_tokens": 36017388,
+        "cached_input_tokens": 34247168,
+        "output_tokens": 112428,
+        "reasoning_output_tokens": 51603,
+        "total_tokens": 36129816
+      },
+      "facets": {
+        "underlying_goal": "Advance Phase 2 batch generation while hardening GWD30 loading against OOM and capturing the outcome in stash documentation.",
+        "goal_categories": {
+          "code_implementation": 1,
+          "hpc_debug": 1,
+          "documentation": 1
+        },
+        "outcome": "mostly_achieved",
+        "session_type": "multi_task",
+        "friction_counts": {
+          "memory_pressure": 1,
+          "user_boundary_correction": 1
+        },
+        "friction_detail": "GWD30 memory behavior remained the dominant blocker, and the user explicitly corrected command/commit boundaries during the session.",
+        "primary_success": "multi_file_changes",
+        "brief_summary": "Implemented and documented Phase 2 batch work plus low-memory GWD30 strategy, but the broader HPC pressure continued into later sessions."
+      }
+    },
+    {
+      "session_id": "019d063b-27f5-7642-a8db-099b9a1a7e2d",
+      "project_path": "/Users/mac/Code/WA",
+      "file": "rollout-2026-03-19T21-13-53-019d063b-27f5-7642-a8db-099b9a1a7e2d.jsonl",
+      "start_time": "2026-03-19T13:13:53.402Z",
+      "branch": "feat/phase2-rough-binary-modis-truth",
+      "duration_minutes": 1031.1,
+      "user_message_count": 15,
+      "assistant_message_count": 78,
+      "commentary_count": 71,
+      "final_answer_count": 7,
+      "tool_counts": {
+        "exec_command": 98,
+        "update_plan": 5,
+        "write_stdin": 3
+      },
+      "test_counts": {
+        "pytest": 9,
+        "ruff": 13,
+        "mypy": 11
+      },
+      "git_counts": {
+        "status": 4,
+        "diff": 2
+      },
+      "first_prompt": "# AGENTS.md instructions for /Users/mac/Code/WA\n\n<INSTRUCTIONS>\n<!-- BEGIN COMPOUND CODEX TOOL MAP -->\n## Compound Codex Tool Mapping (Claude Compatibility)\n\nTh",
+      "final_excerpt": "已写入 stash：[`docs/stashes/2026-03-20-001-gwd30-sharding-command-boundary-summary.md`](/Users/mac/Code/WA/docs/stashes/2026-03-20-001-gwd30-sharding-command-boundary-summary.md)\n\n里面记录了这轮的三件关键事：\n- GWD30 的并行与分片 reduce 链路\n- 以",
+      "tokens": {
+        "input_tokens": 21921542,
+        "cached_input_tokens": 20999680,
+        "output_tokens": 98887,
+        "reasoning_output_tokens": 50140,
+        "total_tokens": 22020429
+      },
+      "facets": {
+        "underlying_goal": "Continue GWD30 sharding and reduce-chain hardening, then lock in command-boundary rules via stash summary.",
+        "goal_categories": {
+          "hpc_debug": 1,
+          "documentation": 1,
+          "workflow_rule_capture": 1
+        },
+        "outcome": "mostly_achieved",
+        "session_type": "iterative_refinement",
+        "friction_counts": {
+          "memory_pressure": 1,
+          "user_boundary_correction": 1
+        },
+        "friction_detail": "The technical work progressed, but the user had to reinforce that Codex should provide executable commands without overstepping into manual git actions.",
+        "primary_success": "good_explanations",
+        "brief_summary": "Captured the sharding/reduce lessons and codified command-boundary expectations, while Phase 2 HPC tuning remained active work."
+      }
+    },
+    {
+      "session_id": "019d09f0-3158-7722-862f-8dc352341a08",
+      "project_path": "/Users/mac/Code/WA",
+      "file": "rollout-2026-03-20T14-30-29-019d09f0-3158-7722-862f-8dc352341a08.jsonl",
+      "start_time": "2026-03-20T06:30:29.470Z",
+      "branch": "feat/phase2-rough-binary-modis-truth",
+      "duration_minutes": 1803.4,
+      "user_message_count": 31,
+      "assistant_message_count": 104,
+      "commentary_count": 83,
+      "final_answer_count": 21,
+      "tool_counts": {
+        "update_plan": 19,
+        "exec_command": 103,
+        "write_stdin": 6
+      },
+      "test_counts": {
+        "pytest": 9,
+        "ruff": 15
+      },
+      "git_counts": {
+        "status": 1
+      },
+      "first_prompt": "# AGENTS.md instructions for /Users/mac/Code/WA\n\n<INSTRUCTIONS>\n<!-- BEGIN COMPOUND CODEX TOOL MAP -->\n## Compound Codex Tool Mapping (Claude Compatibility)\n\nTh",
+      "final_excerpt": "**已完成**\n- 我已经按你的要求写成一个简单脚本：`scripts/build_phase2_landsat_review_priority.py:1`\n- 它会读取 `landsat_review_manifest.csv`，按阈值筛选出高优先级 AOI，并输出：\n  - `landsat_review_priority.csv`\n  - `landsat_review_priority.json`\n\n**直接运行**\n- 用默认",
+      "tokens": {
+        "input_tokens": 28697785,
+        "cached_input_tokens": 27566848,
+        "output_tokens": 102129,
+        "reasoning_output_tokens": 43472,
+        "total_tokens": 28799914
+      },
+      "facets": {
+        "underlying_goal": "Inspect Phase 2 outputs, improve the review/download pipeline, and add concrete prioritization tooling for Landsat review.",
+        "goal_categories": {
+          "result_review": 1,
+          "code_implementation": 1,
+          "reference_imagery": 1
+        },
+        "outcome": "mostly_achieved",
+        "session_type": "multi_task",
+        "friction_counts": {
+          "missing_progress_visibility": 1,
+          "data_quality_gap": 1
+        },
+        "friction_detail": "The user repeatedly pushed on missing progress feedback and inadequate cloud handling in downloaded imagery.",
+        "primary_success": "multi_file_changes",
+        "brief_summary": "Produced concrete Phase 2 utilities and review-priority outputs, while also surfacing UX and data-quality expectations around download workflows."
+      }
+    },
+    {
+      "session_id": "019d1064-cf1d-7e02-bff4-b95b520cb0f0",
+      "project_path": "/Users/mac/Code/WA",
+      "file": "rollout-2026-03-21T20-35-35-019d1064-cf1d-7e02-bff4-b95b520cb0f0.jsonl",
+      "start_time": "2026-03-21T12:35:35.330Z",
+      "branch": "feat/phase2-rough-binary-modis-truth",
+      "duration_minutes": 907.7,
+      "user_message_count": 21,
+      "assistant_message_count": 86,
+      "commentary_count": 70,
+      "final_answer_count": 16,
+      "tool_counts": {
+        "update_plan": 18,
+        "exec_command": 116,
+        "write_stdin": 2
+      },
+      "test_counts": {
+        "ruff": 8,
+        "pytest": 8
+      },
+      "git_counts": {
+        "status": 3,
+        "diff": 3
+      },
+      "first_prompt": "# AGENTS.md instructions for /Users/mac/Code/WA\n\n<INSTRUCTIONS>\n<!-- BEGIN COMPOUND CODEX TOOL MAP -->\n## Compound Codex Tool Mapping (Claude Compatibility)\n\nTh",
+      "final_excerpt": "已补进去，位置在：\n\n- `docs/stashes/2026-03-22-001-phase2-closeout-rough-review-and-debug-summary.md:34`\n\n我新增了一个 **`## Phase 2 具体完成内容`** 小节，里面把这轮真正交付的内容明确列成了可复用的总结，包括：\n\n- rough binary comparison 主链\n- priority region + 双时间窗口批跑\n- f",
+      "tokens": {
+        "input_tokens": 25234601,
+        "cached_input_tokens": 24331648,
+        "output_tokens": 98966,
+        "reasoning_output_tokens": 43074,
+        "total_tokens": 25333567
+      },
+      "facets": {
+        "underlying_goal": "Patch the closeout stash so Phase 2 completion is explicitly and accurately documented.",
+        "goal_categories": {
+          "documentation": 1
+        },
+        "outcome": "fully_achieved",
+        "session_type": "single_task",
+        "friction_counts": {},
+        "friction_detail": "",
+        "primary_success": "documentation_closure",
+        "brief_summary": "Updated the Phase 2 closeout stash with a concrete deliverables section so future memory restores can rely on it."
+      }
+    },
+    {
+      "session_id": "019d13a4-3310-7ce0-8693-5003f56c3e74",
+      "project_path": "/Users/mac/Code/WA",
+      "file": "rollout-2026-03-22T11-43-41-019d13a4-3310-7ce0-8693-5003f56c3e74.jsonl",
+      "start_time": "2026-03-22T03:43:41.335Z",
+      "branch": "feat/phase2-rough-binary-modis-truth",
+      "duration_minutes": 540.5,
+      "user_message_count": 11,
+      "assistant_message_count": 41,
+      "commentary_count": 39,
+      "final_answer_count": 2,
+      "tool_counts": {
+        "update_plan": 5,
+        "exec_command": 49,
+        "write_stdin": 4
+      },
+      "test_counts": {
+        "ruff": 8,
+        "pytest": 7
+      },
+      "git_counts": {
+        "status": 7,
+        "diff": 3,
+        "add": 2,
+        "commit": 1
+      },
+      "first_prompt": "# AGENTS.md instructions for /Users/mac/Code/WA\n\n<INSTRUCTIONS>\n<!-- BEGIN COMPOUND CODEX TOOL MAP -->\n## Compound Codex Tool Mapping (Claude Compatibility)\n\nTh",
+      "final_excerpt": "我确认“最新 plan”是 `docs/plans/2026-03-22-001-feat-phase3-fine-grained-entropy-s2-implementation-plan.md`。它要求先在当前 `feat/phase2-rough-binary-modis-truth` 上做 Phase 2.5 收尾，再新建 `feat/phase3-fine-grained-entropy-s2` 做 Phase 3；当前工作",
+      "tokens": {
+        "input_tokens": 6282612,
+        "cached_input_tokens": 5854464,
+        "output_tokens": 32940,
+        "reasoning_output_tokens": 16461,
+        "total_tokens": 6315552
+      },
+      "facets": {
+        "underlying_goal": "Align the latest Phase 3 plan with the current dirty worktree and branch state before executing the next phase.",
+        "goal_categories": {
+          "planning": 1,
+          "state_alignment": 1
+        },
+        "outcome": "partially_achieved",
+        "session_type": "transition_session",
+        "friction_counts": {
+          "state_ambiguity": 1
+        },
+        "friction_detail": "The session surfaced branch and worktree ambiguity and needed user confirmation before Phase 3 execution could proceed safely.",
+        "primary_success": "good_explanations",
+        "brief_summary": "Clarified the latest plan and working-tree state, but intentionally stopped for confirmation rather than forcing a phase transition."
+      }
+    },
+    {
+      "session_id": "019d164f-d581-76a0-9783-d284aca73db1",
+      "project_path": "/Users/mac/Code/WA",
+      "file": "rollout-2026-03-23T00-10-24-019d164f-d581-76a0-9783-d284aca73db1.jsonl",
+      "start_time": "2026-03-22T16:10:24.006Z",
+      "branch": "feat/phase3-fine-grained-entropy-s2",
+      "duration_minutes": 744.3,
+      "user_message_count": 10,
+      "assistant_message_count": 23,
+      "commentary_count": 18,
+      "final_answer_count": 5,
+      "tool_counts": {
+        "exec_command": 29,
+        "update_plan": 4
+      },
+      "test_counts": {},
+      "git_counts": {
+        "status": 1
+      },
+      "first_prompt": "# AGENTS.md instructions for /Users/mac/Code/WA\n\n<INSTRUCTIONS>\n<!-- BEGIN COMPOUND CODEX TOOL MAP -->\n## Compound Codex Tool Mapping (Claude Compatibility)\n\nTh",
+      "final_excerpt": "可以，我先给你一份**本地版 `/insights`**。这不是 Anthropic 官方页面，但它基于你机器上的 Claude 历史做了同类分析。\n\n**范围**\n- 分析源：`/Users/mac/.claude/projects/-Users-mac-Code-WA/*.jsonl` 和 `/Users/mac/.claude/history.jsonl`\n- 时间范围：**2026-03-18 到 2026-03-23**\n- ",
+      "tokens": {
+        "input_tokens": 2622873,
+        "cached_input_tokens": 2346624,
+        "output_tokens": 25072,
+        "reasoning_output_tokens": 14206,
+        "total_tokens": 2647945
+      },
+      "facets": {
+        "underlying_goal": "Restore Phase 3 context and generate a local insight view over prior WA sessions.",
+        "goal_categories": {
+          "memory_restoration": 1,
+          "project_insights": 1
+        },
+        "outcome": "fully_achieved",
+        "session_type": "multi_task",
+        "friction_counts": {},
+        "friction_detail": "",
+        "primary_success": "project_insight",
+        "brief_summary": "Recovered the current Phase 3 state, refreshed memory files, and produced a first-pass local `/insights` style summary for WA."
+      }
+    }
+  ]
+}

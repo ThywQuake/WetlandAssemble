@@ -7,9 +7,12 @@ from pathlib import Path
 import numpy as np
 import xarray as xr
 
+from tests.test_loaders.conftest import with_common_fields, write_netcdf
+from WA.loaders import get_loader
 from WA.visualization.comparison_panel import (
     ENTROPY_CMAP,
     WETLAND_CMAP,
+    load_native_wetland_surface,
     make_dataset_labels,
     plot_comparison_panel,
 )
@@ -140,3 +143,42 @@ def test_make_dataset_labels() -> None:
     assert "0.05" in labels["g2017"]
     assert "SWAMPS" in labels["swamps"]
     assert labels["unknown_ds"] == "unknown_ds"
+
+
+def test_load_native_wetland_surface_uses_target_month_for_dynamic_dataset(
+    tmp_path: Path,
+) -> None:
+    """Dynamic datasets should load the focus month, not the full time series."""
+
+    base_path = tmp_path / "swamps"
+    january = xr.Dataset(
+        {"fw": (("lat", "lon"), np.array([[0.1]], dtype=np.float32))},
+        coords={"lat": [0.5], "lon": [100.0]},
+    )
+    february = xr.Dataset(
+        {"fw": (("lat", "lon"), np.array([[0.9]], dtype=np.float32))},
+        coords={"lat": [0.5], "lon": [100.0]},
+    )
+    write_netcdf(base_path / "stable/2010/01/SWAMPS.FW.F13.QUIKSCAT.20100101.nc", january)
+    write_netcdf(base_path / "stable/2010/02/SWAMPS.FW.F13.QUIKSCAT.20100201.nc", february)
+
+    loader = get_loader(
+        "swamps",
+        with_common_fields(
+            base_path,
+            loader_type="swamps",
+            pattern="stable/{year}/{month}/*.nc",
+            sensor_shift_year=2000,
+        ),
+    )
+
+    surface = load_native_wetland_surface(
+        "swamps",
+        loader,
+        (99.5, 0.0, 100.5, 1.0),
+        target_time="2010-02-01",
+    )
+
+    assert surface is not None
+    assert surface.dtype == np.float32
+    assert surface.squeeze().item() == np.float32(0.9)

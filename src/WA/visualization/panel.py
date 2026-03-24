@@ -18,7 +18,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import rioxarray  # noqa: F401
 import xarray as xr
-from matplotlib.colors import LinearSegmentedColormap, ListedColormap
+from matplotlib.cm import ScalarMappable
+from matplotlib.colors import LinearSegmentedColormap, ListedColormap, Normalize
 from matplotlib.gridspec import GridSpec
 from matplotlib.patches import Patch
 from rasterio.enums import Resampling
@@ -26,6 +27,7 @@ from rasterio.enums import Resampling
 from WA.comparison.fine_grained import (
     FINE_4CLASS_LABELS,
     FINE_4CLASS_MAPS,
+    FINE_8CLASS_MAPS,
     ClassScheme,
 )
 from WA.loaders.base import BBox
@@ -90,6 +92,13 @@ def _class_fractions_at_resolution(
     ref = ref.rio.write_crs("EPSG:4326")
     ref = ref.rio.set_spatial_dims(x_dim="lon", y_dim="lat")
 
+    valid_mask = mapped.notnull().astype(np.float32)
+    if not valid_mask.rio.crs:
+        valid_mask = valid_mask.rio.write_crs("EPSG:4326")
+    valid_mask = valid_mask.rio.set_spatial_dims(x_dim="lon", y_dim="lat")
+    valid_fraction = valid_mask.rio.reproject_match(ref, resampling=Resampling.average)
+    valid_fraction = _with_lat_lon_dims(valid_fraction, reference=ref)
+
     fractions = []
     for cls in range(num_classes):
         binary = xr.where(mapped == cls, 1.0, 0.0).astype(np.float32)
@@ -98,9 +107,88 @@ def _class_fractions_at_resolution(
             binary = binary.rio.write_crs("EPSG:4326")
         binary = binary.rio.set_spatial_dims(x_dim="lon", y_dim="lat")
         coarse = binary.rio.reproject_match(ref, resampling=Resampling.average)
+        coarse = _with_lat_lon_dims(coarse, reference=ref)
+        coarse = coarse.where(valid_fraction > 0)
         fractions.append(coarse.expand_dims(class_id=[cls]))
 
     return xr.concat(fractions, dim="class_id").astype(np.float32)
+
+
+def _has_finite_data(data: xr.DataArray) -> bool:
+    """Return True when a DataArray contains at least one finite cell."""
+    return bool(data.notnull().any().item())
+
+
+def _with_lat_lon_dims(data: xr.DataArray, *, reference: xr.DataArray) -> xr.DataArray:
+    """Normalize reprojected spatial dims from x/y back to lon/lat."""
+    surface = data
+    rename_map: dict[str, str] = {}
+    if "y" in surface.dims:
+        rename_map["y"] = "lat"
+    if "x" in surface.dims:
+        rename_map["x"] = "lon"
+    if rename_map:
+        surface = surface.rename(rename_map)
+    if "lat" in surface.dims:
+        surface = surface.assign_coords(lat=reference.coords["lat"].values)
+    if "lon" in surface.dims:
+        surface = surface.assign_coords(lon=reference.coords["lon"].values)
+    if {"lat", "lon"}.issubset(surface.dims):
+        surface = surface.rio.write_crs("EPSG:4326")
+        surface = surface.rio.set_spatial_dims(x_dim="lon", y_dim="lat")
+    return surface
+
+
+def _ensure_2d_surface(data: xr.DataArray, *, label: str) -> xr.DataArray:
+    """Squeeze singleton dimensions and require a 2D plotting surface."""
+    surface = data.squeeze(drop=True)
+    if surface.ndim != 2:
+        raise ValueError(f"{label} must be 2d, got dims={surface.dims}")
+    return surface
+
+
+def _dominant_class(data: xr.DataArray, *, dim: str) -> xr.DataArray:
+    """Return argmax class ids while preserving all-no-data cells as NaN."""
+    valid = data.notnull().any(dim=dim)
+    dominant = data.fillna(0).argmax(dim=dim).astype(np.float32)
+    return dominant.where(valid)
+
+
+def _collapse_precomputed_class_fractions(
+    dataset: xr.Dataset,
+    dataset_id: str,
+    class_scheme: ClassScheme,
+) -> xr.DataArray | None:
+    """Collapse raw class fractions to the requested scheme, when available."""
+    if "class_fractions" not in dataset:
+        return None
+
+    fractions = dataset["class_fractions"].astype(np.float32)
+    if "class_id" not in fractions.dims:
+        return None
+
+    mapping = (
+        FINE_4CLASS_MAPS[dataset_id]
+        if class_scheme == "4class"
+        else FINE_8CLASS_MAPS[dataset_id]
+    )
+    num_classes = 4 if class_scheme == "4class" else 8
+    available_ids = {int(value) for value in fractions.coords["class_id"].values.tolist()}
+    template = fractions.isel(class_id=0, drop=True)
+
+    collapsed: list[xr.DataArray] = []
+    for class_id in range(num_classes):
+        source_ids = [
+            source_id for source_id, target_id in mapping.items()
+            if target_id == class_id and source_id in available_ids
+        ]
+        if source_ids:
+            layer = fractions.sel(class_id=source_ids).sum(dim="class_id")
+        else:
+            layer = xr.zeros_like(template, dtype=np.float32)
+        collapsed.append(layer.expand_dims(class_id=[class_id]))
+
+    return xr.concat(collapsed, dim="class_id").astype(np.float32)
 
 
 # ---------------------------------------------------------------------------
@@ -130,6 +218,10 @@ def compute_vote_classification(
 
     all_fractions: list[xr.DataArray] = []
     for ds_id, ds in datasets.items():
+        precomputed = _collapse_precomputed_class_fractions(ds, ds_id, class_scheme)
+        if precomputed is not None:
+            all_fractions.append(precomputed)
+            continue
         try:
             source, _ = _prepare_fine_source(ds_id, ds)
         except Exception:
@@ -147,13 +239,14 @@ def compute_vote_classification(
     for f in all_fractions[1:]:
         aligned.append(f.interp_like(ref, method="nearest"))
 
-    summed = sum(aligned)  # type: ignore[arg-type]
-    vote = summed.argmax(dim="class_id").astype(np.float32)  # type: ignore[union-attr]
-    # Mask cells where no dataset had data
-    valid = sum(a.sum(dim="class_id") for a in aligned)  # type: ignore[arg-type]
-    vote = vote.where(valid > 0)  # type: ignore[union-attr]
+    valid = sum(  # type: ignore[arg-type]
+        a.notnull().any(dim="class_id").astype(np.int16) for a in aligned
+    ) > 0
+    summed = sum(a.fillna(0) for a in aligned)  # type: ignore[arg-type]
+    vote = summed.argmax(dim="class_id").astype(np.float32)
+    vote = vote.where(valid)
     vote.name = "vote_classification"
-    return vote  # type: ignore[return-value]
+    return _ensure_2d_surface(vote, label="vote_classification")
 
 
 # ---------------------------------------------------------------------------
@@ -179,6 +272,12 @@ def load_native_classification(
     from WA.comparison.fine_grained import _prepare_fine_source
 
     num_classes = 4 if class_scheme == "4class" else 8
+    precomputed = _collapse_precomputed_class_fractions(dataset, dataset_id, class_scheme)
+    if dataset_id == "gwd30" and precomputed is not None:
+        dominant = _dominant_class(precomputed, dim="class_id")
+        dominant.name = "fine_class"
+        return _ensure_2d_surface(dominant, label=f"{dataset_id} native classification")
+
     source, _ = _prepare_fine_source(dataset_id, dataset)
     mapped = _map_to_4class(source, dataset_id)
 
@@ -186,12 +285,11 @@ def load_native_classification(
         frac = _class_fractions_at_resolution(
             mapped, gwd30_display_resolution_deg, bbox, num_classes,
         )
-        dominant = frac.argmax(dim="class_id").astype(np.float32)
-        dominant = dominant.where(frac.sum(dim="class_id") > 0)
+        dominant = _dominant_class(frac, dim="class_id")
         dominant.name = "fine_class"
-        return dominant
+        return _ensure_2d_surface(dominant, label=f"{dataset_id} native classification")
 
-    return mapped
+    return _ensure_2d_surface(mapped, label=f"{dataset_id} native classification")
 
 
 # ---------------------------------------------------------------------------
@@ -242,6 +340,19 @@ def plot_classification_panel(
         for c in range(3):
             axes[(r, c)] = fig.add_subplot(gs[r, c])
 
+    entropy_surface = _ensure_2d_surface(entropy_surface, label="entropy_surface")
+    vote_classification = _ensure_2d_surface(
+        vote_classification,
+        label="vote_classification",
+    )
+    native_classifications = {
+        dataset_id: _ensure_2d_surface(
+            data,
+            label=f"{dataset_id} native classification",
+        )
+        for dataset_id, data in native_classifications.items()
+    }
+
     west, south, east, north = bbox
 
     # ── [0, 0] Sentinel-2 RGB ──
@@ -264,10 +375,7 @@ def plot_classification_panel(
 
     # ── [0, 1] Shannon Entropy ──
     ax = axes[(0, 1)]
-    im_ent = entropy_surface.plot.pcolormesh(
-        ax=ax, cmap=ENTROPY_CMAP, vmin=0, vmax=1,
-        add_colorbar=False, add_labels=False,
-    )
+    im_ent = _plot_entropy(ax, entropy_surface)
     ax.set_title("Shannon Entropy", fontsize=10)
 
     # ── [0, 2] Vote Classification ──
@@ -350,11 +458,39 @@ def plot_classification_panel(
 
 def _plot_categorical(ax: plt.Axes, data: xr.DataArray) -> None:  # type: ignore[type-arg]
     """Plot a 4-class categorical DataArray with the standard CLASS_CMAP."""
+    if not _has_finite_data(data):
+        ax.text(
+            0.5, 0.5, "No Data",
+            transform=ax.transAxes, ha="center", va="center",
+            fontsize=11, color="gray",
+        )
+        return
+
     data.plot.pcolormesh(
         ax=ax,
         cmap=CLASS_CMAP,
         vmin=-0.5,
         vmax=3.5,
+        add_colorbar=False,
+        add_labels=False,
+    )
+
+
+def _plot_entropy(ax: plt.Axes, data: xr.DataArray) -> ScalarMappable:  # type: ignore[type-arg]
+    """Plot entropy surface or a placeholder while still returning a colorbar mappable."""
+    if not _has_finite_data(data):
+        ax.text(
+            0.5, 0.5, "No Data",
+            transform=ax.transAxes, ha="center", va="center",
+            fontsize=11, color="gray",
+        )
+        return ScalarMappable(norm=Normalize(vmin=0, vmax=1), cmap=ENTROPY_CMAP)
+
+    return data.plot.pcolormesh(
+        ax=ax,
+        cmap=ENTROPY_CMAP,
+        vmin=0,
+        vmax=1,
         add_colorbar=False,
         add_labels=False,
     )

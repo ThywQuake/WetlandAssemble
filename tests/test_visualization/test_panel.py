@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import numpy as np
+import pytest
 import xarray as xr
 
 from WA.visualization.panel import (
@@ -152,6 +153,49 @@ class TestVoteClassification:
         # Majority = open water (class 1): GLWD + G2017 vs GWD30
         assert np.all(values == 1.0)
 
+    def test_uses_precomputed_gwd30_class_fractions_when_available(self) -> None:
+        bbox = (110.0, -1.0, 110.5, -0.5)
+        ds_glwd = _synthetic_classification(bbox, 0.05, fill_class=8).rename(
+            "combined_classes"
+        ).to_dataset()
+
+        gwd30_raw = _synthetic_classification(bbox, 0.05, fill_class=0).rename(
+            "wetland_class"
+        ).to_dataset()
+        class_fractions = xr.DataArray(
+            np.zeros((15, *gwd30_raw["wetland_class"].shape), dtype=np.float32),
+            dims=("class_id", "lat", "lon"),
+            coords={
+                "class_id": np.arange(15),
+                "lat": gwd30_raw["wetland_class"].coords["lat"].values,
+                "lon": gwd30_raw["wetland_class"].coords["lon"].values,
+            },
+        )
+        class_fractions.loc[{"class_id": 8}] = 1.0
+        gwd30_raw["class_fractions"] = class_fractions
+
+        datasets = {"glwd_v2": ds_glwd, "gwd30": gwd30_raw}
+        vote = compute_vote_classification(datasets, bbox, vote_resolution_deg=0.05)
+        values = vote.values[np.isfinite(vote.values)]
+        assert len(values) > 0
+        assert np.all(values == 2.0)
+
+    def test_all_unmapped_inputs_return_all_nan(self) -> None:
+        bbox = (110.0, -1.0, 110.5, -0.5)
+        ds_glwd = _synthetic_classification(bbox, 0.01, fill_class=999).rename(
+            "combined_classes"
+        ).to_dataset()
+        ds_g2017 = _synthetic_classification(bbox, 0.05, fill_class=999).rename(
+            "wetland"
+        ).to_dataset()
+        ds_gwd30 = _synthetic_classification(bbox, 0.01, fill_class=999).rename(
+            "wetland_class"
+        ).to_dataset()
+
+        datasets = {"glwd_v2": ds_glwd, "g2017": ds_g2017, "gwd30": ds_gwd30}
+        vote = compute_vote_classification(datasets, bbox, vote_resolution_deg=0.05)
+        assert int(vote.count().item()) == 0
+
 
 # ---------------------------------------------------------------------------
 # Native classification loading
@@ -168,6 +212,40 @@ class TestNativeClassification:
         vals = result.values[np.isfinite(result.values)]
         # GLWD class 8 → 4class 2 (wetland)
         assert np.all(vals == 2.0)
+
+    def test_loads_gwd30_from_precomputed_class_fractions(self) -> None:
+        bbox = (110.0, -1.0, 110.5, -0.5)
+        ds = _synthetic_classification(bbox, 0.05, fill_class=0).rename(
+            "wetland_class"
+        ).to_dataset()
+        class_fractions = xr.DataArray(
+            np.zeros((15, *ds["wetland_class"].shape), dtype=np.float32),
+            dims=("class_id", "lat", "lon"),
+            coords={
+                "class_id": np.arange(15),
+                "lat": ds["wetland_class"].coords["lat"].values,
+                "lon": ds["wetland_class"].coords["lon"].values,
+            },
+        )
+        class_fractions.loc[{"class_id": 8}] = 1.0
+        ds["class_fractions"] = class_fractions
+
+        result = load_native_classification("gwd30", ds, bbox)
+        vals = result.values[np.isfinite(result.values)]
+        assert np.all(vals == 2.0)
+
+    def test_gwd30_all_unmapped_returns_all_nan(self) -> None:
+        bbox = (110.0, -1.0, 110.5, -0.5)
+        ds = _synthetic_classification(bbox, 0.01, fill_class=999).rename(
+            "wetland_class"
+        ).to_dataset()
+        result = load_native_classification(
+            "gwd30",
+            ds,
+            bbox,
+            gwd30_display_resolution_deg=0.05,
+        )
+        assert int(result.count().item()) == 0
 
 
 # ---------------------------------------------------------------------------
@@ -226,3 +304,73 @@ class TestPanelPlot:
             dpi=72,
         )
         assert result.exists()
+
+    def test_handles_all_nan_surfaces(self, tmp_path: Path) -> None:
+        bbox = BBOX
+        entropy = _synthetic_entropy(bbox, 0.05) * np.nan
+        vote = _synthetic_classification(bbox, 0.05, fill_class=0) * np.nan
+        vote.name = "vote_classification"
+
+        native = {
+            "g2017": _synthetic_classification(bbox, 0.05, fill_class=2) * np.nan,
+            "gwd30": _synthetic_classification(bbox, 0.05, fill_class=2) * np.nan,
+        }
+
+        out = tmp_path / "all_nan_panel.png"
+        result = plot_classification_panel(
+            "all-nan-001",
+            "test_region",
+            bbox,
+            satellite_image_path=None,
+            entropy_surface=entropy,
+            vote_classification=vote,
+            native_classifications=native,
+            output_path=out,
+            dpi=72,
+        )
+        assert result.exists()
+
+    def test_squeezes_singleton_surface_dimensions(self, tmp_path: Path) -> None:
+        bbox = BBOX
+        entropy = _synthetic_entropy(bbox, 0.05).expand_dims(band=[1])
+        vote = _synthetic_classification(bbox, 0.05, fill_class=2).expand_dims(band=[1])
+        vote.name = "vote_classification"
+
+        native = {
+            "g2017": _synthetic_classification(bbox, 0.05, fill_class=2).expand_dims(band=[1]),
+            "gwd30": _synthetic_classification(bbox, 0.05, fill_class=3).expand_dims(band=[1]),
+        }
+
+        out = tmp_path / "singleton_dims_panel.png"
+        result = plot_classification_panel(
+            "singleton-dims-001",
+            "test_region",
+            bbox,
+            satellite_image_path=None,
+            entropy_surface=entropy,
+            vote_classification=vote,
+            native_classifications=native,
+            output_path=out,
+            dpi=72,
+        )
+        assert result.exists()
+
+    def test_rejects_non_singleton_3d_surface(self, tmp_path: Path) -> None:
+        bbox = BBOX
+        entropy = _synthetic_entropy(bbox, 0.05).expand_dims(band=[1, 2])
+        vote = _synthetic_classification(bbox, 0.05, fill_class=2)
+        vote.name = "vote_classification"
+        native = {"g2017": _synthetic_classification(bbox, 0.05, fill_class=2)}
+
+        with pytest.raises(ValueError, match="entropy_surface must be 2d"):
+            plot_classification_panel(
+                "bad-3d-001",
+                "test_region",
+                bbox,
+                satellite_image_path=None,
+                entropy_surface=entropy,
+                vote_classification=vote,
+                native_classifications=native,
+                output_path=tmp_path / "bad_3d_panel.png",
+                dpi=72,
+            )

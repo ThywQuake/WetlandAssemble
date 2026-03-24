@@ -16,16 +16,77 @@ from pathlib import Path
 
 import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 import xarray as xr
 from matplotlib.colors import LinearSegmentedColormap, Normalize
 from matplotlib.gridspec import GridSpec
 
-from WA.loaders.base import BBox
+from WA.comparison.harmonize import _CLASSIFICATION_BINARY_MAPS, create_comparison_grid
+from WA.loaders.base import BBox, DatasetLoader, DatasetMetadata, TimeRange
 
 N_COLS = 3
+APPROX_METERS_PER_DEGREE = 111_320.0
+DEFAULT_GWD30_DISPLAY_RESOLUTION_M = 1000
 
 ENTROPY_CMAP = LinearSegmentedColormap.from_list("entropy_wr", ["#ffffff", "#d62728"])
 WETLAND_CMAP = LinearSegmentedColormap.from_list("wetland_wb", ["#ffffff", "#1f77b4"])
+
+
+def load_native_wetland_surface(
+    dataset_id: str,
+    loader: DatasetLoader,
+    bbox: BBox,
+    *,
+    target_time: str | pd.Timestamp | None = None,
+    gwd30_resolution_m: int = DEFAULT_GWD30_DISPLAY_RESOLUTION_M,
+) -> xr.DataArray | None:
+    """Load one dataset's display-ready wetland surface for Phase 2.5 panels.
+
+    Dynamic datasets are restricted to the target month so the visualization does
+    not materialize whole multi-year time series. GWD30 uses the loader's
+    direct-to-reference-grid path to downsample into an approximately 1 km
+    display grid before plotting.
+    """
+
+    metadata = loader.metadata()
+    time_range = _build_visualization_time_range(metadata, target_time)
+    if not metadata.is_static and target_time is not None and time_range is None:
+        return None
+
+    normalized_target_time = None
+    if target_time is not None:
+        normalized_target_time = pd.Timestamp(target_time).to_period("M").to_timestamp()
+
+    rough_surface_loader = getattr(loader, "load_rough_binary_surface", None)
+    if (
+        dataset_id == "gwd30"
+        and normalized_target_time is not None
+        and time_range is not None
+        and callable(rough_surface_loader)
+    ):
+        resolution_deg = gwd30_resolution_m / APPROX_METERS_PER_DEGREE
+        reference_grid = create_comparison_grid(bbox, resolution_deg=resolution_deg)
+        surface, _trace = rough_surface_loader(
+            bbox=bbox,
+            time_range=time_range,
+            reference_grid=reference_grid,
+            aggregation="mean",
+            target_time=normalized_target_time,
+            worker_count=1,
+        )
+        return surface.astype(np.float32).load()
+
+    dataset = loader.load(bbox=bbox, time_range=time_range)
+    try:
+        surface = _extract_native_wetland_surface(dataset_id, dataset)
+        if surface is None:
+            return None
+        return surface.astype(np.float32).load()
+    finally:
+        close = getattr(dataset, "close", None)
+        if callable(close):
+            close()
 
 
 def plot_comparison_panel(
@@ -244,6 +305,81 @@ def _plot_surface(
         rasterized=True,
     )
     return mappable
+
+
+def _build_visualization_time_range(
+    metadata: DatasetMetadata,
+    target_time: str | pd.Timestamp | None,
+) -> TimeRange | None:
+    """Build the month window used by visualization loads for dynamic datasets."""
+
+    if metadata.is_static or target_time is None:
+        return None
+
+    normalized_target = pd.Timestamp(target_time).to_period("M").to_timestamp()
+    coverage = metadata.temporal_coverage
+    if coverage is not None:
+        coverage_start, coverage_end = coverage
+        if coverage_start is not None and coverage_end is not None:
+            start_month = pd.Timestamp(coverage_start).to_period("M").to_timestamp()
+            end_month = pd.Timestamp(coverage_end).to_period("M").to_timestamp()
+            if not start_month <= normalized_target <= end_month:
+                return None
+
+    target_end = normalized_target + pd.offsets.MonthEnd(0)
+    return normalized_target.strftime("%Y-%m-%d"), pd.Timestamp(target_end).strftime("%Y-%m-%d")
+
+
+def _extract_native_wetland_surface(
+    dataset_id: str,
+    dataset: xr.Dataset,
+) -> xr.DataArray | None:
+    """Extract binary wetland fraction from one loaded dataset."""
+
+    if "wetland_fraction" in dataset:
+        source = dataset["wetland_fraction"]
+        if "time" in source.dims:
+            source = source.mean(dim="time", skipna=True)
+        for dim in ("config", "forcing"):
+            if dim in source.dims:
+                source = source.mean(dim=dim, skipna=True)
+        return source.clip(0, 1)
+
+    if dataset_id == "g2017":
+        if "wetland_nolake" in dataset:
+            return dataset["wetland_nolake"].clip(0, 1)
+        if "wetland" in dataset:
+            return _map_to_binary(
+                dataset["wetland"],
+                _CLASSIFICATION_BINARY_MAPS["g2017"],
+            )
+
+    if dataset_id == "glwd_v2" and "combined_classes" in dataset:
+        return _map_to_binary(
+            dataset["combined_classes"],
+            _CLASSIFICATION_BINARY_MAPS["glwd_v2"],
+        )
+
+    if dataset_id == "gwd30" and "wetland_class" in dataset:
+        source = dataset["wetland_class"]
+        binary = _map_to_binary(source, _CLASSIFICATION_BINARY_MAPS["gwd30"])
+        if "time" in binary.dims:
+            binary = binary.mean(dim="time", skipna=True)
+        return binary
+
+    return None
+
+
+def _map_to_binary(
+    data: xr.DataArray,
+    mapping: dict[int, float],
+) -> xr.DataArray:
+    """Map integer class codes to binary wetland fraction values."""
+
+    result = xr.full_like(data, np.nan, dtype=np.float32)
+    for source_value, target_value in mapping.items():
+        result = xr.where(data == source_value, np.float32(target_value), result)
+    return result.where(data.notnull()).astype(np.float32)
 
 
 # ---------------------------------------------------------------------------

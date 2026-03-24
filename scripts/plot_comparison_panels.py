@@ -15,11 +15,11 @@ subdirectory under --phase2-root.
 from __future__ import annotations
 
 import argparse
+import gc
 import sys
 import time
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 import xarray as xr
 
@@ -66,6 +66,7 @@ def _run() -> int:
     from WA.config import load_config
     from WA.loaders import get_loader
     from WA.visualization.comparison_panel import (
+        load_native_wetland_surface,
         make_dataset_labels,
         plot_comparison_panel,
     )
@@ -90,6 +91,7 @@ def _run() -> int:
             all_focus_areas.append({
                 "aoi_id": row["aoi_id"],
                 "region_slug": row["region_slug"],
+                "target_time": pd.Timestamp(str(row["target_time"])).to_period("M").to_timestamp(),
                 "bbox": _parse_bbox(row["bbox"]),
                 "run_dir": run_dir,
                 "grids_path": grids_path,
@@ -111,6 +113,7 @@ def _run() -> int:
     for i, fa in enumerate(all_focus_areas):
         aoi_id = fa["aoi_id"]
         region_slug = fa["region_slug"]
+        target_time = fa["target_time"]
         bbox = fa["bbox"]
 
         print(
@@ -146,10 +149,12 @@ def _run() -> int:
                 continue
             try:
                 loader = get_loader(ds_id, ds_config)
-                ds = loader.load(bbox=bbox)
-
-                # Extract binary wetland fraction at native resolution
-                surface = _extract_native_wetland_surface(ds_id, ds)
+                surface = load_native_wetland_surface(
+                    ds_id,
+                    loader,
+                    bbox,
+                    target_time=target_time,
+                )
                 if surface is not None and int(surface.count().item()) > 0:
                     dataset_surfaces[ds_id] = surface
                     print(f"  {ds_id}: {surface.shape}", flush=True)
@@ -180,6 +185,9 @@ def _run() -> int:
         )
         elapsed = time.time() - t0
         print(f"  saved: {out_file} ({elapsed:.1f}s)", flush=True)
+        dataset_surfaces.clear()
+        del disagreement, mean_wetland
+        gc.collect()
 
     print("\n[plot] done", flush=True)
     return 0
@@ -199,61 +207,6 @@ def _parse_bbox(bbox_value: object) -> tuple[float, float, float, float]:
     # Already a sequence
     vals = [float(v) for v in bbox_value]  # type: ignore[union-attr]
     return (vals[0], vals[1], vals[2], vals[3])
-
-
-def _extract_native_wetland_surface(
-    dataset_id: str,
-    dataset: xr.Dataset,
-) -> xr.DataArray | None:
-    """Extract binary wetland fraction from a loaded dataset at native res."""
-    from WA.comparison.harmonize import (
-        _CLASSIFICATION_BINARY_MAPS,
-    )
-
-    # Continuous fraction datasets
-    if "wetland_fraction" in dataset:
-        source = dataset["wetland_fraction"]
-        # Collapse time if present: take mean
-        if "time" in source.dims:
-            source = source.mean(dim="time", skipna=True)
-        # Collapse ensemble dims for topmodel
-        for dim in ("config", "forcing"):
-            if dim in source.dims:
-                source = source.mean(dim=dim, skipna=True)
-        return source.clip(0, 1).astype(np.float32)
-
-    # Classification datasets → binary mapping
-    if dataset_id == "g2017":
-        if "wetland_nolake" in dataset:
-            return dataset["wetland_nolake"].clip(0, 1).astype(np.float32)
-        if "wetland" in dataset:
-            return _map_to_binary(
-                dataset["wetland"], _CLASSIFICATION_BINARY_MAPS["g2017"],
-            )
-
-    if dataset_id == "glwd_v2" and "combined_classes" in dataset:
-        return _map_to_binary(
-            dataset["combined_classes"], _CLASSIFICATION_BINARY_MAPS["glwd_v2"],
-        )
-
-    if dataset_id == "gwd30" and "wetland_class" in dataset:
-        source = dataset["wetland_class"]
-        if "time" in source.dims:
-            source = source.isel(time=0)
-        return _map_to_binary(source, _CLASSIFICATION_BINARY_MAPS["gwd30"])
-
-    return None
-
-
-def _map_to_binary(
-    data: xr.DataArray,
-    mapping: dict[int, float],
-) -> xr.DataArray:
-    """Map classification values to binary wetland fraction."""
-    result = xr.full_like(data, np.nan, dtype=np.float32)
-    for source_val, target_val in mapping.items():
-        result = xr.where(data == source_val, np.float32(target_val), result)
-    return result.where(data.notnull()).astype(np.float32)
 
 
 def _find_satellite_image(

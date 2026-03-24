@@ -90,6 +90,76 @@ def test_gwd30_loader_filters_projected_tiles_by_lon_lat_bbox(tmp_path: Path) ->
     assert result["wetland_class"].max().item() == 3
 
 
+def test_gwd30_loader_time_range_selects_only_requested_band_window(tmp_path: Path) -> None:
+    base_path = tmp_path / "gwd30"
+    band_count = 92
+    tile = np.arange(1, band_count + 1, dtype=np.uint8).reshape(band_count, 1, 1)
+    tile = np.broadcast_to(tile, (band_count, 2, 2)).copy()
+
+    write_multiband_geotiff(
+        base_path / "2013/tile_wetland_2013.tif",
+        tile,
+        transform=from_origin(0.0, 1.0, 1.0, 1.0),
+    )
+
+    loader = get_loader(
+        "gwd30",
+        with_common_fields(
+            base_path,
+            loader_type="gwd30",
+            years=[2013],
+            pattern="{year}/*_wetland_{year}.tif",
+        ),
+    )
+
+    result = loader.load(bbox=(0.0, 0.0, 1.0, 1.0), time_range=("2013-02-01", "2013-02-28"))
+
+    assert result.sizes["time"] == 7
+    assert str(result.time.values[0])[:10] == "2013-02-02"
+    assert str(result.time.values[-1])[:10] == "2013-02-26"
+    assert result["wetland_class"].values[:, 0, 0].tolist() == [9, 10, 11, 12, 13, 14, 15]
+
+
+def test_gwd30_load_fine_classification_grid_returns_dominant_classes_and_fractions(
+    tmp_path: Path,
+) -> None:
+    base_path = tmp_path / "gwd30"
+    band_count = 4
+    tile = np.full((band_count, 2, 2), 8, dtype=np.uint8)
+
+    write_multiband_geotiff(
+        base_path / "2013/tile_wetland_2013.tif",
+        tile,
+        transform=from_origin(0.0, 2.0, 1.0, 1.0),
+    )
+
+    loader = cast(
+        GWD30Loader,
+        get_loader(
+            "gwd30",
+            with_common_fields(
+                base_path,
+                loader_type="gwd30",
+                years=[2013],
+                pattern="{year}/*_wetland_{year}.tif",
+            ),
+        ),
+    )
+
+    reference_grid = create_comparison_grid((0.0, 0.0, 2.0, 2.0), resolution_deg=1.0)
+    result = loader.load_fine_classification_grid(
+        bbox=(0.0, 0.0, 2.0, 2.0),
+        reference_grid=reference_grid,
+        year=2013,
+        worker_count=1,
+    )
+
+    assert set(result.data_vars) == {"wetland_class", "class_fractions"}
+    assert np.allclose(result["wetland_class"].values, 8.0, equal_nan=False)
+    wetland_fraction = result["class_fractions"].sel(class_id=8)
+    assert np.allclose(wetland_fraction.values, 1.0, equal_nan=False)
+
+
 def test_gwd30_loader_prefers_tile_code_prefilter_before_bounds_scan(
     tmp_path: Path, monkeypatch: MonkeyPatch
 ) -> None:

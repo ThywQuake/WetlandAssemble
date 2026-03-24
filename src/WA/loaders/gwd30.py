@@ -43,6 +43,7 @@ from WA.utils.progress import tqdm
 logger = logging.getLogger(__name__)
 _TILE_CODE_PATTERN = re.compile(r"(?<![A-Z0-9])T?(\d{1,2}[C-HJ-NP-X][A-HJ-NP-Z]{2})(?![A-Z0-9])")
 _TEMP_TILE_NODATA = np.float32(-9999.0)
+_GWD30_CLASS_COUNT = 15
 
 
 def _build_binary_lookup(mapping: Mapping[int, float]) -> np.ndarray:
@@ -344,6 +345,102 @@ def _process_rough_tile_to_partial(
     return tile_sum, tile_count, coarse_non_null_count
 
 
+def _process_fine_tile_to_fractions(
+    *,
+    path: str,
+    bbox: BBox,
+    reference_crs: str,
+    reference_transform: Any,
+    width: int,
+    height: int,
+) -> tuple[np.ndarray | None, np.ndarray | None]:
+    """Project one GWD30 tile into coarse-grid class fractions.
+
+    The workflow mirrors the Phase 3 HPC probe:
+      1. windowed band-by-band read inside ``bbox``
+      2. per-pixel temporal mode at native 30m resolution
+      3. per-class binary-mask averaging into ``reference_grid``
+
+    Returns
+    -------
+    tuple[np.ndarray | None, np.ndarray | None]
+        ``(fractions, valid_mask)`` where fractions has shape
+        ``(class_id, lat, lon)`` and valid_mask marks coarse cells touched by
+        this tile. ``None`` is returned when the tile contributes no data.
+    """
+
+    with rasterio.open(path) as src:
+        window = _source_window_for_bbox(src, bbox)
+        if window is None:
+            return None, None
+
+        source_height = int(window.height)
+        source_width = int(window.width)
+        if source_height <= 0 or source_width <= 0:
+            return None, None
+
+        source_transform = src.window_transform(window)
+        source_crs = src.crs
+        if source_crs is None:
+            return None, None
+
+        counts = np.zeros(
+            (_GWD30_CLASS_COUNT, source_height, source_width),
+            dtype=np.int16,
+        )
+        has_data = np.zeros((source_height, source_width), dtype=bool)
+
+        for band_index in range(1, src.count + 1):
+            band = src.read(band_index, window=window, masked=True)
+            if band.size == 0:
+                continue
+
+            band_mask = np.ma.getmaskarray(band)
+            valid = ~band_mask
+            if not np.any(valid):
+                continue
+
+            has_data |= valid
+            safe = np.clip(
+                np.asarray(np.ma.filled(band, 0), dtype=np.int16),
+                0,
+                _GWD30_CLASS_COUNT - 1,
+            )
+            for class_id in range(_GWD30_CLASS_COUNT):
+                counts[class_id] += safe == class_id
+
+        if not np.any(has_data):
+            return None, None
+
+        mode_30m = counts.argmax(axis=0).astype(np.float32)
+        mode_30m[~has_data] = np.nan
+        del counts
+
+        fractions = np.zeros((_GWD30_CLASS_COUNT, height, width), dtype=np.float32)
+        for class_id in range(_GWD30_CLASS_COUNT):
+            binary = np.where(mode_30m == class_id, 1.0, 0.0).astype(np.float32)
+            binary[~has_data] = np.nan
+            coarse = np.full((height, width), np.nan, dtype=np.float32)
+            reproject(
+                source=binary,
+                destination=coarse,
+                src_transform=source_transform,
+                src_crs=source_crs,
+                dst_transform=reference_transform,
+                dst_crs=reference_crs,
+                src_nodata=np.nan,
+                dst_nodata=np.nan,
+                resampling=Resampling.average,
+            )
+            fractions[class_id] = np.where(np.isfinite(coarse), coarse, 0.0)
+
+        valid_mask = fractions.sum(axis=0) > 0
+        if not np.any(valid_mask):
+            return None, None
+
+        return fractions, valid_mask
+
+
 @register_loader("gwd30")
 class GWD30Loader(DatasetLoader):
     """Load annual GWD30 tiles and merge them into year-wise mosaics."""
@@ -382,19 +479,203 @@ class GWD30Loader(DatasetLoader):
 
         year_datasets: list[xr.Dataset] = []
         for year, paths in sorted(tiles_by_year.items()):
+            if not paths:
+                continue
             logger.info("GWD30 loading year %s with %s tile(s)", year, len(paths))
+            band_indexes: list[int] | None = None
+            selected_times: list[pd.Timestamp] | None = None
+            if time_range is not None:
+                band_indexes, selected_times = self._selected_band_window(
+                    year,
+                    paths[0],
+                    time_range=time_range,
+                )
+                if not band_indexes:
+                    continue
             mosaics = [
-                open_multiband_raster(path, reproject_to_wgs84=True, bbox=bbox)
+                open_multiband_raster(
+                    path,
+                    reproject_to_wgs84=True,
+                    bbox=bbox,
+                    band_indexes=band_indexes,
+                )
                 for path in _iter_tiles_with_progress(paths, desc=f"GWD30 {year} load")
             ]
             merged = merge_rasters(mosaics)
-            time_index = four_day_index_for_year(year, merged.sizes["band"])
+            if selected_times is None:
+                time_index = four_day_index_for_year(year, merged.sizes["band"])
+            else:
+                time_index = pd.DatetimeIndex(selected_times)
             merged = merged.assign_coords(band=time_index).rename({"band": "time"})
             year_datasets.append(merged.rename("wetland_class").to_dataset())
+
+        if not year_datasets:
+            raise FileNotFoundError(
+                f"No GWD30 tiles found under {self.base_path} for requested time window"
+            )
 
         dataset = xr.concat(year_datasets, dim="time").sortby("time")
         dataset = ensure_datetime_index(dataset)
         return self.finalize_dataset(dataset, bbox=bbox, time_range=time_range)
+
+    def load_fine_classification_grid(
+        self,
+        *,
+        bbox: BBox,
+        reference_grid: xr.DataArray,
+        year: int,
+        worker_count: int | None = None,
+    ) -> xr.Dataset:
+        """Load one GWD30 year into a coarse classification grid.
+
+        This avoids materializing the full 30m × 92-band annual mosaic in
+        memory. The returned dataset contains:
+        - ``wetland_class``: dominant raw GWD30 class per coarse cell
+        - ``class_fractions``: raw class fractions (0-14) per coarse cell
+        """
+
+        time_range = (f"{year}-01-01", f"{year}-12-31")
+        tiles_by_year = self._discover_tiles(bbox=bbox, time_range=time_range)
+        paths = list(tiles_by_year.get(year, []))
+        if not paths:
+            raise FileNotFoundError(f"No GWD30 tiles found under {self.base_path} for year {year}")
+
+        reference_crs, reference_transform, width, height = _reference_grid_spec(reference_grid)
+        resolved_worker_count = _resolve_parallel_worker_count(worker_count)
+        all_fractions = np.zeros((_GWD30_CLASS_COUNT, height, width), dtype=np.float32)
+        covered = np.zeros((height, width), dtype=bool)
+
+        def accumulate_tile(tile_path: Path) -> None:
+            fractions, valid_mask = _process_fine_tile_to_fractions(
+                path=str(tile_path),
+                bbox=bbox,
+                reference_crs=reference_crs,
+                reference_transform=reference_transform,
+                width=width,
+                height=height,
+            )
+            if fractions is None or valid_mask is None:
+                return
+            new = valid_mask & ~covered
+            all_fractions[:, new] = fractions[:, new]
+            covered[:] = covered | valid_mask
+
+        if resolved_worker_count > 1 and len(paths) > 1:
+            fallback_to_serial = False
+            processed_indices: set[int] = set()
+            progress = tqdm(
+                total=len(paths),
+                desc=f"GWD30 {year} fine-parallel",
+                unit="tile",
+                dynamic_ncols=True,
+                mininterval=5.0,
+            )
+            try:
+                try:
+                    with ProcessPoolExecutor(
+                        max_workers=resolved_worker_count,
+                        max_tasks_per_child=1,
+                    ) as executor:
+                        future_to_meta = {
+                            executor.submit(
+                                _process_fine_tile_to_fractions,
+                                path=str(path),
+                                bbox=bbox,
+                                reference_crs=reference_crs,
+                                reference_transform=reference_transform,
+                                width=width,
+                                height=height,
+                            ): (index, path)
+                            for index, path in enumerate(paths)
+                        }
+                        for future in as_completed(future_to_meta):
+                            index, _path = future_to_meta[future]
+                            try:
+                                fractions, valid_mask = future.result()
+                                processed_indices.add(index)
+                                if fractions is not None and valid_mask is not None:
+                                    new = valid_mask & ~covered
+                                    all_fractions[:, new] = fractions[:, new]
+                                    covered[:] = covered | valid_mask
+                                progress.update(1)
+                            except BrokenProcessPool:
+                                fallback_to_serial = True
+                                break
+                            except Exception as exc:
+                                logger.warning(
+                                    "GWD30 tile %s skipped during fine parallel reduction (%s: %s)",
+                                    paths[index].name,
+                                    type(exc).__name__,
+                                    exc,
+                                )
+                                processed_indices.add(index)
+                                progress.update(1)
+                except Exception as pool_exc:
+                    logger.warning(
+                        "GWD30 fine parallel execution failed (%s: %s); will retry serially",
+                        type(pool_exc).__name__,
+                        pool_exc,
+                    )
+                    fallback_to_serial = True
+
+                if fallback_to_serial:
+                    remaining = [
+                        index for index in range(len(paths))
+                        if index not in processed_indices
+                    ]
+                    logger.warning(
+                        "GWD30 fine parallel failed after %d/%d tiles; "
+                        "falling back to serial for %d remaining",
+                        len(processed_indices),
+                        len(paths),
+                        len(remaining),
+                    )
+                    for index in remaining:
+                        try:
+                            accumulate_tile(paths[index])
+                        except Exception as exc:
+                            logger.warning(
+                                "GWD30 tile %s failed during fine serial fallback (%s: %s)",
+                                paths[index].name,
+                                type(exc).__name__,
+                                exc,
+                            )
+                        progress.update(1)
+            finally:
+                progress.close()
+        else:
+            for path in _iter_tiles_with_progress(paths, desc=f"GWD30 {year} fine"):
+                accumulate_tile(path)
+
+        dominant = all_fractions.argmax(axis=0).astype(np.float32)
+        dominant[~covered] = np.nan
+
+        data_vars = {
+            "wetland_class": reference_grid.copy(data=dominant),
+            "class_fractions": xr.DataArray(
+                all_fractions,
+                dims=("class_id", "lat", "lon"),
+                coords={
+                    "class_id": np.arange(_GWD30_CLASS_COUNT, dtype=np.int16),
+                    "lat": reference_grid.coords["lat"].values,
+                    "lon": reference_grid.coords["lon"].values,
+                },
+                attrs={"description": "GWD30 raw class fractions on coarse grid"},
+            ),
+        }
+        dataset = xr.Dataset(data_vars)
+        dataset["wetland_class"] = dataset["wetland_class"].rio.write_crs(reference_crs)
+        dataset["wetland_class"] = dataset["wetland_class"].rio.set_spatial_dims(
+            x_dim="lon",
+            y_dim="lat",
+        )
+        dataset["class_fractions"].attrs.update(
+            {"dataset_id": self.dataset_id, "year": year, "source": "low_memory_fine_grid"}
+        )
+        dataset["wetland_class"].attrs.update(
+            {"dataset_id": self.dataset_id, "year": year, "source": "low_memory_fine_grid"}
+        )
+        return dataset
 
     def _discover_tiles(
         self,
@@ -778,7 +1059,8 @@ class GWD30Loader(DatasetLoader):
         try:
             try:
                 with ProcessPoolExecutor(
-                    max_workers=worker_count, maxtasksperchild=1,
+                    max_workers=worker_count,
+                    max_tasks_per_child=1,
                 ) as executor:
                     future_to_meta = {
                         executor.submit(
