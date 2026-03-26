@@ -7,6 +7,7 @@ import logging
 import os
 import re
 import tempfile
+import warnings
 from collections import defaultdict
 from collections.abc import Mapping
 from concurrent.futures import ProcessPoolExecutor, as_completed
@@ -35,6 +36,7 @@ from WA.loaders.base import (
     DatasetMetadata,
     TimeRange,
     ensure_datetime_index,
+    validate_reference_grid,
 )
 from WA.loaders.registry import register_loader
 from WA.utils.mgrs_tiling import GWD30TilingSystem
@@ -112,11 +114,14 @@ def _reference_grid_spec(reference_grid: xr.DataArray) -> tuple[str, Any, int, i
     reference_crs = reference_grid.rio.crs
     if reference_crs is None:
         raise ValueError("reference_grid must define a CRS")
+
+    x_dim = "lon" if "lon" in reference_grid.sizes else "x"
+    y_dim = "lat" if "lat" in reference_grid.sizes else "y"
     return (
         str(reference_crs),
         reference_grid.rio.transform(),
-        int(reference_grid.sizes["lon"]),
-        int(reference_grid.sizes["lat"]),
+        int(reference_grid.sizes[x_dim]),
+        int(reference_grid.sizes[y_dim]),
     )
 
 
@@ -441,6 +446,67 @@ def _process_fine_tile_to_fractions(
         return fractions, valid_mask
 
 
+def _reproject_tile_bands_to_grid(
+    *,
+    path: str,
+    bbox: BBox,
+    band_indexes: list[int] | None,
+    reference_crs: str,
+    reference_transform: Any,
+    width: int,
+    height: int,
+) -> np.ndarray | None:
+    """Reproject selected bands of one GWD30 tile onto the coarse reference grid.
+
+    Returns an array of shape ``(n_bands, height, width)`` containing class
+    codes (``Resampling.mode``), or ``None`` when the tile contributes no data.
+    """
+
+    with rasterio.open(path) as src:
+        window = _source_window_for_bbox(src, bbox)
+        if window is None:
+            return None
+        source_height = int(window.height)
+        source_width = int(window.width)
+        if source_height <= 0 or source_width <= 0:
+            return None
+        source_transform = src.window_transform(window)
+        source_crs = src.crs
+        if source_crs is None:
+            return None
+
+        if band_indexes is None:
+            band_list = list(range(src.count))
+        else:
+            band_list = band_indexes
+
+        result = np.full((len(band_list), height, width), np.nan, dtype=np.float32)
+        for out_idx, band_idx in enumerate(band_list):
+            band = src.read(band_idx + 1, window=window, masked=True)
+            if band.size == 0:
+                continue
+            source_data = np.asarray(
+                np.ma.filled(band, -1), dtype=np.float32
+            )
+            dst = np.full((height, width), np.nan, dtype=np.float32)
+            reproject(
+                source=source_data,
+                destination=dst,
+                src_transform=source_transform,
+                src_crs=source_crs,
+                dst_transform=reference_transform,
+                dst_crs=reference_crs,
+                src_nodata=-1.0,
+                dst_nodata=np.nan,
+                resampling=Resampling.mode,
+            )
+            result[out_idx] = dst
+
+    if not np.isfinite(result).any():
+        return None
+    return result
+
+
 @register_loader("gwd30")
 class GWD30Loader(DatasetLoader):
     """Load annual GWD30 tiles and merge them into year-wise mosaics."""
@@ -472,7 +538,38 @@ class GWD30Loader(DatasetLoader):
         self,
         bbox: BBox | None = None,
         time_range: TimeRange | None = None,
+        *,
+        reference_grid: xr.DataArray | None = None,
     ) -> xr.Dataset:
+        if reference_grid is not None:
+            validate_reference_grid(reference_grid)
+            return self._load_to_reference_grid(
+                bbox=bbox,
+                time_range=time_range,
+                reference_grid=reference_grid,
+            )
+
+        # Legacy full-resolution mosaic path – warn about OOM risk.
+        warnings.warn(
+            "GWD30Loader.load() without reference_grid materialises the full "
+            "30 m mosaic in memory and may OOM for large bounding boxes. "
+            "Pass a reference_grid to use the memory-efficient path.",
+            stacklevel=2,
+        )
+        return self._load_native(bbox=bbox, time_range=time_range)
+
+    # ------------------------------------------------------------------
+    # Private helpers for the two load() paths
+    # ------------------------------------------------------------------
+
+    def _load_native(
+        self,
+        *,
+        bbox: BBox | None,
+        time_range: TimeRange | None,
+    ) -> xr.Dataset:
+        """Legacy full-resolution mosaic path (kept for backward compat)."""
+
         tiles_by_year = self._discover_tiles(bbox=bbox, time_range=time_range)
         if not tiles_by_year:
             raise FileNotFoundError(f"No GWD30 tiles found under {self.base_path}")
@@ -517,6 +614,113 @@ class GWD30Loader(DatasetLoader):
         dataset = xr.concat(year_datasets, dim="time").sortby("time")
         dataset = ensure_datetime_index(dataset)
         return self.finalize_dataset(dataset, bbox=bbox, time_range=time_range)
+
+    def _load_to_reference_grid(
+        self,
+        *,
+        bbox: BBox | None,
+        time_range: TimeRange | None,
+        reference_grid: xr.DataArray,
+    ) -> xr.Dataset:
+        """Memory-efficient path: reproject each tile onto the reference grid."""
+
+        from WA.loaders.base import _bbox_from_reference_grid
+
+        if bbox is None:
+            bbox = _bbox_from_reference_grid(reference_grid)
+
+        tiles_by_year = self._discover_tiles(bbox=bbox, time_range=time_range)
+        if not tiles_by_year:
+            raise FileNotFoundError(f"No GWD30 tiles found under {self.base_path}")
+
+        reference_crs, reference_transform, width, height = _reference_grid_spec(
+            reference_grid,
+        )
+
+        year_datasets: list[xr.Dataset] = []
+        for year, paths in sorted(tiles_by_year.items()):
+            if not paths:
+                continue
+            logger.info(
+                "GWD30 loading year %s with %s tile(s) [reference_grid]",
+                year,
+                len(paths),
+            )
+
+            band_indexes: list[int] | None = None
+            selected_times: list[pd.Timestamp] | None = None
+            if time_range is not None:
+                band_indexes, selected_times = self._selected_band_window(
+                    year,
+                    paths[0],
+                    time_range=time_range,
+                )
+                if not band_indexes:
+                    continue
+
+            # Determine the number of bands we expect.
+            if band_indexes is not None:
+                n_bands = len(band_indexes)
+            else:
+                with rasterio.open(paths[0]) as sample:
+                    n_bands = int(sample.count)
+
+            # Accumulate tiles onto the coarse grid (first-valid wins).
+            merged = np.full((n_bands, height, width), np.nan, dtype=np.float32)
+            for tile_path in _iter_tiles_with_progress(
+                paths, desc=f"GWD30 {year} grid-load"
+            ):
+                tile_data = _reproject_tile_bands_to_grid(
+                    path=str(tile_path),
+                    bbox=bbox,
+                    band_indexes=band_indexes,
+                    reference_crs=reference_crs,
+                    reference_transform=reference_transform,
+                    width=width,
+                    height=height,
+                )
+                if tile_data is None:
+                    continue
+                # Fill only pixels that are still NaN.
+                for b in range(n_bands):
+                    fill_mask = np.isnan(merged[b]) & np.isfinite(tile_data[b])
+                    merged[b][fill_mask] = tile_data[b][fill_mask]
+                del tile_data
+                gc.collect()
+
+            # Build time coordinate.
+            if selected_times is None:
+                time_index = four_day_index_for_year(year, n_bands)
+            else:
+                time_index = pd.DatetimeIndex(selected_times)
+
+            x_dim = "lon" if "lon" in reference_grid.coords else "x"
+            y_dim = "lat" if "lat" in reference_grid.coords else "y"
+            da = xr.DataArray(
+                merged,
+                dims=("time", y_dim, x_dim),
+                coords={
+                    "time": time_index,
+                    y_dim: reference_grid.coords[y_dim].values,
+                    x_dim: reference_grid.coords[x_dim].values,
+                },
+                name="wetland_class",
+            )
+            year_datasets.append(da.to_dataset())
+
+        if not year_datasets:
+            raise FileNotFoundError(
+                f"No GWD30 tiles found under {self.base_path} for requested time window"
+            )
+
+        dataset = xr.concat(year_datasets, dim="time").sortby("time")
+        dataset = ensure_datetime_index(dataset)
+        return self.finalize_dataset(
+            dataset,
+            bbox=bbox,
+            time_range=time_range,
+            reference_grid=reference_grid,
+        )
 
     def load_fine_classification_grid(
         self,

@@ -8,9 +8,17 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import xarray as xr
+from rasterio.enums import Resampling
 
-from WA.loaders._shared import parse_compact_date
-from WA.loaders.base import BBox, DatasetLoader, DatasetMetadata, TimeRange, ensure_datetime_index
+from WA.loaders._shared import parse_compact_date, reproject_dataset_to_grid
+from WA.loaders.base import (
+    BBox,
+    DatasetLoader,
+    DatasetMetadata,
+    TimeRange,
+    ensure_datetime_index,
+    validate_reference_grid,
+)
 from WA.loaders.registry import register_loader
 
 
@@ -40,7 +48,12 @@ class SwampsLoader(DatasetLoader):
         self,
         bbox: BBox | None = None,
         time_range: TimeRange | None = None,
+        *,
+        reference_grid: xr.DataArray | None = None,
     ) -> xr.Dataset:
+        if reference_grid is not None:
+            validate_reference_grid(reference_grid)
+
         files = self._candidate_files(time_range)
         if not files:
             raise FileNotFoundError(f"No SWAMPS files found under {self.base_path}")
@@ -62,7 +75,13 @@ class SwampsLoader(DatasetLoader):
         merged = xr.concat(slices, dim="time").sortby("time")
         merged = ensure_datetime_index(merged)
         merged.attrs["sensor_shift_year"] = self.config.get("sensor_shift_year")
-        return self.finalize_dataset(merged, bbox=bbox, time_range=time_range)
+        if reference_grid is not None:
+            merged = reproject_dataset_to_grid(
+                merged, reference_grid, resampling=Resampling.bilinear,
+            )
+        return self.finalize_dataset(
+            merged, bbox=bbox, time_range=time_range, reference_grid=reference_grid,
+        )
 
     def _candidate_files(self, time_range: TimeRange | None) -> list[Path]:
         if time_range is None:

@@ -7,9 +7,10 @@ from pathlib import Path
 
 import pandas as pd
 import xarray as xr
+from rasterio.enums import Resampling
 
-from WA.loaders._shared import open_single_band_raster
-from WA.loaders.base import BBox, DatasetLoader, DatasetMetadata, TimeRange
+from WA.loaders._shared import open_single_band_raster, reproject_dataset_to_grid
+from WA.loaders.base import BBox, DatasetLoader, DatasetMetadata, TimeRange, validate_reference_grid
 from WA.loaders.registry import register_loader
 
 
@@ -59,7 +60,12 @@ class GLWDLoader(DatasetLoader):
         self,
         bbox: BBox | None = None,
         time_range: TimeRange | None = None,
+        *,
+        reference_grid: xr.DataArray | None = None,
     ) -> xr.Dataset:
+        if reference_grid is not None:
+            validate_reference_grid(reference_grid)
+
         subdirectories = self.config["subdirectories"]
         combined_directory = self.base_path / str(subdirectories["combined_classes"])
         combined_raster = self._select_combined_raster(combined_directory, bbox=bbox)
@@ -93,7 +99,13 @@ class GLWDLoader(DatasetLoader):
         )
         if bbox is not None:
             dataset.attrs["glwd_requested_bbox"] = list(bbox)
-        return self.finalize_dataset(dataset, bbox=bbox, time_range=time_range)
+        if reference_grid is not None:
+            dataset = reproject_dataset_to_grid(
+                dataset, reference_grid, resampling=Resampling.nearest,
+            )
+        return self.finalize_dataset(
+            dataset, bbox=bbox, time_range=time_range, reference_grid=reference_grid,
+        )
 
     def _stack_area_rasters(
         self,

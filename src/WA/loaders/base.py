@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import pandas as pd
 import xarray as xr
 
@@ -67,8 +68,14 @@ class DatasetLoader(ABC):
         self,
         bbox: BBox | None = None,
         time_range: TimeRange | None = None,
+        *,
+        reference_grid: xr.DataArray | None = None,
     ) -> xr.Dataset:
-        """Load data, optionally subsetting by bounding box and time window."""
+        """Load data, optionally subsetting by bounding box and time window.
+
+        When *reference_grid* is provided the loader should reproject data to
+        match that grid during loading, avoiding large intermediate mosaics.
+        """
 
     @abstractmethod
     def metadata(self) -> DatasetMetadata:
@@ -79,8 +86,17 @@ class DatasetLoader(ABC):
         dataset: xr.Dataset,
         bbox: BBox | None = None,
         time_range: TimeRange | None = None,
+        *,
+        reference_grid: xr.DataArray | None = None,
     ) -> xr.Dataset:
-        """Apply shared dimension normalization, subsetting, and metadata."""
+        """Apply shared dimension normalization, subsetting, and metadata.
+
+        When *reference_grid* is provided and *bbox* is ``None``, the bounding
+        box is derived from the reference grid's spatial extent.
+        """
+
+        if bbox is None and reference_grid is not None:
+            bbox = _bbox_from_reference_grid(reference_grid)
 
         dataset = normalize_spatial_dimensions(dataset)
         dataset = apply_bbox(dataset, bbox)
@@ -103,6 +119,48 @@ class DatasetLoader(ABC):
             return (str(min(years)), str(max(years)))
 
         return None
+
+
+def validate_reference_grid(grid: xr.DataArray) -> None:
+    """Validate that an xr.DataArray can serve as a spatial reference grid.
+
+    Raises :class:`ValueError` when the grid lacks a CRS or recognisable
+    spatial dimensions.
+    """
+
+    if not hasattr(grid, "rio") or grid.rio.crs is None:
+        raise ValueError("reference_grid must have a CRS (set via rio.write_crs)")
+    expected_pairs = ({"lat", "lon"}, {"y", "x"})
+    dims = set(grid.dims)
+    if not any(pair.issubset(dims) for pair in expected_pairs):
+        raise ValueError(
+            "reference_grid must have spatial dimensions (lat/lon or y/x), "
+            f"got {sorted(dims)}"
+        )
+
+
+def _bbox_from_reference_grid(grid: xr.DataArray) -> BBox:
+    """Derive a lon/lat bounding box from the reference grid coordinates."""
+
+    for lon_name in ("lon", "x"):
+        if lon_name in grid.coords:
+            break
+    else:
+        raise ValueError("reference_grid has no lon/x coordinate")
+    for lat_name in ("lat", "y"):
+        if lat_name in grid.coords:
+            break
+    else:
+        raise ValueError("reference_grid has no lat/y coordinate")
+
+    lons = grid[lon_name].values
+    lats = grid[lat_name].values
+    return (
+        float(np.min(lons)),
+        float(np.min(lats)),
+        float(np.max(lons)),
+        float(np.max(lats)),
+    )
 
 
 def normalize_spatial_dimensions(dataset: xr.Dataset) -> xr.Dataset:

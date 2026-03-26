@@ -10,6 +10,7 @@ from typing import cast
 import pandas as pd
 import rasterio
 import xarray as xr
+from rasterio.enums import Resampling
 from rasterio.warp import transform_bounds
 from rioxarray import open_rasterio
 from rioxarray.merge import merge_arrays
@@ -17,13 +18,62 @@ from rioxarray.merge import merge_arrays
 from WA.loaders.base import BBox
 
 
+def reproject_to_grid(
+    data: xr.DataArray,
+    reference_grid: xr.DataArray,
+    *,
+    resampling: Resampling = Resampling.nearest,
+) -> xr.DataArray:
+    """Reproject a DataArray to match the spatial layout of *reference_grid*.
+
+    Works for both 2-D and 3-D+ arrays (extra leading dims are handled
+    automatically by ``rioxarray``).
+    """
+
+    return cast(
+        xr.DataArray,
+        data.rio.reproject_match(reference_grid, resampling=resampling),
+    )
+
+
+def reproject_dataset_to_grid(
+    dataset: xr.Dataset,
+    reference_grid: xr.DataArray,
+    *,
+    resampling: Resampling = Resampling.nearest,
+) -> xr.Dataset:
+    """Reproject every spatial data variable in *dataset* onto *reference_grid*."""
+
+    reprojected_vars: dict[str, xr.DataArray] = {}
+    for var_name in dataset.data_vars:
+        da = dataset[var_name]
+        # Only reproject variables that have spatial dimensions.
+        if da.rio.crs is not None or any(
+            d in da.dims for d in ("lat", "lon", "y", "x")
+        ):
+            da = reproject_to_grid(da, reference_grid, resampling=resampling)
+        reprojected_vars[var_name] = da
+    result = xr.Dataset(reprojected_vars, attrs=dataset.attrs)
+    # Carry over non-spatial coordinates (e.g. time).
+    for coord_name in dataset.coords:
+        if coord_name not in result.coords and coord_name in dataset.coords:
+            result = result.assign_coords({coord_name: dataset[coord_name]})
+    return result
+
+
 def open_single_band_raster(
     path: Path,
     *,
     reproject_to_wgs84: bool = True,
     bbox: BBox | None = None,
+    reference_grid: xr.DataArray | None = None,
+    resampling: Resampling = Resampling.nearest,
 ) -> xr.DataArray:
-    """Open a single-band raster as a 2D DataArray."""
+    """Open a single-band raster as a 2D DataArray.
+
+    When *reference_grid* is provided the raster is reprojected directly onto
+    that grid (ignoring *reproject_to_wgs84*).
+    """
 
     raster = cast(xr.DataArray, open_rasterio(path, masked=True)).squeeze("band", drop=True)
     if bbox is not None and raster.rio.crs is not None:
@@ -36,7 +86,9 @@ def open_single_band_raster(
                 allow_one_dimensional_raster=True,
             ),
         )
-    if reproject_to_wgs84 and raster.rio.crs is not None and str(raster.rio.crs) != "EPSG:4326":
+    if reference_grid is not None:
+        raster = reproject_to_grid(raster, reference_grid, resampling=resampling)
+    elif reproject_to_wgs84 and raster.rio.crs is not None and str(raster.rio.crs) != "EPSG:4326":
         raster = raster.rio.reproject("EPSG:4326")
     return raster
 
@@ -47,8 +99,14 @@ def open_multiband_raster(
     reproject_to_wgs84: bool = True,
     bbox: BBox | None = None,
     band_indexes: Sequence[int] | None = None,
+    reference_grid: xr.DataArray | None = None,
+    resampling: Resampling = Resampling.nearest,
 ) -> xr.DataArray:
-    """Open a multi-band raster, optionally reprojecting it to WGS84."""
+    """Open a multi-band raster, optionally reprojecting it to WGS84.
+
+    When *reference_grid* is provided the raster is reprojected directly onto
+    that grid (ignoring *reproject_to_wgs84*).
+    """
 
     raster = cast(xr.DataArray, open_rasterio(path, masked=True))
     if band_indexes is not None:
@@ -63,7 +121,9 @@ def open_multiband_raster(
                 allow_one_dimensional_raster=True,
             ),
         )
-    if reproject_to_wgs84 and raster.rio.crs is not None and str(raster.rio.crs) != "EPSG:4326":
+    if reference_grid is not None:
+        raster = reproject_to_grid(raster, reference_grid, resampling=resampling)
+    elif reproject_to_wgs84 and raster.rio.crs is not None and str(raster.rio.crs) != "EPSG:4326":
         raster = raster.rio.reproject("EPSG:4326")
     return raster
 

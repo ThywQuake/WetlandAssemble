@@ -7,13 +7,16 @@ from typing import Any
 
 import numpy as np
 import xarray as xr
+from rasterio.enums import Resampling
 
+from WA.loaders._shared import reproject_dataset_to_grid
 from WA.loaders.base import (
     BBox,
     DatasetLoader,
     DatasetMetadata,
     TimeRange,
     ensure_datetime_index,
+    validate_reference_grid,
 )
 from WA.loaders.registry import register_loader
 
@@ -57,7 +60,12 @@ class GenericNetCDFLoader(DatasetLoader):
         self,
         bbox: BBox | None = None,
         time_range: TimeRange | None = None,
+        *,
+        reference_grid: xr.DataArray | None = None,
     ) -> xr.Dataset:
+        if reference_grid is not None:
+            validate_reference_grid(reference_grid)
+
         source = xr.open_dataset(self.base_path / str(self.config["file"]))
         spec = self._spec()
         source_variable = str(spec["source_variable"])
@@ -73,7 +81,15 @@ class GenericNetCDFLoader(DatasetLoader):
             )
 
         dataset = ensure_datetime_index(dataset)
-        return self.finalize_dataset(dataset, bbox=bbox, time_range=time_range)
+        if reference_grid is not None:
+            is_classification = bool(self.config.get("classification", False))
+            resampling = Resampling.nearest if is_classification else Resampling.bilinear
+            dataset = reproject_dataset_to_grid(
+                dataset, reference_grid, resampling=resampling,
+            )
+        return self.finalize_dataset(
+            dataset, bbox=bbox, time_range=time_range, reference_grid=reference_grid,
+        )
 
     def _spec(self) -> Mapping[str, Any]:
         try:

@@ -8,8 +8,9 @@ from collections import defaultdict
 from pathlib import Path
 
 import xarray as xr
+from rasterio.enums import Resampling
 
-from WA.loaders._shared import monthly_index_for_year
+from WA.loaders._shared import monthly_index_for_year, reproject_dataset_to_grid
 from WA.loaders.base import (
     BBox,
     DatasetLoader,
@@ -18,6 +19,7 @@ from WA.loaders.base import (
     apply_bbox,
     apply_time_range,
     ensure_datetime_index,
+    validate_reference_grid,
 )
 from WA.loaders.registry import register_loader
 
@@ -55,7 +57,12 @@ class TopmodelLoader(DatasetLoader):
         self,
         bbox: BBox | None = None,
         time_range: TimeRange | None = None,
+        *,
+        reference_grid: xr.DataArray | None = None,
     ) -> xr.Dataset:
+        if reference_grid is not None:
+            validate_reference_grid(reference_grid)
+
         discovered = self._discover_files(time_range)
         if not discovered:
             raise FileNotFoundError(f"No TOPMODEL files found under {self.base_path}")
@@ -100,7 +107,13 @@ class TopmodelLoader(DatasetLoader):
 
         dataset = xr.concat(config_datasets, dim="config", join="outer")
         dataset = ensure_datetime_index(dataset)
-        return self.finalize_dataset(dataset, bbox=bbox, time_range=time_range)
+        if reference_grid is not None:
+            dataset = reproject_dataset_to_grid(
+                dataset, reference_grid, resampling=Resampling.bilinear,
+            )
+        return self.finalize_dataset(
+            dataset, bbox=bbox, time_range=time_range, reference_grid=reference_grid,
+        )
 
     def _discover_files(
         self,

@@ -5,8 +5,8 @@ from __future__ import annotations
 import xarray as xr
 from rasterio.enums import Resampling
 
-from WA.loaders._shared import open_single_band_raster
-from WA.loaders.base import BBox, DatasetLoader, DatasetMetadata, TimeRange
+from WA.loaders._shared import open_single_band_raster, reproject_dataset_to_grid
+from WA.loaders.base import BBox, DatasetLoader, DatasetMetadata, TimeRange, validate_reference_grid
 from WA.loaders.registry import register_loader
 
 
@@ -37,7 +37,12 @@ class G2017Loader(DatasetLoader):
         self,
         bbox: BBox | None = None,
         time_range: TimeRange | None = None,
+        *,
+        reference_grid: xr.DataArray | None = None,
     ) -> xr.Dataset:
+        if reference_grid is not None:
+            validate_reference_grid(reference_grid)
+
         files = self.config.get("files", {})
         ref_raster = open_single_band_raster(self.base_path / str(files["wetland"]), bbox=bbox)
         rasters = [ref_raster.rename("wetland").to_dataset()]
@@ -48,4 +53,10 @@ class G2017Loader(DatasetLoader):
             rasters.append(aligned.rename(variable_name).to_dataset())
 
         dataset = xr.merge(rasters, join="inner", compat="override")
-        return self.finalize_dataset(dataset, bbox=bbox, time_range=time_range)
+        if reference_grid is not None:
+            dataset = reproject_dataset_to_grid(
+                dataset, reference_grid, resampling=Resampling.nearest,
+            )
+        return self.finalize_dataset(
+            dataset, bbox=bbox, time_range=time_range, reference_grid=reference_grid,
+        )
