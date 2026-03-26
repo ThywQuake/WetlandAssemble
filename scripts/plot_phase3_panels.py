@@ -197,7 +197,9 @@ def _run() -> int:
                             worker_count=args.gwd30_workers if args.gwd30_workers > 0 else None,
                         )
                     else:
-                        datasets[ds_id] = loader.load(bbox=bbox)
+                        datasets[ds_id] = loader.load(
+                            bbox=bbox, reference_grid=grid,
+                        )
                     print(f"  loaded {ds_id}", flush=True)
                 except Exception as exc:
                     print(f"  skip {ds_id}: {exc}", flush=True)

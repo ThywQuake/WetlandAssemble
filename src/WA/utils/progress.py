@@ -11,7 +11,7 @@ from __future__ import annotations
 import os
 import sys
 from collections.abc import Iterable, Iterator
-from typing import Any
+from typing import Any, TypeVar
 
 try:
     from tqdm.auto import tqdm as _real_tqdm
@@ -20,14 +20,16 @@ except Exception:  # pragma: no cover
 
 _TQDM_FORCE_ENV = "WA_FORCE_TQDM"
 
+_Item = TypeVar("_Item")
 
-class _NoOpProgress[Item]:
+
+class _NoOpProgress:
     """Iterable progress object compatible with the subset of `tqdm` we use."""
 
-    def __init__(self, iterable: Iterable[Item] | None = None) -> None:
+    def __init__(self, iterable: Iterable[Any] | None = None) -> None:
         self._iterable = iterable
 
-    def __iter__(self) -> Iterator[Item]:
+    def __iter__(self) -> Iterator[Any]:
         if self._iterable is None:
             return iter(())
         return iter(self._iterable)
@@ -51,7 +53,7 @@ def _tqdm_enabled() -> bool:
     return sys.version_info < (3, 13)
 
 
-def tqdm[Item](iterable: Iterable[Item] | None = None, *args: Any, **kwargs: Any) -> Any:
+def tqdm(iterable: Iterable[Any] | None = None, *args: Any, **kwargs: Any) -> Any:
     """Return a real or no-op progress object.
 
     On Python 3.13, the local test environment can segfault while `tqdm`

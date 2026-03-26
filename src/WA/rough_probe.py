@@ -532,7 +532,11 @@ def probe_prepared_dataset(
                 f"{surface_non_null_count(selected)} coarse cell(s)"
             )
         else:
-            dataset = prepared.loader.load(bbox=options.bbox, time_range=effective_time_range)
+            dataset = prepared.loader.load(
+                bbox=options.bbox,
+                time_range=effective_time_range,
+                reference_grid=reference_grid,
+            )
             dataset_summary = summarize_dataset(dataset, preview_items=options.preview_items)
             emit_progress(
                 f"{dataset_id}: dataset sizes {dataset_summary['sizes']} "

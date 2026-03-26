@@ -41,6 +41,8 @@ class DummyLoader(DatasetLoader):
         self,
         bbox: BBox | None = None,
         time_range: TimeRange | None = None,
+        *,
+        reference_grid: xr.DataArray | None = None,
     ) -> xr.Dataset:
         if self._should_fail:
             raise FileNotFoundError("missing HPC file")

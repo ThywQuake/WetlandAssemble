@@ -632,16 +632,23 @@ def _run() -> int:
             print(f"  SKIP {ds_id}: not in config", flush=True)
             continue
         try:
-            if ds_id == "gwd30":
-                ds_result, gwd30_fractions = _load_gwd30_parallel(
-                    config, bounds, grid, year=year, workers=workers,
+            from WA.loaders import get_loader
+
+            loader = get_loader(ds_id, ds_config)
+            if ds_id == "gwd30" and hasattr(loader, "load_fine_classification_grid"):
+                ds_result = loader.load_fine_classification_grid(
+                    bbox=bounds,
+                    reference_grid=grid,
+                    year=year,
+                    worker_count=workers if workers > 1 else None,
                 )
                 datasets[ds_id] = ds_result
+                if "class_fractions" in ds_result:
+                    gwd30_fractions = ds_result["class_fractions"]
             else:
-                from WA.loaders import get_loader
-
-                loader = get_loader(ds_id, ds_config)
-                datasets[ds_id] = loader.load(bbox=bounds)
+                datasets[ds_id] = loader.load(
+                    bbox=bounds, reference_grid=grid,
+                )
             elapsed = time.time() - t0
             print(
                 f"  {ds_id}: {list(datasets[ds_id].data_vars)} ({elapsed:.0f}s)",

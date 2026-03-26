@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Mapping
 from typing import Literal, cast
 
@@ -12,6 +13,8 @@ import xarray as xr
 from rasterio.enums import Resampling
 
 from WA.loaders.base import BBox
+
+logger = logging.getLogger(__name__)
 
 BinaryAggregation = Literal["mean", "max"]
 
@@ -388,6 +391,26 @@ def _align_binary_fraction(
     return merged.astype(np.float32)
 
 
+def _is_already_aligned(
+    data: xr.DataArray,
+    reference_grid: xr.DataArray,
+    *,
+    rtol: float = 1e-6,
+) -> bool:
+    """Return True when *data* is already on the same spatial grid as *reference_grid*."""
+
+    for dim in ("lat", "lon"):
+        if dim not in data.dims or dim not in reference_grid.dims:
+            return False
+        if data.sizes[dim] != reference_grid.sizes[dim]:
+            return False
+        if not np.allclose(
+            data[dim].values, reference_grid[dim].values, rtol=rtol, atol=0,
+        ):
+            return False
+    return True
+
+
 def _align_2d_surface(
     data: xr.DataArray,
     reference_grid: xr.DataArray,
@@ -396,6 +419,10 @@ def _align_2d_surface(
 ) -> xr.DataArray:
     if _is_single_cell_latlon_surface(data):
         return _align_single_cell_surface(data, reference_grid)
+
+    if _is_already_aligned(data, reference_grid):
+        logger.debug("data already aligned to reference grid, skipping reproject")
+        return cast(xr.DataArray, data.astype(np.float32))
 
     prepared = _prepare_spatial_array(data)
     reference = _prepare_spatial_array(reference_grid)

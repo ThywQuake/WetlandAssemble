@@ -39,6 +39,8 @@ class DummyRoughLoader(DatasetLoader):
         self,
         bbox: BBox | None = None,
         time_range: TimeRange | None = None,
+        *,
+        reference_grid: xr.DataArray | None = None,
     ) -> xr.Dataset:
         return self._dataset
 
@@ -870,6 +872,8 @@ def test_run_rough_probe_marks_completed_with_failures(
             self,
             bbox: BBox | None = None,
             time_range: TimeRange | None = None,
+            *,
+            reference_grid: xr.DataArray | None = None,
         ) -> xr.Dataset:
             raise KeyError("synthetic failure")
 

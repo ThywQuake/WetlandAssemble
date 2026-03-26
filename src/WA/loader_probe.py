@@ -16,6 +16,7 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 
+from WA.comparison.harmonize import create_comparison_grid
 from WA.config import AppConfig, load_config
 from WA.loaders import get_loader
 from WA.loaders.base import BBox, DatasetLoader, TimeRange
@@ -37,6 +38,7 @@ class ProbeOptions:
     sample_size: int
     preview_items: int
     fail_fast: bool
+    resolution_deg: float | None = None
 
 
 @dataclass
@@ -117,6 +119,15 @@ def build_arg_parser() -> argparse.ArgumentParser:
         "--unsafe-full-spatial-scan",
         action="store_true",
         help="Disable the default safe bbox and let loaders use their full spatial domain.",
+    )
+    parser.add_argument(
+        "--resolution-deg",
+        type=float,
+        default=None,
+        help=(
+            "Build a reference grid at this resolution and pass to loader.load(). "
+            "Requires --bbox or --region. Omit to skip reference_grid."
+        ),
     )
     parser.add_argument(
         "--fail-fast",
@@ -422,6 +433,8 @@ def probe_dataset(
     dataset_id: str,
     dataset_config: dict[str, Any],
     options: ProbeOptions,
+    *,
+    reference_grid: xr.DataArray | None = None,
 ) -> ProbeResult:
     """Probe one configured dataset loader."""
 
@@ -471,7 +484,11 @@ def probe_dataset(
 
     try:
         emit_progress(f"{dataset_id}: load dataset")
-        dataset = loader.load(bbox=options.bbox, time_range=effective_time_range)
+        dataset = loader.load(
+            bbox=options.bbox,
+            time_range=effective_time_range,
+            reference_grid=reference_grid,
+        )
         emit_progress(f"{dataset_id}: summarize dataset")
         result.dataset_summary = summarize_dataset(dataset, preview_items=options.preview_items)
         emit_progress(
@@ -510,11 +527,23 @@ def run_probe(
 ) -> list[ProbeResult]:
     """Run the probe across the selected dataset ids."""
 
+    reference_grid: xr.DataArray | None = None
+    if options.resolution_deg is not None and options.bbox is not None:
+        reference_grid = create_comparison_grid(
+            options.bbox, resolution_deg=options.resolution_deg,
+        )
+        emit_progress(
+            f"reference_grid built: {reference_grid.shape} "
+            f"at {options.resolution_deg}°"
+        )
+
     results: list[ProbeResult] = []
     for dataset_id in dataset_ids:
         emit_progress(f"{dataset_id}: probe start")
         dataset_config = app_config.datasets[dataset_id]
-        result = probe_dataset(dataset_id, dataset_config, options)
+        result = probe_dataset(
+            dataset_id, dataset_config, options, reference_grid=reference_grid,
+        )
         results.append(result)
         emit_progress(f"{dataset_id}: probe done with status={result.status}")
         if result.status == "failed" and options.fail_fast:
@@ -684,6 +713,7 @@ def options_from_args(args: argparse.Namespace, app_config: AppConfig) -> ProbeO
         sample_size=args.sample_size,
         preview_items=args.preview_items,
         fail_fast=args.fail_fast,
+        resolution_deg=getattr(args, "resolution_deg", None),
     )
 
 
