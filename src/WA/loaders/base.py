@@ -166,19 +166,22 @@ def _bbox_from_reference_grid(grid: xr.DataArray) -> BBox:
 def normalize_spatial_dimensions(dataset: xr.Dataset) -> xr.Dataset:
     """Normalize common latitude/longitude dimension names."""
 
+    all_names = set(dataset.dims) | set(dataset.coords)
     rename_map: dict[str, str] = {}
-    if "latitude" in dataset.dims or "latitude" in dataset.coords:
+    if "latitude" in all_names and "lat" not in all_names:
         rename_map["latitude"] = "lat"
-    if "longitude" in dataset.dims or "longitude" in dataset.coords:
+    if "longitude" in all_names and "lon" not in all_names:
         rename_map["longitude"] = "lon"
 
-    if {"x", "y"}.issubset(set(dataset.dims) | set(dataset.coords)):
+    if {"x", "y"}.issubset(all_names):
         crs = None
         if hasattr(dataset, "rio"):
             crs = dataset.rio.crs
         if crs is not None and str(crs).upper().endswith("4326"):
-            rename_map["x"] = "lon"
-            rename_map["y"] = "lat"
+            if "lon" not in all_names:
+                rename_map["x"] = "lon"
+            if "lat" not in all_names:
+                rename_map["y"] = "lat"
 
     if rename_map:
         dataset = dataset.rename(rename_map)

@@ -8,12 +8,10 @@ import pytest
 import xarray as xr
 
 from WA.comparison.trend_agreement import (
-    TrendAgreementResult,
     compute_overlap_window,
     compute_trend_agreement,
 )
 from WA.comparison.trends import TrendResult
-
 
 # ---------------------------------------------------------------------------
 # Helpers

@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 import xarray as xr
 
-from tests.test_loaders.conftest import with_common_fields, write_netcdf
+from tests.test_loaders.conftest import make_reference_grid, with_common_fields, write_netcdf
 from WA.loaders import get_loader
 
 
@@ -60,3 +60,29 @@ def test_wad2m_loader_normalizes_primary_variable_name(tmp_path: Path) -> None:
     assert list(result.data_vars) == ["wetland_fraction"]
     assert result.sizes["time"] == 1
     assert result["wetland_fraction"].item() == np.float32(0.3)
+
+
+def test_wad2m_loader_with_reference_grid(tmp_path: Path) -> None:
+    """load(reference_grid=...) reprojects to the target grid."""
+    base_path = tmp_path / "wad2m"
+    dataset = xr.Dataset(
+        {"Fw": (("time", "lat", "lon"), np.array([[[0.1, 0.2], [0.3, 0.4]]], dtype=np.float32))},
+        coords={
+            "time": np.array(["2000-01-16"], dtype="datetime64[ns]"),
+            "lat": [0.75, 0.25],
+            "lon": [100.25, 100.75],
+        },
+    )
+    write_netcdf(base_path / "wad2m.nc", dataset)
+
+    loader = get_loader(
+        "wad2m",
+        with_common_fields(base_path, loader_type="netcdf", file="wad2m.nc"),
+    )
+
+    grid = make_reference_grid(lat_range=(0.0, 1.0), lon_range=(100.0, 101.0), resolution_deg=1.0)
+    result = loader.load(reference_grid=grid)
+
+    assert result.sizes["lat"] == grid.sizes["lat"]
+    assert result.sizes["lon"] == grid.sizes["lon"]
+    assert "wetland_fraction" in result.data_vars

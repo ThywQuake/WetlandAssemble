@@ -9,6 +9,7 @@ import xarray as xr
 from WA.comparison.harmonize import (
     BinaryComparisonUnavailableError,
     EmptyBinarySurfaceError,
+    _is_already_aligned,
     create_comparison_grid,
     harmonize_binary_dataset,
     select_comparison_slice,
@@ -186,3 +187,36 @@ def test_harmonize_binary_dataset_rejects_glwd_surface_empty_after_alignment(
 
     with pytest.raises(EmptyBinarySurfaceError, match="aligned_to_reference_grid"):
         harmonize_binary_dataset("glwd_v2", dataset, reference_grid=reference)
+
+
+def test_is_already_aligned_detects_matching_coordinates() -> None:
+    """Data with identical lat/lon coordinates as reference_grid should be detected as aligned."""
+    reference = create_comparison_grid((100.0, 0.0, 102.0, 2.0), resolution_deg=1.0)
+    data = xr.DataArray(
+        np.ones(reference.shape, dtype=np.float32),
+        coords=reference.coords,
+        dims=reference.dims,
+    )
+    assert _is_already_aligned(data, reference) is True
+
+
+def test_is_already_aligned_rejects_different_coordinates() -> None:
+    """Data with different coordinates should not be detected as aligned."""
+    reference = create_comparison_grid((100.0, 0.0, 102.0, 2.0), resolution_deg=1.0)
+    data = xr.DataArray(
+        np.ones((3, 3), dtype=np.float32),
+        coords={"lat": [1.5, 0.5, -0.5], "lon": [100.5, 101.5, 102.5]},
+        dims=("lat", "lon"),
+    )
+    assert _is_already_aligned(data, reference) is False
+
+
+def test_is_already_aligned_rejects_different_shape() -> None:
+    """Data with different shape should not be detected as aligned."""
+    reference = create_comparison_grid((100.0, 0.0, 102.0, 2.0), resolution_deg=1.0)
+    data = xr.DataArray(
+        np.ones((4, 4), dtype=np.float32),
+        coords={"lat": [1.75, 1.25, 0.75, 0.25], "lon": [100.25, 100.75, 101.25, 101.75]},
+        dims=("lat", "lon"),
+    )
+    assert _is_already_aligned(data, reference) is False

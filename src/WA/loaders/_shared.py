@@ -30,6 +30,15 @@ def reproject_to_grid(
     automatically by ``rioxarray``).
     """
 
+    if data.rio.crs is None:
+        data = data.rio.write_crs("EPSG:4326")
+    x_dim = next((d for d in ("lon", "x") if d in data.dims), None)
+    y_dim = next((d for d in ("lat", "y") if d in data.dims), None)
+    if x_dim is not None and y_dim is not None:
+        try:
+            data = data.rio.set_spatial_dims(x_dim=x_dim, y_dim=y_dim)
+        except Exception:
+            pass
     return cast(
         xr.DataArray,
         data.rio.reproject_match(reference_grid, resampling=resampling),
@@ -54,9 +63,11 @@ def reproject_dataset_to_grid(
             da = reproject_to_grid(da, reference_grid, resampling=resampling)
         reprojected_vars[var_name] = da
     result = xr.Dataset(reprojected_vars, attrs=dataset.attrs)
-    # Carry over non-spatial coordinates (e.g. time).
+    # Carry over non-spatial coordinates (e.g. time), excluding original spatial coords
+    # that are now superseded by the reprojected grid's own coordinates.
+    _spatial_coord_names = {"lat", "lon", "latitude", "longitude", "x", "y", "spatial_ref"}
     for coord_name in dataset.coords:
-        if coord_name not in result.coords and coord_name in dataset.coords:
+        if coord_name not in result.coords and coord_name not in _spatial_coord_names:
             result = result.assign_coords({coord_name: dataset[coord_name]})
     return result
 

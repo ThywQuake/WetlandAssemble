@@ -5,6 +5,7 @@ from typing import Any
 
 import numpy as np
 import rasterio
+import rioxarray  # noqa: F401
 import xarray as xr
 from rasterio.transform import from_origin
 
@@ -71,6 +72,32 @@ def write_multiband_geotiff(
         dst.write(data)
 
     return path
+
+
+def make_reference_grid(
+    lat_range: tuple[float, float] = (0.0, 2.0),
+    lon_range: tuple[float, float] = (0.0, 2.0),
+    resolution_deg: float = 1.0,
+) -> xr.DataArray:
+    """Build a small WGS84 reference grid for testing load(reference_grid=...)."""
+    south, north = lat_range
+    west, east = lon_range
+    n_lat = max(1, round((north - south) / resolution_deg))
+    n_lon = max(1, round((east - west) / resolution_deg))
+    lats = np.linspace(
+        north - resolution_deg / 2, south + resolution_deg / 2, n_lat,
+    )
+    lons = np.linspace(
+        west + resolution_deg / 2, east - resolution_deg / 2, n_lon,
+    )
+    grid = xr.DataArray(
+        np.zeros((n_lat, n_lon), dtype=np.float32),
+        dims=("lat", "lon"),
+        coords={"lat": lats, "lon": lons},
+    )
+    grid = grid.rio.write_crs("EPSG:4326")
+    grid = grid.rio.set_spatial_dims(x_dim="lon", y_dim="lat")
+    return grid
 
 
 def with_common_fields(path: Path, **extra: Any) -> dict[str, Any]:

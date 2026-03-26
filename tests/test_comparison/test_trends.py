@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
-import pytest
 import xarray as xr
 
 from WA.comparison.trends import (
@@ -15,7 +14,6 @@ from WA.comparison.trends import (
     compute_regional_summary,
     compute_year_over_year_change,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
