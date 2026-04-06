@@ -7,31 +7,40 @@ datasets:
     description: "UC Berkeley Remote Sensing of Water Mask Monthly Data"
     type: "monthly_watermask"
     format: "netcdf"
-    loader_type: "berkeley"
-    # Update path to your Berkeley data directory
-    path: "/lustre/home/2200013429/Wetland_Assemble/data/Berkeley/data/"
-    pattern: "cyg.ddmi.*.l3.uc-berkeley-watermask-monthly.a31.d32.nc"
+    loader_type: "standardized_netcdf"
+    source_kind: "standardized_annual"
+    path: "~/Wetland_Assemble/data/standardized"
+    annual_pattern: "berkeley_rwawc_{year}.nc"
     time_range:
       start: "2018-08"
       end: "2025-10"
-    resolution: "30m"
-    variables:
-      watermask: "water_mask"
+    resolution: "500m"
+    time_resolution: "monthly"
+    is_static: false
+    is_classification: false
+    native_variables: ["watermask"]
+    semantic_mapping:
+      watermask: "auxiliary_open_water_mask"
 
   g2017:
     name: "G2017"
     description: "Global 2017 Wetland and Peatland Dataset"
     type: "static_wetland"
-    format: "geotiff"
-    loader_type: "geotiff"
-    # Update path to your G2017 data directory
-    path: "/lustre/home/2200013429/Wetland_Assemble/data/G2017/"
-    files:
-      wetland: "wetland/TROP-SUBTROP_WetlandV3b_2016_CIFOR.tif"
-      wetland_nolake: "wetland/fwet05deg_nolake.tif"
-      peatland: "peatland/TROP-SUBTROP_PeatV21_2016_CIFOR.tif"
-    resolution: "0.05° (~5km)"
-    region: "tropical_subtropical"
+    format: "netcdf"
+    loader_type: "standardized_netcdf"
+    source_kind: "standardized_static"
+    path: "~/Wetland_Assemble/data/standardized"
+    file: "g2017.nc"
+    resolution: "500m"
+    is_static: true
+    is_classification: true
+    native_variables: ["frac_0", "frac_10", "frac_20", "frac_30", "frac_40", "frac_50", "frac_60", "frac_70", "frac_80", "frac_90", "frac_100", "peatland_frac_0", "peatland_frac_1"]
+    semantic_mapping:
+      frac_10: "open_water_fraction"
+      frac_20: "coastal_wetland_fraction"
+      frac_30: "peatland_fraction"
+      frac_40: "peatland_fraction"
+      peatland_frac_1: "peatland_presence_fraction"
 
   giems_mc:
     name: "GIEMS-MC"
@@ -53,18 +62,20 @@ datasets:
     name: "GLWD v2"
     description: "Global Lakes and Wetlands Database v2"
     type: "static_wetland"
-    format: "geotiff"
-    loader_type: "glwd"
-    # Update path to your GLWD v2 data directory
-    path: "/lustre/home/2200013429/Wetland_Assemble/data/GLWD_v2/"
-    subdirectories:
-      area_by_class_ha: "GLWD_v2_0_area_by_class_ha/"
-      area_by_class_pct: "GLWD_v2_0_area_by_class_pct/"
-      combined_classes: "GLWD_v2_0_combined_classes/"
-    resolution: "30s (~1km)"
-    scale_factor:
-      ha: 0.1 # applied to ha_x10
-      pct: 1.0
+    format: "netcdf"
+    loader_type: "standardized_netcdf"
+    source_kind: "standardized_static"
+    path: "~/Wetland_Assemble/data/standardized"
+    file: "glwd_v2.nc"
+    resolution: "500m"
+    is_static: true
+    is_classification: true
+    native_variables: ["frac_0", "frac_1", "frac_2", "frac_3", "frac_4", "frac_5", "frac_6", "frac_7", "frac_8", "frac_9", "frac_10", "frac_11", "frac_12", "frac_13", "frac_14", "frac_15", "frac_16", "frac_17", "frac_18", "frac_19", "frac_20", "frac_21", "frac_22", "frac_23", "frac_24", "frac_25", "frac_26", "frac_27", "frac_28", "frac_29", "frac_30", "frac_31", "frac_32", "frac_33"]
+    semantic_mapping:
+      frac_1: "open_water_fraction"
+      frac_28: "coastal_wetland_fraction"
+      frac_29: "coastal_wetland_fraction"
+      frac_33: "artificial_wetland_fraction"
 
   gwd30:
     name: "GWD30"
@@ -118,10 +129,17 @@ datasets:
     description: "TOPMODEL-based Wetland Simulation"
     type: "model_output"
     format: "netcdf"
-    loader_type: "topmodel"
-    # Update path to your TOPMODEL data directory
-    path: "/lustre/home/2200013429/Wetland_Assemble/data/TOPMODEL/"
-    pattern: "{config}/{forcing}/fwet_{config}_{forcing}_reso025_{year}.nc"
+    loader_type: "standardized_netcdf"
+    source_kind: "standardized_annual"
+    path: "~/Wetland_Assemble/data/standardized"
+    annual_pattern: "topmodel_{year}.nc"
+    time_resolution: "monthly"
+    resolution: "500m"
+    is_static: false
+    is_classification: false
+    native_variables: ["wetland_fraction"]
+    semantic_mapping:
+      wetland_fraction: "topmodel_simulated_wetland_fraction"
 
   wad2m:
     name: "WAD2M"

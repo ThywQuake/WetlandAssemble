@@ -1,0 +1,385 @@
+classification_config:
+  version: "1.0"
+  description: >
+    Unified 8-class crosswalk for comparing wetland classification accuracy
+    across G2017, GLWD v2, and GWD30. All open water bodies are grouped into
+    Water. Peatland is treated as a separate class. Non-wetland is added for
+    completeness.
+
+  unified_classes:
+    - id: 0
+      name: Non-wetland
+      description: Dryland or non-wetland land cover
+    - id: 1
+      name: Water
+      description: >
+        All open water bodies, including rivers, lakes, reservoirs, estuaries,
+        lagoons, shallow marine waters, streams, canals, and other permanent waterbodies
+    - id: 2
+      name: Inland Herbaceous Wetlands
+      description: >
+        Natural inland wetlands dominated by herbaceous or non-woody vegetation,
+        including marshes, wet meadows, and non-forested palustrine/lacustrine/riverine wetlands
+    - id: 3
+      name: Forested Wetlands
+      description: >
+        Natural wetlands dominated by woody vegetation, excluding peatlands
+    - id: 4
+      name: Peatland
+      description: >
+        Peat-accumulating wetlands, including bogs, fens, and all peatland classes,
+        regardless of whether they are forested or non-forested
+    - id: 5
+      name: Floodplain Wetlands
+      description: >
+        Wetlands strongly controlled by river flooding, including floodplains
+        and riverine regularly/seasonally flooded wetlands
+    - id: 6
+      name: Coastal Wetlands
+      description: >
+        Coastal or tidal wetlands, including mangroves, saltmarshes, tidal flats,
+        coastal marshes, coastal swamps, deltas, and saline/brackish coastal wetlands
+    - id: 7
+      name: Artificial Wetlands
+      description: >
+        Human-managed wetland or wet-surface classes, such as rice paddies and aquaculture
+
+  priority_rules:
+    description: >
+      Use this priority when a source class could plausibly match more than one unified class.
+      Earlier rules take precedence over later ones.
+    order:
+      - Water
+      - Artificial Wetlands
+      - Peatland
+      - Coastal Wetlands
+      - Floodplain Wetlands
+      - Forested Wetlands
+      - Inland Herbaceous Wetlands
+      - Non-wetland
+
+  datasets:
+    G2017:
+      dataset_name: "Fine Combination / G2017"
+      classes:
+        "10":
+          original_name: "Open Water"
+          geomorphology: "Lakes and permanent rivers"
+          unified_class: "Water"
+          unified_id: 1
+
+        "20":
+          original_name: "Mangrove"
+          geomorphology: "In close proximity to coast or estuaries"
+          unified_class: "Coastal Wetlands"
+          unified_id: 6
+
+        "30":
+          original_name: "Swamps (Incl. bogs)"
+          geomorphology: "Usually bound to valleys and plains; planar surfaces"
+          unified_class: "Peatland"
+          unified_id: 4
+          note: >
+            Mapped to Peatland because this mixed class explicitly includes bogs,
+            and peatland is required as a separate target class.
+
+        "40":
+          original_name: "Fens"
+          geomorphology: "In valleys or lower slope positions"
+          unified_class: "Peatland"
+          unified_id: 4
+
+        "50":
+          original_name: "Riverine and Lacustrine"
+          geomorphology: "Aligned with the adjacent water body"
+          unified_class: "Inland Herbaceous Wetlands"
+          unified_id: 2
+          note: >
+            Interpreted as wetland associated with adjacent rivers/lakes rather than
+            open water itself.
+
+        "60":
+          original_name: "Floodplains"
+          geomorphology: "Floodouts: On alluvial deposits"
+          unified_class: "Floodplain Wetlands"
+          unified_id: 5
+
+        "70":
+          original_name: "Floodplains"
+          geomorphology: "Floodplains: On alluvial deposits or in valleys"
+          unified_class: "Floodplain Wetlands"
+          unified_id: 5
+
+        "80":
+          original_name: "Marshes"
+          geomorphology: "General marshes: in valleys and plains, coastal marshes, salt marshes, savannah"
+          unified_class: "Inland Herbaceous Wetlands"
+          unified_id: 2
+          note: >
+            Although the description includes some coastal marsh references, this class
+            is kept as Inland Herbaceous Wetlands for stable cross-dataset comparison.
+
+        "90":
+          original_name: "Marshes"
+          geomorphology: "Wetlands in arid climate: formed in channel valleys and over alluvial"
+          unified_class: "Inland Herbaceous Wetlands"
+          unified_id: 2
+
+        "100":
+          original_name: "Marshes"
+          geomorphology: "Wet meadows: transition zones between wetlands and surrounding drylands"
+          unified_class: "Inland Herbaceous Wetlands"
+          unified_id: 2
+
+    GLWD_v2:
+      dataset_name: "GLWD v2"
+      classes:
+        "0":
+          original_name: "Dryland (non-wetland)"
+          unified_class: "Non-wetland"
+          unified_id: 0
+
+        "1":
+          original_name: "Freshwater lake"
+          unified_class: "Water"
+          unified_id: 1
+
+        "2":
+          original_name: "Saline lake"
+          unified_class: "Water"
+          unified_id: 1
+
+        "3":
+          original_name: "Reservoir"
+          unified_class: "Water"
+          unified_id: 1
+
+        "4":
+          original_name: "Large river"
+          unified_class: "Water"
+          unified_id: 1
+
+        "5":
+          original_name: "Large estuarine river"
+          unified_class: "Water"
+          unified_id: 1
+
+        "6":
+          original_name: "Other permanent waterbody"
+          unified_class: "Water"
+          unified_id: 1
+
+        "7":
+          original_name: "Small streams"
+          unified_class: "Water"
+          unified_id: 1
+
+        "8":
+          original_name: "Lacustrine, forested"
+          unified_class: "Forested Wetlands"
+          unified_id: 3
+
+        "9":
+          original_name: "Lacustrine, non-forested"
+          unified_class: "Inland Herbaceous Wetlands"
+          unified_id: 2
+
+        "10":
+          original_name: "Riverine, regularly flooded, forested"
+          unified_class: "Floodplain Wetlands"
+          unified_id: 5
+
+        "11":
+          original_name: "Riverine, regularly flooded, non-forested"
+          unified_class: "Floodplain Wetlands"
+          unified_id: 5
+
+        "12":
+          original_name: "Riverine, seasonally flooded, forested"
+          unified_class: "Floodplain Wetlands"
+          unified_id: 5
+
+        "13":
+          original_name: "Riverine, seasonally flooded, non-forested"
+          unified_class: "Floodplain Wetlands"
+          unified_id: 5
+
+        "14":
+          original_name: "Riverine, seasonally saturated, forested"
+          unified_class: "Forested Wetlands"
+          unified_id: 3
+
+        "15":
+          original_name: "Riverine, seasonally saturated, non-forested"
+          unified_class: "Inland Herbaceous Wetlands"
+          unified_id: 2
+
+        "16":
+          original_name: "Palustrine, regularly flooded, forested"
+          unified_class: "Forested Wetlands"
+          unified_id: 3
+
+        "17":
+          original_name: "Palustrine, regularly flooded, non-forested"
+          unified_class: "Inland Herbaceous Wetlands"
+          unified_id: 2
+
+        "18":
+          original_name: "Palustrine, seasonally saturated, forested"
+          unified_class: "Forested Wetlands"
+          unified_id: 3
+
+        "19":
+          original_name: "Palustrine, seasonally saturated, non-forested"
+          unified_class: "Inland Herbaceous Wetlands"
+          unified_id: 2
+
+        "20":
+          original_name: "Ephemeral, forested"
+          unified_class: "Forested Wetlands"
+          unified_id: 3
+
+        "21":
+          original_name: "Ephemeral, non-forested"
+          unified_class: "Inland Herbaceous Wetlands"
+          unified_id: 2
+
+        "22":
+          original_name: "Arctic/boreal peatland, forested"
+          unified_class: "Peatland"
+          unified_id: 4
+
+        "23":
+          original_name: "Arctic/boreal peatland, non-forested"
+          unified_class: "Peatland"
+          unified_id: 4
+
+        "24":
+          original_name: "Temperate peatland, forested"
+          unified_class: "Peatland"
+          unified_id: 4
+
+        "25":
+          original_name: "Temperate peatland, non-forested"
+          unified_class: "Peatland"
+          unified_id: 4
+
+        "26":
+          original_name: "Tropical/subtropical peatland, forested"
+          unified_class: "Peatland"
+          unified_id: 4
+
+        "27":
+          original_name: "Tropical/subtropical peatland, non-forested"
+          unified_class: "Peatland"
+          unified_id: 4
+
+        "28":
+          original_name: "Mangrove"
+          unified_class: "Coastal Wetlands"
+          unified_id: 6
+
+        "29":
+          original_name: "Saltmarsh"
+          unified_class: "Coastal Wetlands"
+          unified_id: 6
+
+        "30":
+          original_name: "Large river delta"
+          unified_class: "Coastal Wetlands"
+          unified_id: 6
+          note: >
+            Treated as a coastal wetland complex rather than open water for harmonized comparison.
+
+        "31":
+          original_name: "Other coastal wetland"
+          unified_class: "Coastal Wetlands"
+          unified_id: 6
+
+        "32":
+          original_name: "Salt pan, saline/brackish wetland"
+          unified_class: "Coastal Wetlands"
+          unified_id: 6
+
+        "33":
+          original_name: "Rice paddies"
+          unified_class: "Artificial Wetlands"
+          unified_id: 7
+
+    GWD30:
+      dataset_name: "GWD30"
+      classes:
+        "0":
+          original_name: "Non-wetland"
+          unified_class: "Non-wetland"
+          unified_id: 0
+
+        "1":
+          original_name: "River"
+          unified_class: "Water"
+          unified_id: 1
+
+        "2":
+          original_name: "Canal/Channel"
+          unified_class: "Water"
+          unified_id: 1
+
+        "3":
+          original_name: "Lake"
+          unified_class: "Water"
+          unified_id: 1
+
+        "4":
+          original_name: "Reservoir/Pond"
+          unified_class: "Water"
+          unified_id: 1
+
+        "5":
+          original_name: "Estuary Water"
+          unified_class: "Water"
+          unified_id: 1
+
+        "6":
+          original_name: "Lagoon"
+          unified_class: "Water"
+          unified_id: 1
+
+        "7":
+          original_name: "Aquaculture"
+          unified_class: "Artificial Wetlands"
+          unified_id: 7
+
+        "8":
+          original_name: "Inland Marsh"
+          unified_class: "Inland Herbaceous Wetlands"
+          unified_id: 2
+
+        "9":
+          original_name: "Inland Swamp"
+          unified_class: "Forested Wetlands"
+          unified_id: 3
+
+        "10":
+          original_name: "Floodplain"
+          unified_class: "Floodplain Wetlands"
+          unified_id: 5
+
+        "11":
+          original_name: "Coastal Marsh"
+          unified_class: "Coastal Wetlands"
+          unified_id: 6
+
+        "12":
+          original_name: "Coastal Swamp"
+          unified_class: "Coastal Wetlands"
+          unified_id: 6
+
+        "13":
+          original_name: "Tidal Flat"
+          unified_class: "Coastal Wetlands"
+          unified_id: 6
+
+        "14":
+          original_name: "Shallow Marine"
+          unified_class: "Water"
+          unified_id: 1

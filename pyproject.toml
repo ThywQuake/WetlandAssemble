@@ -9,8 +9,11 @@ description = "Wetland Assemble loader and comparison toolkit"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "cartopy>=0.25.0",
     "dask[distributed]>=2024.8",
+    "datashader>=0.19.0",
     "earthengine-api>=1.7.18",
+    "ipykernel>=7.2.0",
     "matplotlib>=3.9",
     "mgrs>=1.5",
     "netCDF4>=1.7",
@@ -20,6 +23,7 @@ dependencies = [
     "pyyaml>=6.0",
     "rasterio>=1.4",
     "rioxarray>=0.17",
+    "rsa>=4.9.1",
     "scipy>=1.13",
     "tqdm>=4.67.3",
     "xarray>=2024.9",
@@ -53,6 +57,8 @@ target-version = "py313"
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "N", "C4"]
 ignore = ["N999"]
+exclude = ["*.ipynb"]
+
 
 [tool.mypy]
 python_version = "3.13"
@@ -64,3 +70,4 @@ disable_error_code = ["import-untyped"]
 [[tool.mypy.overrides]]
 module = ["yaml", "pandas", "rasterio", "rasterio.*", "rioxarray", "rioxarray.*", "scipy", "scipy.*", "matplotlib", "matplotlib.*"]
 ignore_missing_imports = true
+

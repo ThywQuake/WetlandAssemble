@@ -61,7 +61,7 @@ class DatasetLoader(ABC):
         self.dataset_id = dataset_id
         self.config = dict(config)
         self.name = str(self.config["name"])
-        self.base_path = Path(str(self.config["path"]))
+        self.base_path = Path(str(self.config["path"])).expanduser()
 
     @abstractmethod
     def load(
@@ -224,7 +224,12 @@ def ensure_datetime_index(dataset: xr.Dataset) -> xr.Dataset:
     if "time" not in dataset.coords:
         return dataset
 
+    time_attrs = dict(dataset["time"].attrs)
     dataset = dataset.assign_coords(time=pd.to_datetime(dataset["time"].values))
+    time_attrs.pop("units", None)
+    time_attrs.pop("calendar", None)
+    dataset["time"].attrs = time_attrs
+    dataset["time"].encoding = {}
     return dataset
 
 

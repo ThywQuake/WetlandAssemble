@@ -15,6 +15,7 @@ from WA.loaders.base import (
     DatasetLoader,
     DatasetMetadata,
     TimeRange,
+    apply_bbox,
     ensure_datetime_index,
     validate_reference_grid,
 )
@@ -51,32 +52,49 @@ class BerkeleyLoader(DatasetLoader):
         if reference_grid is not None:
             validate_reference_grid(reference_grid)
 
+        merged = self.open_time_series(time_range)
+        try:
+            merged = apply_bbox(merged, bbox)
+            if reference_grid is not None:
+                merged = reproject_dataset_to_grid(
+                    merged, reference_grid, resampling=Resampling.bilinear,
+                )
+            return self.finalize_dataset(
+                merged, bbox=bbox, time_range=time_range, reference_grid=reference_grid,
+            )
+        finally:
+            merged.close()
+
+    def open_time_series(self, time_range: TimeRange | None = None) -> xr.Dataset:
+        """Open the requested monthly files once and expose them as one lazy dataset."""
         candidate_files = self._candidate_files(time_range)
         if not candidate_files:
             raise FileNotFoundError(
                 f"No Berkeley files matched the requested time range under {self.base_path}"
             )
 
+        sources: list[xr.Dataset] = []
         slices: list[xr.Dataset] = []
         for path in candidate_files:
             timestamp = _parse_year_month(path)
-            with xr.open_dataset(path, decode_times=False) as source:
-                variable_name = self._resolve_variable_name(source)
-                selected = source[variable_name]
-                if "time" in selected.dims:
-                    selected = selected.isel(time=0, drop=True)
-                dataset = selected.to_dataset(name="watermask").expand_dims(time=[timestamp])
-                slices.append(dataset)
+            source = xr.open_dataset(path, decode_times=False)
+            sources.append(source)
+            variable_name = self._resolve_variable_name(source)
+            selected = source[variable_name]
+            if "time" in selected.dims:
+                selected = selected.isel(time=0, drop=True)
+            dataset = selected.to_dataset(name="watermask").expand_dims(time=[timestamp])
+            slices.append(dataset)
 
         merged = xr.concat(slices, dim="time").sortby("time")
         merged = ensure_datetime_index(merged)
-        if reference_grid is not None:
-            merged = reproject_dataset_to_grid(
-                merged, reference_grid, resampling=Resampling.bilinear,
-            )
-        return self.finalize_dataset(
-            merged, bbox=bbox, time_range=time_range, reference_grid=reference_grid,
-        )
+
+        def _close_sources() -> None:
+            for source in sources:
+                source.close()
+
+        merged.set_close(_close_sources)
+        return merged
 
     def _candidate_files(self, time_range: TimeRange | None) -> list[Path]:
         file_pattern = str(self.config["pattern"])

@@ -115,6 +115,73 @@ class TopmodelLoader(DatasetLoader):
             dataset, bbox=bbox, time_range=time_range, reference_grid=reference_grid,
         )
 
+    def open_time_series(
+        self,
+        bbox: BBox | None = None,
+        time_range: TimeRange | None = None,
+    ) -> xr.Dataset:
+        """Open one lazily-backed TOPMODEL time-series window for chunk reuse."""
+
+        discovered = self._discover_files(time_range)
+        if not discovered:
+            raise FileNotFoundError(f"No TOPMODEL files found under {self.base_path}")
+
+        file_count = sum(len(entries) for entries in discovered.values())
+        logger.info(
+            "TOPMODEL open_time_series discovered %s config/forcing combination(s), %s file(s)",
+            len(discovered),
+            file_count,
+        )
+
+        open_sources: list[xr.Dataset] = []
+        try:
+            by_config: dict[str, list[xr.Dataset]] = defaultdict(list)
+            for (config_name, forcing_name), entries in discovered.items():
+                logger.info(
+                    "TOPMODEL opening config=%s forcing=%s with %s year file(s)",
+                    config_name,
+                    forcing_name,
+                    len(entries),
+                )
+                year_datasets: list[xr.Dataset] = []
+                for year, path in sorted(entries, key=lambda item: item[0]):
+                    source = xr.open_dataset(path)
+                    open_sources.append(source)
+                    data = source["fwet"].rename("wetland_fraction")
+                    month_numbers = [int(value) for value in data["time"].values]
+                    data = data.assign_coords(time=monthly_index_for_year(year, month_numbers))
+                    dataset = data.to_dataset()
+                    dataset = apply_bbox(dataset, bbox)
+                    dataset = apply_time_range(dataset, time_range)
+                    year_datasets.append(dataset)
+
+                merged_years = xr.concat(year_datasets, dim="time").sortby("time")
+                by_config[config_name].append(merged_years.expand_dims(forcing=[forcing_name]))
+
+            config_datasets: list[xr.Dataset] = []
+            for config_name, forcing_datasets in sorted(by_config.items()):
+                ordered_forcings = sorted(
+                    forcing_datasets,
+                    key=lambda item: str(item["forcing"].item()),
+                )
+                forcing_merged = xr.concat(ordered_forcings, dim="forcing")
+                config_datasets.append(forcing_merged.expand_dims(config=[config_name]))
+
+            dataset = xr.concat(config_datasets, dim="config", join="outer")
+            dataset = ensure_datetime_index(dataset)
+            dataset = self.finalize_dataset(dataset, bbox=bbox, time_range=time_range)
+        except Exception:
+            for source in open_sources:
+                source.close()
+            raise
+
+        def _close_all_sources() -> None:
+            for source in open_sources:
+                source.close()
+
+        dataset.set_close(_close_all_sources)
+        return dataset
+
     def _discover_files(
         self,
         time_range: TimeRange | None = None,

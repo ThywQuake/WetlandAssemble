@@ -1,113 +1,314 @@
-generated_at: "2026-03-19"
-purpose: "Phase 2 rough-scale wetland comparison candidate basins and wetland regions"
+generated_at: "2026-04-03"
+purpose: "Global comparison set of major tropical and subtropical wetland analysis regions based on user-defined GEE rectangles"
 bbox_convention: "[min_lon, min_lat, max_lon, max_lat] in EPSG:4326"
-bbox_type: "working_analysis_bbox"
-bbox_note: "These are analysis windows curated from source-described extents and public map context; they are not official hydrological shapefile boundaries."
+bbox_type: "user_defined_analysis_bbox"
+bbox_note: "These are user-defined rectangular analysis windows from Google Earth Engine code. They are not official hydrological, ecological, or protected-area boundaries."
+region_kind_note: "Some entries represent a single dominant wetland system, while others represent a broader wetland-rich region containing multiple major wetland complexes."
+
 regions:
-  amazon_basin:
-    label: "Amazon Basin"
-    kind: "river_basin"
+  amazon:
+    label: "Amazon River"
+    label_zh: "亚马孙地区"
+    kind: "regional_wetland_window"
     priority: 1
     continent: "South America"
-    bbox: [-79.5, -19.5, -44.0, 6.5]
-    rationale: "Largest drainage basin in the world; the basin contains a complex mosaic of wetlands and forests and is the dominant tropical freshwater system in South America."
-    bbox_basis: "Inferred working bbox from basin-wide extent described from the Andes of Peru to the Atlantic coast of Brazil, including the main lowland wetland belt."
+    representative_countries:
+      - "Brazil"
+      - "Peru"
+      - "Colombia"
+      - "Ecuador"
+    representative_wetland_systems:
+      - "Amazon floodplains"
+      - "várzea forests"
+      - "igapó flooded forests"
+      - "swamps"
+      - "oxbow lakes"
+    representative_wetland_systems_zh:
+      - "亚马孙泛滥平原"
+      - "白水洪泛林"
+      - "黑水洪泛林"
+      - "沼泽"
+      - "牛轭湖"
+    bbox: [-79.22026760827592, -8.241018621515462, -44.41558010827592, 2.452325780702471]
+    rationale: "This window captures the core western-to-central Amazon lowland wetland belt, one of the world's largest and most important tropical freshwater wetland regions."
+    rationale_zh: "该窗口覆盖亚马孙低地湿地带的核心部分，是全球最大、最重要的热带淡水湿地区域之一。"
+    short_intro: "The Amazon region contains an immense mosaic of river channels, floodplains, seasonally flooded forests, swamps, and floodplain lakes. It is globally important for biodiversity, freshwater storage, hydrological connectivity, and carbon cycling."
+    short_intro_zh: "亚马孙地区包含巨大的河道、泛滥平原、季节性洪泛森林、沼泽和河漫滩湖泊复合体，在全球生物多样性、淡水调蓄、水文连通性和碳循环中具有核心地位。"
     source_urls:
       - "https://www.britannica.com/place/Amazon-Basin"
       - "https://wwf.panda.org/discover/knowledge_hub/where_we_work/amazon/about_the_amazon"
 
-  orinoco_basin_llanos:
-    label: "Orinoco Basin and Llanos"
-    kind: "river_basin"
+  orinoco:
+    label: "Orinoco Floodplain"
+    label_zh: "奥里诺科地区"
+    kind: "regional_wetland_window"
     priority: 2
     continent: "South America"
-    bbox: [-73.5, 0.5, -58.0, 11.8]
-    rationale: "One of South America's most intact large river systems, with flooded forests, vast grasslands, and a wide delta spanning Colombia and Venezuela."
-    bbox_basis: "Inferred working bbox covering the Colombia-Venezuela Orinoco basin core, Llanos floodplains, and lower delta corridor."
+    representative_countries:
+      - "Colombia"
+      - "Venezuela"
+    representative_wetland_systems:
+      - "Orinoco floodplains"
+      - "Llanos flooded savannas"
+      - "riverine wetlands"
+      - "delta wetlands"
+    representative_wetland_systems_zh:
+      - "奥里诺科泛滥平原"
+      - "拉诺斯洪泛稀树草原"
+      - "河流湿地"
+      - "三角洲湿地"
+    bbox: [-75.35308010827592, 4.995561634213111, -60.67534573327592, 11.68757323344023]
+    rationale: "This window represents the core Orinoco-Llanos wetland belt, a major tropical floodplain and savanna wetland region in northern South America."
+    rationale_zh: "该窗口代表奥里诺科—拉诺斯湿地带核心区域，是南美北部重要的热带泛滥平原和洪泛草原湿地。"
+    short_intro: "The Orinoco region is characterized by seasonally inundated plains, river corridors, marshes, and wet savannas. It is one of the most important tropical floodpulse landscapes in northern South America."
+    short_intro_zh: "奥里诺科地区以季节性淹水平原、河流廊道、沼泽和湿润稀树草原为主要特征，是南美北部最重要的热带洪水脉动景观之一。"
     source_urls:
       - "https://wwf.panda.org/discover/knowledge_hub/where_we_work/orinoco_river_basin/"
       - "https://colombia.wcs.org/en-us/WHERE-WE-WORK/ORINOQUIA.aspx"
 
-  pantanal_upper_paraguay:
-    label: "Pantanal / Upper Paraguay Wetland"
-    kind: "wetland_system"
+  pantanal:
+    label: "Pantanal Floodplain"
+    label_zh: "潘塔纳尔"
+    kind: "wetland_system_window"
     priority: 3
     continent: "South America"
-    bbox: [-61.5, -22.5, -54.0, -14.0]
-    rationale: "World's largest tropical wetland; a seasonally flooded plain fed by the upper Paraguay system across Brazil, Bolivia, and Paraguay."
-    bbox_basis: "Inferred working bbox covering the main Pantanal floodplain and upper Paraguay wetland core."
+    representative_countries:
+      - "Brazil"
+      - "Bolivia"
+      - "Paraguay"
+    representative_wetland_systems:
+      - "seasonal floodplains"
+      - "marshes"
+      - "swamps"
+      - "shallow lakes"
+      - "gallery forests"
+    representative_wetland_systems_zh:
+      - "季节性泛滥平原"
+      - "沼泽"
+      - "湿沼"
+      - "浅水湖泊"
+      - "沿河森林"
+    bbox: [-67.54337678947788, -21.6409081156243, -48.822673664477875, -11.16096470506358]
+    rationale: "This window covers the Pantanal and adjacent Upper Paraguay wetland zone, one of the largest seasonally flooded wetland systems on Earth."
+    rationale_zh: "该窗口覆盖潘塔纳尔及邻近的巴拉圭河上游湿地带，是地球上最大的季节性洪泛湿地系统之一。"
+    short_intro: "Pantanal is a vast lowland wetland complex dominated by annual flood pulses, marshes, shallow lakes, river channels, and seasonally inundated vegetation mosaics. It is widely regarded as one of the most iconic tropical wetlands in the world."
+    short_intro_zh: "潘塔纳尔是一个受年度洪水脉动控制的广阔低地湿地复合体，包括沼泽、浅湖、河道以及季节性淹水植被镶嵌景观，被广泛视为世界最具代表性的热带湿地之一。"
     source_urls:
-      - "https://www.worldwildlife.org/places/pantanal/"
+      - "https://www.worldwildlife.org/places/pantanal"
       - "https://www.nature.org/en-us/get-involved/how-to-help/places-we-protect/pantanal/"
 
-  ngiri_tumba_maindombe:
-    label: "Ngiri-Tumba-Maindombe / Cuvette Centrale Wetlands"
-    kind: "wetland_system"
+  indogangetic:
+    label: "Indo-Gangetic Floodplain"
+    label_zh: "印度河—恒河平原地区"
+    kind: "regional_wetland_window"
     priority: 4
-    continent: "Africa"
-    bbox: [15.0, -3.5, 19.5, 1.5]
-    rationale: "One of Africa's most important freshwater masses and one of the largest tropical wetland complexes in the Congo Basin."
-    bbox_basis: "Inferred working bbox centered on the Ramsar wetland core east of the Congo River around Lake Tumba and the Ngiri-Maindombe system."
+    continent: "South Asia"
+    representative_countries:
+      - "Pakistan"
+      - "India"
+      - "Nepal"
+      - "Bangladesh"
+    representative_wetland_systems:
+      - "large river floodplains"
+      - "oxbow lakes"
+      - "marshes"
+      - "alluvial wetlands"
+      - "river-fed seasonal wetlands"
+    representative_wetland_systems_zh:
+      - "大型河流泛滥平原"
+      - "牛轭湖"
+      - "沼泽"
+      - "冲积湿地"
+      - "河流补给型季节湿地"
+    bbox: [67.8934366922925, 18.939303342078514, 97.2489054422925, 32.88121988366839]
+    rationale: "This broad window spans the Indo-Gangetic alluvial lowlands, one of the world's most extensive floodplain regions, containing many riverine, lacustrine, and monsoon-fed wetlands."
+    rationale_zh: "该广域窗口覆盖印度河—恒河冲积低地，是世界上最广阔的泛滥平原区域之一，包含大量河流型、湖泊型和季风补给型湿地。"
+    short_intro: "The Indo-Gangetic region is not a single wetland but a vast wetland-rich alluvial corridor shaped by the Indus, Ganges, Brahmaputra, and associated rivers. It includes floodplains, marshes, oxbow lakes, seasonally inundated depressions, and many internationally important wetlands."
+    short_intro_zh: "印度河—恒河平原并不是单一湿地，而是由印度河、恒河、布拉马普特拉河及其支流共同塑造的巨大冲积湿地走廊，包含泛滥平原、沼泽、牛轭湖、季节性低洼积水区以及大量具有国际意义的湿地。"
     source_urls:
-      - "https://www.ramsar.org/es/news/democratic-republic-congo-names-worlds-largest-ramsar-site"
-      - "https://rsis.ramsar.org/ris/1742"
+      - "https://rsis.ramsar.org/sites/default/files/rsiswp_search/exports/Ramsar-Sites-annotated-summary-India.pdf"
+      - "https://wwf.panda.org/discover/our_focus/freshwater_practice/river_stories"
+
+  mekong:
+    label: "Mekong Delta"
+    label_zh: "湄公河地区"
+    kind: "regional_wetland_window"
+    priority: 5
+    continent: "Southeast Asia"
+    representative_countries:
+      - "Myanmar"
+      - "Thailand"
+      - "Laos"
+      - "Cambodia"
+      - "Vietnam"
+    representative_wetland_systems:
+      - "river floodplains"
+      - "flooded forests"
+      - "Tonle Sap-linked wetlands"
+      - "delta wetlands"
+      - "mangroves"
+    representative_wetland_systems_zh:
+      - "河流泛滥平原"
+      - "洪泛森林"
+      - "与洞里萨湖相连的湿地"
+      - "三角洲湿地"
+      - "红树林"
+    bbox: [98.2157023172925, 8.017641151706004, 111.2235148172925, 20.01647217097837]
+    rationale: "This window covers the Lower and central Mekong wetland-rich region, including major floodplain systems, flooded forests, and downstream deltaic wetlands."
+    rationale_zh: "该窗口覆盖湄公河中下游富湿地区域，包括主要泛滥平原系统、洪泛林和下游三角洲湿地。"
+    short_intro: "The Mekong region includes one of Asia's most productive and diverse freshwater wetland networks, linking river channels, seasonal floodplains, flooded forests, Tonle Sap-associated wetlands, and the Mekong Delta."
+    short_intro_zh: "湄公河地区拥有亚洲最富生产力和多样性的淡水湿地网络之一，将主河道、季节性泛滥平原、洪泛林、洞里萨湖相关湿地以及湄公河三角洲连接成整体。"
+    source_urls:
+      - "https://asiapacific.panda.org/priority_places/mekong_delta/"
+      - "https://www.wwf.org.kh/about_us/where_we_work/mekong_flooded_forest/"
 
   sudd:
-    label: "Sudd Wetland"
-    kind: "wetland_system"
-    priority: 5
+    label: "Sudd Swamps"
+    label_zh: "苏德湿地"
+    kind: "wetland_system_window"
+    priority: 6
     continent: "Africa"
-    bbox: [28.5, 5.5, 33.5, 10.5]
-    rationale: "One of the largest tropical freshwater wetlands in the world, formed along the lower Bahr el Jebel / White Nile system in South Sudan."
-    bbox_basis: "Inferred working bbox spanning the core Sudd floodplain between Bor, Jonglei, and Malakal-side wetland sectors."
+    representative_countries:
+      - "South Sudan"
+      - "Sudan"
+      - "Uganda"
+    representative_wetland_systems:
+      - "papyrus swamps"
+      - "marshes"
+      - "floodplains"
+      - "riverine wetlands"
+    representative_wetland_systems_zh:
+      - "纸莎草沼泽"
+      - "沼泽"
+      - "泛滥平原"
+      - "河流湿地"
+    bbox: [21.750858567292504, 7.669368249082838, 36.692264817292504, 21.086314066172232]
+    rationale: "This window captures the Sudd-centered Nile wetland region, one of the largest tropical freshwater wetland systems in Africa."
+    rationale_zh: "该窗口覆盖以苏德为核心的尼罗河湿地区域，是非洲最大的热带淡水湿地系统之一。"
+    short_intro: "The Sudd is a vast inland wetland formed by the White Nile and its distributary channels, flood basins, marshes, and floating vegetation. It is a key hydrological and ecological feature of the upper Nile system."
+    short_intro_zh: "苏德湿地是由白尼罗河及其分汊水道、洪泛盆地、沼泽和漂浮植被共同形成的巨大内陆湿地，是上尼罗河系统的关键水文与生态核心。"
     source_urls:
       - "https://whc.unesco.org/en/tentativelists/6276/"
       - "https://rsis.ramsar.org/ris/1622"
 
-  okavango_delta:
-    label: "Okavango Delta"
-    kind: "wetland_system"
-    priority: 6
-    continent: "Africa"
-    bbox: [20.0, -20.5, 24.5, -17.0]
-    rationale: "One of the world's most intact inland deltas, with permanent marshlands and seasonally flooded plains in north-west Botswana."
-    bbox_basis: "Inferred working bbox covering the UNESCO/Ramsar delta core and seasonally flooded fringe in north-west Botswana."
-    source_urls:
-      - "https://rsis.ramsar.org/ris/879"
-      - "https://whc.unesco.org/en/list/1432/"
-
-  mekong_delta:
-    label: "Mekong Delta"
-    kind: "delta_wetland"
+  congo:
+    label: "Congo Basin"
+    label_zh: "刚果盆地湿地区"
+    kind: "regional_wetland_window"
     priority: 7
-    continent: "Southeast Asia"
-    bbox: [104.2, 8.3, 106.9, 11.5]
-    rationale: "One of the largest and most fertile deltas in Asia, with floodplains, wetlands, mangroves, mudflats, and peatlands."
-    bbox_basis: "Inferred working bbox covering the Vietnamese Mekong Delta lowlands and coastal wetland belt."
+    continent: "Africa"
+    representative_countries:
+      - "Democratic Republic of the Congo"
+      - "Republic of the Congo"
+      - "Central African Republic"
+    representative_wetland_systems:
+      - "Cuvette Centrale wetlands"
+      - "peatlands"
+      - "flooded forests"
+      - "swamps"
+      - "lake wetlands"
+    representative_wetland_systems_zh:
+      - "刚果中央洼地湿地"
+      - "泥炭地"
+      - "洪泛森林"
+      - "沼泽"
+      - "湖泊湿地"
+    bbox: [14.807499192292504, -8.100813828767173, 26.848514817292504, 3.997719937838181]
+    rationale: "This window represents the Congo Basin wetland-rich core, including major swamp forests, flooded forests, and tropical peatland complexes."
+    rationale_zh: "该窗口代表刚果盆地富湿地核心区，包含重要的沼泽林、洪泛森林和热带泥炭地复合体。"
+    short_intro: "The Congo region includes some of the largest swamp forest and peat-associated wetland landscapes in the tropics. These wetlands are globally important for carbon storage, biodiversity, and central African hydrology."
+    short_intro_zh: "刚果地区拥有热带地区最大规模的沼泽林和泥炭相关湿地景观之一，在全球碳储存、生物多样性保护和中非区域水文中具有重要意义。"
     source_urls:
-      - "https://asiapacific.panda.org/priority_places/mekong_delta/"
-      - "https://wwf.panda.org/discover/our_focus/freshwater_practice/river_stories/"
+      - "https://www.ramsar.org/es/news/democratic-republic-congo-names-worlds-largest-ramsar-site"
+      - "https://rsis.ramsar.org/ris/1742"
 
-  mekong_flooded_forest:
-    label: "Mekong Flooded Forest"
-    kind: "river_floodplain"
+  okavango:
+    label: "Okavango Delta"
+    label_zh: "奥卡万戈地区"
+    kind: "wetland_system_window"
     priority: 8
-    continent: "Southeast Asia"
-    bbox: [105.7, 12.0, 106.6, 14.3]
-    rationale: "A globally important Lower Mekong freshwater landscape with wetlands, deep pools, sandy and rocky riverine habitats along the Cambodia-Laos corridor."
-    bbox_basis: "Inferred working bbox covering the Kratie-Stung Treng flooded forest corridor and adjoining Laos border reach."
+    continent: "Africa"
+    representative_countries:
+      - "Botswana"
+      - "Angola"
+      - "Namibia"
+    representative_wetland_systems:
+      - "inland delta"
+      - "permanent marshes"
+      - "seasonal floodplains"
+      - "lagoons"
+      - "channels"
+    representative_wetland_systems_zh:
+      - "内陆三角洲"
+      - "常年沼泽"
+      - "季节性泛滥平原"
+      - "潟湖"
+      - "河道"
+    bbox: [21.172811174744908, -23.00122849860724, 31.412068987244908, -15.117045706228334]
+    rationale: "This window covers the Okavango Delta and its broader upstream-downstream wetland context in southern Africa."
+    rationale_zh: "该窗口覆盖奥卡万戈三角洲及其更广泛的上下游湿地背景区。"
+    short_intro: "The Okavango region is centered on one of the world's most intact inland deltas, where river water spreads into channels, marshes, lagoons, and seasonally flooded plains rather than reaching the sea."
+    short_intro_zh: "奥卡万戈地区以世界上保存最完整的内陆三角洲之一为核心，河水在内陆扩散形成河道、沼泽、潟湖和季节性洪泛平原，而不是最终注入海洋。"
     source_urls:
-      - "https://asiapacific.panda.org/priority_places/mekong_flooded_forest/"
-      - "https://www.wwf.org.kh/about_us/where_we_work/mekong_flooded_forest/"
+      - "https://whc.unesco.org/en/list/1432/"
+      - "https://rsis.ramsar.org/ris/879"
 
-  danau_sentarum:
-    label: "Danau Sentarum"
-    kind: "lake_floodplain_wetland"
+  borneo:
+    label: "Borneo Island"
+    label_zh: "婆罗洲湿地区"
+    kind: "regional_wetland_window"
     priority: 9
     continent: "Insular Southeast Asia"
-    bbox: [111.95, 0.75, 112.3333, 1.0333]
-    rationale: "A Ramsar wetland and one of the last major representatives of seasonal freshwater lakes, rivers, peat and swamp forest in Kalimantan."
-    bbox_basis: "Directly taken from the official reported geographic extent of TN Danau Sentarum (0°45'–1°02'N, 111°57'–112°20'E)."
+    representative_countries:
+      - "Indonesia"
+      - "Malaysia"
+      - "Brunei"
+    representative_wetland_systems:
+      - "peat swamp forests"
+      - "freshwater swamp forests"
+      - "seasonal lakes"
+      - "riverine wetlands"
+      - "mangrove-fringed coastal wetlands"
+    representative_wetland_systems_zh:
+      - "泥炭沼泽林"
+      - "淡水沼泽林"
+      - "季节性湖泊"
+      - "河流湿地"
+      - "沿海红树林湿地"
+    bbox: [109.13637595041486, -3.646643121734494, 118.40883688791486, 4.607636754641364]
+    rationale: "This window captures the wetland-rich core of Borneo, including internationally important peat swamp forests, freshwater swamp forests, and lowland river wetlands."
+    rationale_zh: "该窗口覆盖婆罗洲富湿地核心区，包括具有国际意义的泥炭沼泽林、淡水沼泽林和低地河流湿地。"
+    short_intro: "Borneo contains some of the most important tropical peat-associated wetlands in Southeast Asia, together with freshwater swamp forests, floodplain wetlands, and coastal wetland belts. It is central to regional biodiversity and carbon storage."
+    short_intro_zh: "婆罗洲拥有东南亚最重要的热带泥炭相关湿地之一，同时分布着淡水沼泽林、泛滥平原湿地和沿海湿地带，是区域生物多样性和碳储存研究的核心地区。"
     source_urls:
-      - "https://ksdae.kehutanan.go.id/kawasan-konservasi/100244030/"
-      - "https://rsis.ramsar.org/ris/667"
+      - "https://rsis.ramsar.org/sites/default/files/rsiswp_search/exports/Ramsar-Sites-annotated-summary-Indonesia.pdf"
+      - "https://malaysia.wetlands.org/world-wetlands-day-2022/"
+
+  northernaus:
+    label: "Northern Australia"
+    label_zh: "澳大利亚北部湿地区"
+    kind: "regional_wetland_window"
+    priority: 10
+    continent: "Oceania"
+    representative_countries:
+      - "Australia"
+    representative_wetland_systems:
+      - "monsoonal floodplains"
+      - "freshwater wetlands"
+      - "billabongs"
+      - "mangroves"
+      - "tidal flats"
+    representative_wetland_systems_zh:
+      - "季风型泛滥平原"
+      - "淡水湿地"
+      - "牛轭状静水湖"
+      - "红树林"
+      - "潮滩"
+    bbox: [128.3511688363919, -16.70140668000509, 137.8653289926419, -10.964882322648288]
+    rationale: "This window covers major wetland landscapes of tropical northern Australia, including monsoonal floodplains and internationally important coastal and inland wetlands such as Kakadu."
+    rationale_zh: "该窗口覆盖澳大利亚北部热带地区的重要湿地景观，包括季风型泛滥平原以及以卡卡杜为代表的具有国际意义的沿海和内陆湿地。"
+    short_intro: "Northern Australia includes extensive monsoonal floodplains, freshwater wetlands, tidal flats, mangroves, and river-associated wetlands. These landscapes are among the best-known tropical wetland systems in Oceania and support large seasonal waterbird populations."
+    short_intro_zh: "澳大利亚北部拥有广阔的季风型泛滥平原、淡水湿地、潮滩、红树林和河流湿地，是大洋洲最著名的热带湿地系统之一，并支撑大量季节性水鸟种群。"
+    source_urls:
+      - "https://whc.unesco.org/en/list/147/"
+      - "https://www.dcceew.gov.au/parks-heritage/heritage/places/world/kakadu"

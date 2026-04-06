@@ -2,18 +2,28 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Literal
+from pathlib import Path
+from typing import Literal, cast
 
 import numpy as np
 import pandas as pd
+import rioxarray  # noqa: F401
 import xarray as xr
 from scipy import stats
 
+from WA.classification import wetland_class_ids
+from WA.comparison.harmonize import create_comparison_grid, harmonize_binary_dataset
+from WA.config import get_dataset_config
+from WA.loaders import get_loader
 from WA.loaders.base import BBox
+from WA.standardize import _load_gwd30_staged_tiles_from_stage_shard_manifests
 
 AggregationLevel = Literal["annual", "seasonal", "monthly"]
+PixelStatsAggregation = Literal["native", "annual", "monthly"]
+Gwd30PixelStatsTransform = Literal["native", "annual", "monthly"]
 
 # Minimum valid observations required to compute a trend
 DEFAULT_MIN_OBSERVATIONS = 5
@@ -23,6 +33,10 @@ DEFAULT_ALPHA = 0.05
 
 # Season ordering for consistent output
 _SEASON_ORDER = ["DJF", "MAM", "JJA", "SON"]
+DEFAULT_GWD30_STANDARDIZED_DIR = Path("output/standardized")
+PHASE4_GWD30_PIXEL_STATS_TRANSFORM_VERSION = 1
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -39,6 +53,191 @@ class TrendResult:
     significant: xr.DataArray  # bool mask (p < alpha)
     trend_direction: xr.DataArray  # +1 increasing, 0 stable, -1 decreasing
     status: str  # "computed" | "insufficient_observations"
+
+
+def build_gwd30_pixel_statistics(
+    *,
+    bbox: BBox,
+    time_range: tuple[str, str] | None = None,
+    aggregation: PixelStatsAggregation = "monthly",
+    reference_grid: xr.DataArray | None = None,
+    gwd30_standardized_dir: str | Path = DEFAULT_GWD30_STANDARDIZED_DIR,
+    show_progress: bool = True,
+) -> xr.Dataset:
+    """Build trend-ready GWD30 per-pixel statistics without any external mask."""
+
+    stats_grid = reference_grid if reference_grid is not None else create_comparison_grid(bbox)
+    surface = load_trend_surface(
+        "gwd30",
+        bbox=bbox,
+        time_range=time_range,
+        reference_grid=stats_grid,
+        gwd30_standardized_dir=gwd30_standardized_dir,
+        show_progress=show_progress,
+    )
+    if aggregation == "native":
+        aggregated = surface
+    elif aggregation in {"annual", "monthly"}:
+        aggregated = cast(
+            xr.DataArray,
+            _aggregate_time_series(surface, cast(AggregationLevel, aggregation)),
+        )
+    else:
+        raise ValueError(f"Unsupported GWD30 pixel statistics aggregation: {aggregation!r}")
+
+    if "time" not in aggregated.dims:
+        raise ValueError(
+            "GWD30 pixel statistics require a time-like dimension after aggregation"
+        )
+
+    cell_area = _cell_area_grid_km2(aggregated.isel(time=0, drop=True))
+    valid_observation_count = aggregated.notnull().sum(dim="time").astype(np.int32)
+    mean_fraction = aggregated.mean(dim="time", skipna=True).astype(np.float32)
+    std_fraction = aggregated.std(dim="time", skipna=True).astype(np.float32)
+
+    stats_ds = xr.Dataset(
+        {
+            "wetland_fraction": aggregated.astype(np.float32),
+            "valid_observation_count": valid_observation_count,
+            "mean_wetland_fraction": mean_fraction,
+            "std_wetland_fraction": std_fraction,
+            "cell_area_km2": cell_area.astype(np.float32),
+        }
+    )
+    times = pd.to_datetime(aggregated["time"].values)
+    stats_ds.attrs.update(
+        {
+            "dataset_id": "gwd30",
+            "source": "phase4_gwd30_pixel_statistics",
+            "aggregation": aggregation,
+            "time_range_start": str(times[0].date()) if len(times) else "",
+            "time_range_end": str(times[-1].date()) if len(times) else "",
+            "gwd30_standardized_dir": str(Path(gwd30_standardized_dir).expanduser()),
+            "bbox": [float(value) for value in bbox],
+            "comparison_resolution_deg": float(
+                stats_grid.attrs.get("comparison_resolution_deg", np.nan)
+            ),
+        }
+    )
+    return stats_ds
+
+
+def phase4_gwd30_pixel_stats_tile_dir(
+    *,
+    output_root: str | Path,
+    year: int,
+    aggregation: Gwd30PixelStatsTransform,
+) -> Path:
+    return (
+        Path(output_root)
+        / "pixel_stats"
+        / "gwd30"
+        / f"gwd30_{year}"
+        / aggregation
+        / "tiles"
+    )
+
+
+def build_gwd30_native_pixel_statistics_tiles(
+    *,
+    output_root: str | Path,
+    standardized_dir: str | Path = DEFAULT_GWD30_STANDARDIZED_DIR,
+    years: list[int] | None = None,
+    time_range: tuple[str, str] | None = None,
+    aggregation: Gwd30PixelStatsTransform = "monthly",
+    worker_count: int | None = None,
+    show_progress: bool = True,
+    skip_existing: bool = True,
+) -> dict[int, list[tuple[Path, BBox]]]:
+    """Build native staged-grid GWD30 pixel-statistics tiles for Stage 1."""
+
+    dataset_config = get_dataset_config("gwd30")
+    loader = get_loader("gwd30", dataset_config)
+    transform_tiles = getattr(loader, "transform_staged_time_fraction_tiles", None)
+    if not callable(transform_tiles):
+        raise TypeError("Configured GWD30 loader does not expose transformed staged-tile helpers")
+
+    selected_years = (
+        sorted(int(year) for year in years)
+        if years is not None and len(years) > 0
+        else _gwd30_years_for_time_range(dataset_config, time_range)
+    )
+    if not selected_years:
+        raise ValueError("No GWD30 years were selected for Stage-1 pixel statistics")
+
+    transform_name = f"phase4_pixel_stats_{aggregation}"
+    transform_tile = _gwd30_pixel_stats_transform_for_aggregation(aggregation)
+    transformed_by_year: dict[int, list[tuple[Path, BBox]]] = {}
+    standardized_root = Path(standardized_dir).expanduser()
+
+    for year in selected_years:
+        staged_tiles = _load_gwd30_staged_tiles_from_standardized_dir(
+            standardized_root,
+            year=year,
+        )
+        logger.info(
+            "Phase4 stage1 native tile stats: year=%s staging_root=%s restored=%s aggregation=%s",
+            year,
+            standardized_root / "_staging" / f"gwd30_{year}",
+            len(staged_tiles),
+            aggregation,
+        )
+        output_dir = phase4_gwd30_pixel_stats_tile_dir(
+            output_root=output_root,
+            year=year,
+            aggregation=aggregation,
+        )
+        transformed_by_year[year] = transform_tiles(
+            staged_tiles=staged_tiles,
+            output_dir=output_dir,
+            transform_name=transform_name,
+            transform_version=PHASE4_GWD30_PIXEL_STATS_TRANSFORM_VERSION,
+            transform_tile=transform_tile,
+            year=year,
+            worker_count=worker_count,
+            show_progress=show_progress,
+            skip_existing=skip_existing,
+        )
+
+    return transformed_by_year
+
+
+def load_trend_surface(
+    dataset_id: str,
+    *,
+    bbox: BBox,
+    time_range: tuple[str, str] | None = None,
+    reference_grid: xr.DataArray | None = None,
+    gwd30_standardized_dir: str | Path = DEFAULT_GWD30_STANDARDIZED_DIR,
+    show_progress: bool = True,
+) -> xr.DataArray:
+    """Load one dataset as a trend-ready wetland-fraction surface.
+
+    GWD30 uses the staged-tile workflow on the requested trend grid so large
+    trend probes avoid materializing the full multi-year 30 m mosaic in memory.
+    Other datasets keep the existing loader -> harmonize path.
+    """
+
+    trend_grid = reference_grid if reference_grid is not None else create_comparison_grid(bbox)
+
+    if dataset_id == "gwd30":
+        dataset = _load_gwd30_trend_dataset_from_staged_tiles(
+            bbox=bbox,
+            time_range=time_range,
+            reference_grid=trend_grid,
+            standardized_dir=Path(gwd30_standardized_dir),
+            show_progress=show_progress,
+        )
+    else:
+        dataset_config = get_dataset_config(dataset_id)
+        loader = get_loader(dataset_id, dataset_config)
+        dataset = loader.load(bbox=bbox, time_range=time_range)  # type: ignore[call-arg]
+
+    return harmonize_binary_dataset(
+        dataset_id,
+        dataset,
+        reference_grid=trend_grid,
+    )
 
 
 def compute_pixel_trends(
@@ -118,6 +317,84 @@ def compute_pixel_trends(
         significant=result_ds["significant"],
         trend_direction=result_ds["trend_direction"],
         status="computed",
+    )
+
+
+def _load_gwd30_trend_dataset_from_staged_tiles(
+    *,
+    bbox: BBox,
+    time_range: tuple[str, str] | None,
+    reference_grid: xr.DataArray,
+    standardized_dir: Path,
+    show_progress: bool,
+) -> xr.Dataset:
+    """Load GWD30 fractions on the trend grid via staged tiles."""
+
+    dataset_config = get_dataset_config("gwd30")
+    loader = get_loader("gwd30", dataset_config)
+    merge_staged_time_fraction_tiles = getattr(loader, "merge_staged_time_fraction_tiles", None)
+    if not callable(merge_staged_time_fraction_tiles):
+        raise TypeError(
+            "Configured GWD30 loader does not expose staged tile trend helpers"
+        )
+
+    years = _gwd30_years_for_time_range(dataset_config, time_range)
+    if not years:
+        raise FileNotFoundError(f"No GWD30 years overlap requested time_range {time_range!r}")
+
+    year_datasets: list[xr.Dataset] = []
+    for year in years:
+        staging_root = standardized_dir.expanduser() / "_staging" / f"gwd30_{year}"
+        staged_tiles = _load_gwd30_staged_tiles_from_standardized_dir(
+            standardized_dir,
+            year=year,
+        )
+        logger.info(
+            "Phase4 GWD30 trend load: year=%s bbox=%s staging_root=%s restored=%s "
+            "no raw staging performed",
+            year,
+            bbox,
+            staging_root,
+            len(staged_tiles),
+        )
+        logger.info(
+            "Phase4 GWD30 trend merge: year=%s staged_tile_count=%s",
+            year,
+            len(staged_tiles),
+        )
+        year_dataset = merge_staged_time_fraction_tiles(
+            staged_tiles=staged_tiles,
+            reference_grid=reference_grid,
+            bbox=bbox,
+            year=year,
+        )
+        year_datasets.append(year_dataset)
+
+    dataset = xr.concat(year_datasets, dim="time").sortby("time")
+    if time_range is not None:
+        dataset = dataset.sel(time=slice(*time_range))
+    dataset.attrs.update(
+        {
+            "dataset_id": "gwd30",
+            "source": "phase4_gwd30_staged_tiles",
+            "phase4_gwd30_stage_cache_root": str(standardized_dir.expanduser()),
+        }
+    )
+    return dataset
+
+
+def _load_gwd30_staged_tiles_from_standardized_dir(
+    standardized_dir: Path,
+    *,
+    year: int,
+) -> list[tuple[Path, BBox]]:
+    staging_root = standardized_dir.expanduser() / "_staging" / f"gwd30_{year}"
+    staged_tiles = _load_gwd30_staged_tiles_from_stage_shard_manifests(staging_root)
+    if staged_tiles:
+        return staged_tiles
+    raise FileNotFoundError(
+        "No staged GWD30 tile manifests were found under "
+        f"{staging_root}. Expected stage_shard_*.json referencing tile_partials/tile_*.nc."
     )
 
 
@@ -337,3 +614,165 @@ def _aggregate_time_series(
 
     else:
         raise ValueError(f"Unknown aggregation level: {aggregation!r}")
+
+
+def _gwd30_pixel_stats_transform_for_aggregation(
+    aggregation: Gwd30PixelStatsTransform,
+):
+    if aggregation == "native":
+        return phase4_gwd30_pixel_statistics_native_tile
+    if aggregation == "monthly":
+        return phase4_gwd30_pixel_statistics_monthly_tile
+    if aggregation == "annual":
+        return phase4_gwd30_pixel_statistics_annual_tile
+    raise ValueError(f"Unsupported GWD30 pixel statistics tile aggregation: {aggregation!r}")
+
+
+def phase4_gwd30_pixel_statistics_native_tile(source: xr.Dataset) -> xr.Dataset:
+    return _build_phase4_gwd30_pixel_statistics_tile(source, aggregation="native")
+
+
+def phase4_gwd30_pixel_statistics_monthly_tile(source: xr.Dataset) -> xr.Dataset:
+    return _build_phase4_gwd30_pixel_statistics_tile(source, aggregation="monthly")
+
+
+def phase4_gwd30_pixel_statistics_annual_tile(source: xr.Dataset) -> xr.Dataset:
+    return _build_phase4_gwd30_pixel_statistics_tile(source, aggregation="annual")
+
+
+def _build_phase4_gwd30_pixel_statistics_tile(
+    source: xr.Dataset,
+    *,
+    aggregation: Gwd30PixelStatsTransform,
+) -> xr.Dataset:
+    if "weighted" not in source.data_vars or "coverage" not in source.data_vars:
+        raise ValueError("Expected staged GWD30 tile dataset with weighted and coverage variables")
+
+    spatial_y, spatial_x = _resolve_spatial_dims(source["coverage"])
+    wetland_fraction = _wetland_fraction_from_staged_tile(source)
+
+    if aggregation == "native":
+        series = wetland_fraction
+    elif aggregation == "monthly":
+        series = wetland_fraction.resample(time="MS").mean(skipna=True)
+    elif aggregation == "annual":
+        series = wetland_fraction.resample(time="YS").mean(skipna=True)
+    else:
+        raise ValueError(f"Unsupported GWD30 pixel statistics aggregation: {aggregation!r}")
+
+    series = series.transpose("time", spatial_y, spatial_x).astype(np.float32)
+    valid_observation_count = series.notnull().sum(dim="time").astype(np.int32)
+    mean_fraction = series.mean(dim="time", skipna=True).astype(np.float32)
+    std_fraction = series.std(dim="time", skipna=True).astype(np.float32)
+    cell_area = _cell_area_grid_km2(series.isel(time=0, drop=True)).astype(np.float32)
+
+    stats_tile = xr.Dataset(
+        {
+            "wetland_fraction": series,
+            "valid_observation_count": valid_observation_count,
+            "mean_wetland_fraction": mean_fraction,
+            "std_wetland_fraction": std_fraction,
+            "cell_area_km2": cell_area,
+        },
+        attrs={
+            "dataset_id": "gwd30",
+            "source": "phase4_gwd30_native_pixel_statistics",
+            "aggregation": aggregation,
+            "year": int(source.attrs.get("year", 0)),
+        },
+    )
+    return stats_tile
+
+
+def _wetland_fraction_from_staged_tile(source: xr.Dataset) -> xr.DataArray:
+    spatial_y, spatial_x = _resolve_spatial_dims(source["coverage"])
+    class_ids = np.asarray(source["weighted"].coords["class_id"].values, dtype=np.int16)
+    wetland_ids = set(wetland_class_ids("gwd30", include_water=False))
+    selected_indices = [
+        index for index, class_id in enumerate(class_ids) if int(class_id) in wetland_ids
+    ]
+    coverage = source["coverage"].transpose("time", spatial_y, spatial_x).astype(np.float32)
+    if selected_indices:
+        wetland_weighted = (
+            source["weighted"]
+            .isel(class_id=selected_indices)
+            .sum(dim="class_id")
+            .transpose("time", spatial_y, spatial_x)
+            .astype(np.float32)
+        )
+    else:
+        wetland_weighted = xr.zeros_like(coverage).astype(np.float32)
+
+    fraction = xr.where(coverage > 0, wetland_weighted / coverage, np.nan)
+    fraction.name = "wetland_fraction"
+    return fraction.astype(np.float32)
+
+
+def _resolve_spatial_dims(data: xr.DataArray) -> tuple[str, str]:
+    if "lat" in data.dims and "lon" in data.dims:
+        return "lat", "lon"
+    if "y" in data.dims and "x" in data.dims:
+        return "y", "x"
+    raise ValueError(f"Could not resolve spatial dims from {data.dims!r}")
+
+
+def _cell_area_grid_km2(template: xr.DataArray) -> xr.DataArray:
+    spatial_y, spatial_x = _resolve_spatial_dims(template)
+    lat_values = np.asarray(template.coords[spatial_y].values, dtype=np.float64)
+    lon_values = np.asarray(template.coords[spatial_x].values, dtype=np.float64)
+    lat_edges = _coordinate_edges(lat_values)
+    lon_edges = _coordinate_edges(lon_values)
+
+    lat_lower = np.minimum(lat_edges[:-1], lat_edges[1:])
+    lat_upper = np.maximum(lat_edges[:-1], lat_edges[1:])
+    lon_lower = np.minimum(lon_edges[:-1], lon_edges[1:])
+    lon_upper = np.maximum(lon_edges[:-1], lon_edges[1:])
+
+    lat_term = np.sin(np.deg2rad(lat_upper)) - np.sin(np.deg2rad(lat_lower))
+    lon_term = np.deg2rad(lon_upper - lon_lower)
+    area = (6371.0088**2) * lat_term[:, None] * lon_term[None, :]
+    area_da = xr.DataArray(
+        area.astype(np.float64),
+        dims=(spatial_y, spatial_x),
+        coords={
+            spatial_y: template.coords[spatial_y].values,
+            spatial_x: template.coords[spatial_x].values,
+        },
+        name="cell_area_km2",
+    )
+    area_da = area_da.rio.set_spatial_dims(x_dim=spatial_x, y_dim=spatial_y, inplace=False)
+    return cast(xr.DataArray, area_da.rio.write_crs("EPSG:4326", inplace=False))
+
+
+def _coordinate_edges(values: np.ndarray) -> np.ndarray:
+    if values.size == 0:
+        raise ValueError("Cannot derive coordinate edges from an empty axis")
+    if values.size == 1:
+        center = float(values[0])
+        return np.array([center - 0.5, center + 0.5], dtype=np.float64)
+
+    mids = (values[:-1] + values[1:]) / 2.0
+    edges = np.empty(values.size + 1, dtype=np.float64)
+    edges[1:-1] = mids
+    edges[0] = values[0] - (mids[0] - values[0])
+    edges[-1] = values[-1] + (values[-1] - mids[-1])
+    return edges
+
+
+def _gwd30_years_for_time_range(
+    dataset_config: Mapping[str, object],
+    time_range: tuple[str, str] | None,
+) -> list[int]:
+    configured_years = sorted(int(year) for year in dataset_config.get("years", []))
+    if not configured_years:
+        raise ValueError("GWD30 config does not define any available years")
+    if time_range is None:
+        return configured_years
+
+    start = pd.Timestamp(time_range[0])
+    end = pd.Timestamp(time_range[1])
+    return [
+        year
+        for year in configured_years
+        if pd.Timestamp(f"{year}-12-31") >= start and pd.Timestamp(f"{year}-01-01") <= end
+    ]

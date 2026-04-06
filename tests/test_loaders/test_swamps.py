@@ -13,7 +13,7 @@ def test_swamps_loader_masks_fill_values(tmp_path: Path) -> None:
     base_path = tmp_path / "swamps"
     data_with_fill = xr.Dataset(
         {
-            "fw": (("lat", "lon"), np.array([[0.5, -9999.0, 0.1, -9999.0]], dtype=np.float32)),
+            "fw": (("lat", "lon"), np.array([[50.0, -9999.0, 10.0, -9999.0]], dtype=np.float32)),
         },
         coords={"lat": [0.5], "lon": [100.0, 101.0, 102.0, 103.0]},
     )
@@ -34,22 +34,22 @@ def test_swamps_loader_masks_fill_values(tmp_path: Path) -> None:
     wf = result["wetland_fraction"].values.flatten()
     assert np.isnan(wf[1]), "fill value -9999 should be masked to NaN"
     assert np.isnan(wf[3]), "fill value -9999 should be masked to NaN"
-    assert wf[0] == np.float32(0.5), "valid value should be preserved"
-    assert wf[2] == np.float32(0.1), "valid value should be preserved"
+    assert wf[0] == np.float32(0.5), "valid percent should be normalized to 0-1"
+    assert wf[2] == np.float32(0.1), "valid percent should be normalized to 0-1"
 
 
 def test_swamps_loader_handles_sensor_shift_patterns(tmp_path: Path) -> None:
     base_path = tmp_path / "swamps"
     december_1999 = xr.Dataset(
         {
-            "fw": (("lat", "lon"), np.array([[0.1, 0.2]], dtype=np.float32)),
+            "fw": (("lat", "lon"), np.array([[10.0, 20.0]], dtype=np.float32)),
             "flag": (("lat", "lon"), np.array([[0, 1]], dtype=np.int8)),
         },
         coords={"lat": [0.5], "lon": [100.0, 101.0]},
     )
     january_2000 = xr.Dataset(
         {
-            "fw": (("lat", "lon"), np.array([[0.3, 0.4]], dtype=np.float32)),
+            "fw": (("lat", "lon"), np.array([[30.0, 40.0]], dtype=np.float32)),
             "flag": (("lat", "lon"), np.array([[1, 0]], dtype=np.int8)),
         },
         coords={"lat": [0.5], "lon": [100.0, 101.0]},
@@ -74,3 +74,5 @@ def test_swamps_loader_handles_sensor_shift_patterns(tmp_path: Path) -> None:
     assert result.sizes["time"] == 2
     assert str(result.time.values[0])[:10] == "1999-12-31"
     assert result.attrs["sensor_shift_year"] == 2000
+    assert result["wetland_fraction"].isel(time=0, lat=0, lon=0).item() == np.float32(0.1)
+    assert result["wetland_fraction"].isel(time=1, lat=0, lon=0).item() == np.float32(0.3)

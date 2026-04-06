@@ -32,6 +32,23 @@ def test_harmonize_binary_dataset_rejects_auxiliary_berkeley() -> None:
         raise AssertionError("Expected Berkeley-RWAWC to be rejected for binary comparison")
 
 
+def test_harmonize_binary_dataset_uses_standardized_class_fractions_without_water() -> None:
+    dataset = xr.Dataset(
+        {
+            "frac_1": (("lat", "lon"), np.array([[0.2]], dtype=np.float32)),
+            "frac_8": (("lat", "lon"), np.array([[0.3]], dtype=np.float32)),
+            "frac_29": (("lat", "lon"), np.array([[0.4]], dtype=np.float32)),
+        },
+        coords={"lat": [0.5], "lon": [100.5]},
+    )
+    reference = create_comparison_grid((100.0, 0.0, 101.0, 1.0), resolution_deg=1.0)
+
+    harmonized = harmonize_binary_dataset("glwd_v2", dataset, reference_grid=reference)
+
+    np.testing.assert_allclose(harmonized.values, np.array([[0.7]], dtype=np.float32))
+    assert harmonized.attrs["comparison_source_variable"] == "classified_fractions"
+
+
 def test_harmonize_binary_dataset_uses_g2017_fraction_surface() -> None:
     dataset = xr.Dataset(
         {

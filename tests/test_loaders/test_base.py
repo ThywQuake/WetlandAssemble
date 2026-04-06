@@ -7,7 +7,7 @@ import pytest
 import rioxarray  # noqa: F401
 import xarray as xr
 
-from WA.loaders.base import validate_reference_grid
+from WA.loaders.base import ensure_datetime_index, validate_reference_grid
 
 
 def test_validate_reference_grid_accepts_valid_grid() -> None:
@@ -44,3 +44,28 @@ def test_validate_reference_grid_rejects_wrong_dims() -> None:
     grid = grid.rio.write_crs("EPSG:4326")
     with pytest.raises(ValueError, match="spatial dimensions"):
         validate_reference_grid(grid)
+
+
+def test_ensure_datetime_index_clears_time_cf_encoding() -> None:
+    dataset = xr.Dataset(
+        {"value": (("time",), np.array([1.0, 2.0], dtype=np.float32))},
+        coords={"time": np.array(["2000-01-16", "2000-02-15"], dtype="datetime64[ns]")},
+    )
+    dataset["time"].attrs.update(
+        {
+            "units": "days since 2000-01-16 00:00:00",
+            "calendar": "proleptic_gregorian",
+            "note": "keep-me",
+        }
+    )
+    dataset["time"].encoding = {
+        "units": "days since 2000-01-16 00:00:00",
+        "calendar": "proleptic_gregorian",
+    }
+
+    result = ensure_datetime_index(dataset)
+
+    assert "units" not in result["time"].attrs
+    assert "calendar" not in result["time"].attrs
+    assert result["time"].attrs["note"] == "keep-me"
+    assert result["time"].encoding == {}

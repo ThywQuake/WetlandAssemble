@@ -8,8 +8,10 @@ that degrades to a no-op progress object when `tqdm` is missing or unsafe.
 
 from __future__ import annotations
 
+import logging
 import os
 import sys
+import time
 from collections.abc import Iterable, Iterator
 from typing import Any, TypeVar
 
@@ -19,6 +21,7 @@ except Exception:  # pragma: no cover
     _real_tqdm = None
 
 _TQDM_FORCE_ENV = "WA_FORCE_TQDM"
+_PROGRESS_LOGGER = logging.getLogger("WA.progress")
 
 _Item = TypeVar("_Item")
 
@@ -44,6 +47,90 @@ class _NoOpProgress:
         return None
 
 
+class _LogProgress:
+    """Fallback progress reporter that emits periodic log lines."""
+
+    def __init__(
+        self,
+        iterable: Iterable[Any] | None = None,
+        *,
+        total: int | None = None,
+        desc: str | None = None,
+        unit: str = "item",
+        mininterval: float = 5.0,
+    ) -> None:
+        self._iterable = iterable
+        self._total = total if total is not None else _iterable_length(iterable)
+        self._desc = desc or "Progress"
+        self._unit = unit
+        self._mininterval = float(mininterval)
+        self._count = 0
+        self._postfix = ""
+        self._last_emit = 0.0
+        self._started = False
+        self._closed = False
+
+    def __iter__(self) -> Iterator[Any]:
+        if self._iterable is None:
+            return iter(())
+        self._emit(force=True)
+        try:
+            for item in self._iterable:
+                yield item
+                self.update(1)
+        finally:
+            self.close()
+
+    def update(self, count: int = 1) -> None:
+        self._count += count
+        self._emit()
+
+    def set_postfix_str(self, value: str, refresh: bool = True) -> None:
+        self._postfix = value
+        if refresh:
+            self._emit(force=True)
+
+    def close(self) -> None:
+        if self._closed:
+            return
+        self._emit(force=True)
+        self._closed = True
+
+    def _emit(self, *, force: bool = False) -> None:
+        now = time.monotonic()
+        if not self._started:
+            self._started = True
+            force = True
+        if not force and now - self._last_emit < self._mininterval:
+            return
+        _PROGRESS_LOGGER.info(self._message())
+        self._last_emit = now
+
+    def _message(self) -> str:
+        message = self._desc
+        if self._total is not None and self._total > 0:
+            ratio = min(max(self._count / self._total, 0.0), 1.0)
+            width = 20
+            filled = min(width, int(round(ratio * width)))
+            bar = "#" * filled + "-" * (width - filled)
+            message += f" [{bar}] {self._count}/{self._total} {self._unit}"
+            message += f" ({ratio:.0%})"
+        else:
+            message += f" {self._count} {self._unit}"
+        if self._postfix:
+            message += f" | {self._postfix}"
+        return message
+
+
+def _iterable_length(iterable: Iterable[Any] | None) -> int | None:
+    if iterable is None:
+        return None
+    try:
+        return len(iterable)  # type: ignore[arg-type]
+    except Exception:
+        return None
+
+
 def _tqdm_enabled() -> bool:
     forced = os.environ.get(_TQDM_FORCE_ENV, "").strip().lower()
     if forced in {"1", "true", "yes", "on"}:
@@ -62,5 +149,19 @@ def tqdm(iterable: Iterable[Any] | None = None, *args: Any, **kwargs: Any) -> An
     """
 
     if not _tqdm_enabled():
-        return _NoOpProgress(iterable)
+        total = kwargs.get("total")
+        desc = kwargs.get("desc")
+        unit = kwargs.get("unit", "item")
+        mininterval = kwargs.get("mininterval", 5.0)
+        if total is None:
+            total = _iterable_length(iterable)
+        if total is None and iterable is None:
+            return _NoOpProgress(iterable)
+        return _LogProgress(
+            iterable,
+            total=total,
+            desc=desc,
+            unit=unit,
+            mininterval=mininterval,
+        )
     return _real_tqdm(iterable, *args, **kwargs)

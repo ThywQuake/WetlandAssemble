@@ -86,3 +86,44 @@ def test_wad2m_loader_with_reference_grid(tmp_path: Path) -> None:
     assert result.sizes["lat"] == grid.sizes["lat"]
     assert result.sizes["lon"] == grid.sizes["lon"]
     assert "wetland_fraction" in result.data_vars
+
+
+def test_giems_loader_open_time_series_returns_lazy_window(tmp_path: Path) -> None:
+    base_path = tmp_path / "giems"
+    dataset = xr.Dataset(
+        {
+            "inund_sat_wetland_frac": (
+                ("time", "latitude", "longitude"),
+                np.array(
+                    [
+                        [[0.1, 0.2], [0.3, 0.4]],
+                        [[0.5, 0.6], [0.7, 0.8]],
+                    ],
+                    dtype=np.float32,
+                ),
+            )
+        },
+        coords={
+            "time": np.array(["1993-01-01", "1993-02-01"], dtype="datetime64[ns]"),
+            "latitude": [-0.5, 0.5],
+            "longitude": [100.0, 101.0],
+        },
+    )
+    write_netcdf(base_path / "GIEMS-MC.nc", dataset)
+
+    loader = get_loader(
+        "giems_mc",
+        with_common_fields(base_path, loader_type="netcdf", file="GIEMS-MC.nc"),
+    )
+
+    result = loader.open_time_series(
+        bbox=(99.5, -1.0, 100.5, 0.0),
+        time_range=("1993-01-01", "1993-01-31"),
+    )
+    try:
+        assert result.sizes["time"] == 1
+        assert result.sizes["lat"] == 1
+        assert result.sizes["lon"] == 1
+        assert "wetland_fraction" in result.data_vars
+    finally:
+        result.close()

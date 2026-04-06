@@ -68,6 +68,8 @@ class SwampsLoader(DatasetLoader):
             dataset["wetland_fraction"] = dataset["wetland_fraction"].where(
                 dataset["wetland_fraction"] != -9999.0, np.nan
             )
+            # SWAMPS stores percent values on a 0-100 scale; normalize to 0-1.
+            dataset["wetland_fraction"] = dataset["wetland_fraction"] / 100.0
             if "time" not in dataset.dims:
                 dataset = dataset.expand_dims(time=[parse_compact_date(path)])
             slices.append(dataset)

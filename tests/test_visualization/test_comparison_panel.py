@@ -152,11 +152,11 @@ def test_load_native_wetland_surface_uses_target_month_for_dynamic_dataset(
 
     base_path = tmp_path / "swamps"
     january = xr.Dataset(
-        {"fw": (("lat", "lon"), np.array([[0.1]], dtype=np.float32))},
+        {"fw": (("lat", "lon"), np.array([[10.0]], dtype=np.float32))},
         coords={"lat": [0.5], "lon": [100.0]},
     )
     february = xr.Dataset(
-        {"fw": (("lat", "lon"), np.array([[0.9]], dtype=np.float32))},
+        {"fw": (("lat", "lon"), np.array([[90.0]], dtype=np.float32))},
         coords={"lat": [0.5], "lon": [100.0]},
     )
     write_netcdf(base_path / "stable/2010/01/SWAMPS.FW.F13.QUIKSCAT.20100101.nc", january)

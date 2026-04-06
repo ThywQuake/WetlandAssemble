@@ -1,6 +1,15 @@
 """Loader registry exports."""
 
-from WA.loaders import berkeley, g2017, glwd, gwd30, netcdf_generic, swamps, topmodel
+from WA.loaders import (
+    berkeley,
+    g2017,
+    glwd,
+    gwd30,
+    netcdf_generic,
+    standardized_netcdf,
+    swamps,
+    topmodel,
+)
 from WA.loaders.registry import (
     UnsupportedDatasetError,
     get_loader,
@@ -18,6 +27,7 @@ __all__ = [
     "glwd",
     "gwd30",
     "netcdf_generic",
+    "standardized_netcdf",
     "swamps",
     "topmodel",
 ]

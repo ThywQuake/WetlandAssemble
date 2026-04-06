@@ -13,6 +13,7 @@ def test_registry_exposes_expected_loader_types() -> None:
         "glwd",
         "gwd30",
         "netcdf",
+        "standardized_netcdf",
         "swamps",
         "topmodel",
     )

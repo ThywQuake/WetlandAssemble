@@ -1,7 +1,7 @@
 """HPC diagnostic script for Phase 4 trend analysis.
 
 Usage:
-    uv run python scripts/hpc_probe_trends.py \\
+    python scripts/hpc_probe_trends.py \\
         --dataset-id wad2m \\
         --aggregation annual \\
         --bbox -60 -20 -50 5 \\
@@ -20,12 +20,8 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from WA.comparison.harmonize import (
-    create_comparison_grid,
-    harmonize_binary_dataset,
-)
-from WA.comparison.trends import compute_pixel_trends
-from WA.loaders.registry import get_loader
+from WA.comparison.harmonize import create_comparison_grid
+from WA.comparison.trends import compute_pixel_trends, load_trend_surface
 
 
 def _load_config() -> dict:  # type: ignore[type-arg]
@@ -67,12 +63,23 @@ def main() -> None:
         "--time-range",
         nargs=2,
         metavar=("START", "END"),
-        help="Time range to load (e.g., 2000-01-01 2020-12-31). If not specified, loads full dataset.",
+        help=(
+            "Time range to load (e.g., 2000-01-01 2020-12-31). "
+            "If not specified, loads full dataset."
+        ),
     )
     parser.add_argument(
         "--json-out",
         type=Path,
         help="Path to write JSON result report.",
+    )
+    parser.add_argument(
+        "--standardized-dir",
+        type=Path,
+        default=Path("output/standardized"),
+        help=(
+            "Standardized dataset root; GWD30 staged tiles are restored from _staging/."
+        ),
     )
     args = parser.parse_args()
 
@@ -87,17 +94,18 @@ def main() -> None:
     print(f"[probe] aggregation = {args.aggregation}")
     print(f"[probe] bbox = {bbox}")
 
-    print("[probe] Loading dataset...")
-    loader = get_loader(args.dataset_id, dataset_config)
-    time_range = tuple(args.time_range) if args.time_range else None  # type: ignore[arg-type]
-    ds = loader.load(bbox=bbox, time_range=time_range)  # type: ignore[call-arg]
-
-    print("[probe] Harmonizing to binary wetland fraction...")
+    print("[probe] Building trend reference grid...")
     reference_grid = create_comparison_grid(bbox)  # type: ignore[arg-type]
-    harmonized = harmonize_binary_dataset(
+    time_range = tuple(args.time_range) if args.time_range else None  # type: ignore[arg-type]
+
+    print("[probe] Loading trend-ready wetland fraction surface...")
+    harmonized = load_trend_surface(
         args.dataset_id,
-        ds,
+        bbox=bbox,  # type: ignore[arg-type]
+        time_range=time_range,
         reference_grid=reference_grid,
+        gwd30_standardized_dir=args.standardized_dir,
+        show_progress=True,
     )
     print(f"[probe] harmonized shape: {dict(harmonized.sizes)}")
 
@@ -117,6 +125,8 @@ def main() -> None:
         "observation_count": result.observation_count,
         "status": result.status,
     }
+    if args.dataset_id == "gwd30":
+        report["gwd30_standardized_dir"] = str(args.standardized_dir)
 
     if result.status == "computed":
         valid_mask = np.isfinite(result.sens_slope.values)

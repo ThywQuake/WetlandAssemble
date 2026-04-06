@@ -7,13 +7,15 @@ import logging
 import os
 import re
 import tempfile
+import time
 import warnings
 from collections import defaultdict
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from concurrent.futures.process import BrokenProcessPool
 from pathlib import Path
 from typing import Any, cast
+from uuid import uuid4
 
 import numpy as np
 import pandas as pd
@@ -24,6 +26,7 @@ from rasterio.errors import WindowError
 from rasterio.warp import reproject, transform_bounds
 from rasterio.windows import Window, from_bounds
 
+from WA.classification import source_class_ids_by_unified_id, unified_class_ids
 from WA.comparison.harmonize import _CLASSIFICATION_BINARY_MAPS, BINARY_WETLAND_THRESHOLD
 from WA.loaders._shared import (
     four_day_index_for_year,
@@ -43,9 +46,17 @@ from WA.utils.mgrs_tiling import GWD30TilingSystem
 from WA.utils.progress import tqdm
 
 logger = logging.getLogger(__name__)
+
+# Spatial index for staged tiles: grid hash mapping (row_bin, col_bin) -> list of (path, bbox)
+# This avoids O(N) linear scan when finding tiles intersecting a chunk bbox
 _TILE_CODE_PATTERN = re.compile(r"(?<![A-Z0-9])T?(\d{1,2}[C-HJ-NP-X][A-HJ-NP-Z]{2})(?![A-Z0-9])")
 _TEMP_TILE_NODATA = np.float32(-9999.0)
 _GWD30_CLASS_COUNT = 15
+_GWD30_STAGE_MAX_WORKERS = 4
+_GWD30_STAGE_LOCK_STALE_SECONDS = 6 * 60 * 60
+
+
+StagedTileTransform = Callable[[xr.Dataset], xr.Dataset]
 
 
 def _build_binary_lookup(mapping: Mapping[int, float]) -> np.ndarray:
@@ -72,6 +83,339 @@ def _bbox_intersects(a: BBox, b: BBox) -> bool:
         or a_max_lat < b_min_lat
         or b_max_lat < a_min_lat
     )
+
+
+def _bbox_intersection(a: BBox, b: BBox) -> BBox | None:
+    """Return the lon/lat intersection of two bounding boxes."""
+
+    min_lon = max(a[0], b[0])
+    min_lat = max(a[1], b[1])
+    max_lon = min(a[2], b[2])
+    max_lat = min(a[3], b[3])
+    if min_lon >= max_lon or min_lat >= max_lat:
+        return None
+    return (min_lon, min_lat, max_lon, max_lat)
+
+
+def _grid_hash_key(bbox: BBox, bin_size_deg: float = 5.0) -> set[tuple[int, int]]:
+    """Return grid hash keys for a bbox.
+
+    Used for spatial indexing: divide the world into bin_size_deg x bin_size_deg cells,
+    return all cell keys that the bbox touches.
+    """
+    min_lon, min_lat, max_lon, max_lat = bbox
+    min_row = int((min_lat + 90) / bin_size_deg)
+    max_row = int((max_lat + 90) / bin_size_deg)
+    min_col = int((min_lon + 180) / bin_size_deg)
+    max_col = int((max_lon + 180) / bin_size_deg)
+    return {(r, c) for r in range(min_row, max_row + 1) for c in range(min_col, max_col + 1)}
+
+
+def _build_staged_tile_index(
+    staged_tiles: list[tuple[Path, BBox]]
+) -> tuple[dict[tuple[int, int], list[tuple[Path, BBox]]], float]:
+    """Build a grid hash spatial index for staged tiles.
+
+    Returns:
+        - index: dict mapping (row_bin, col_bin) -> list of (path, bbox)
+        - bin_size_deg: the bin size used (degrees)
+    """
+    # Adaptive bin size: ~5 degrees for global coverage
+    bin_size_deg = 5.0
+    index: dict[tuple[int, int], list[tuple[Path, BBox]]] = defaultdict(list)
+
+    for stage_path, stage_bbox in staged_tiles:
+        keys = _grid_hash_key(stage_bbox, bin_size_deg)
+        for key in keys:
+            index[key].append((stage_path, stage_bbox))
+
+    return dict(index), bin_size_deg
+def _path_bounds_wgs84(path: Path) -> BBox | None:
+    """Return one raster's bounds in EPSG:4326 coordinates."""
+
+    try:
+        with rasterio.open(path) as src:
+            if src.crs is None or str(src.crs) == "EPSG:4326":
+                bounds = cast(BBox, src.bounds)
+            else:
+                bounds = cast(
+                    BBox,
+                    transform_bounds(src.crs, "EPSG:4326", *src.bounds, densify_pts=21),
+                )
+    except Exception:
+        return None
+
+    return (
+        max(-180.0, float(bounds[0])),
+        max(-90.0, float(bounds[1])),
+        min(180.0, float(bounds[2])),
+        min(90.0, float(bounds[3])),
+    )
+
+
+def _reference_grid_axis_step(reference_grid: xr.DataArray, dim: str) -> float:
+    """Infer one spatial axis step for a regular reference grid."""
+
+    coords = np.asarray(reference_grid.coords[dim].values, dtype=np.float64)
+    if coords.size > 1:
+        diffs = np.abs(np.diff(coords))
+        nonzero = diffs[diffs > 0]
+        if nonzero.size > 0:
+            return float(nonzero[0])
+
+    x_res, y_res = reference_grid.rio.resolution()
+    if dim in {"lon", "x"}:
+        return abs(float(x_res))
+    return abs(float(y_res))
+
+
+def _ordered_coord_slice(coord: xr.DataArray, lower: float, upper: float) -> slice:
+    """Build a coordinate-aware slice that respects ascending or descending axes."""
+
+    values = np.asarray(coord.values)
+    if values.size < 2 or values[0] <= values[-1]:
+        return slice(lower, upper)
+    return slice(upper, lower)
+
+
+def _reference_subgrid_for_bbox(
+    reference_grid: xr.DataArray,
+    bbox: BBox,
+) -> xr.DataArray | None:
+    """Return the reference-grid subset touched by a lon/lat bbox."""
+
+    y_dim = "lat" if "lat" in reference_grid.coords else "y"
+    x_dim = "lon" if "lon" in reference_grid.coords else "x"
+    x_step = _reference_grid_axis_step(reference_grid, x_dim)
+    y_step = _reference_grid_axis_step(reference_grid, y_dim)
+    min_lon, min_lat, max_lon, max_lat = bbox
+    subgrid = reference_grid.sel(
+        {
+            x_dim: _ordered_coord_slice(
+                reference_grid.coords[x_dim],
+                min_lon - x_step / 2,
+                max_lon + x_step / 2,
+            ),
+            y_dim: _ordered_coord_slice(
+                reference_grid.coords[y_dim],
+                min_lat - y_step / 2,
+                max_lat + y_step / 2,
+            ),
+        }
+    )
+    if subgrid.sizes.get(x_dim, 0) == 0 or subgrid.sizes.get(y_dim, 0) == 0:
+        return None
+    subgrid = subgrid.rio.set_spatial_dims(x_dim=x_dim, y_dim=y_dim, inplace=False)
+    if reference_grid.rio.crs is not None:
+        subgrid = subgrid.rio.write_crs(reference_grid.rio.crs, inplace=False)
+    return subgrid
+
+
+def _grid_bbox(reference_grid: xr.DataArray) -> BBox:
+    """Return the coordinate bounds of a reference-grid subset."""
+
+    y_dim = "lat" if "lat" in reference_grid.coords else "y"
+    x_dim = "lon" if "lon" in reference_grid.coords else "x"
+    lats = np.asarray(reference_grid.coords[y_dim].values, dtype=np.float64)
+    lons = np.asarray(reference_grid.coords[x_dim].values, dtype=np.float64)
+    return (
+        float(np.min(lons)),
+        float(np.min(lats)),
+        float(np.max(lons)),
+        float(np.max(lats)),
+    )
+
+
+def _build_partial_encoding(dataset: xr.Dataset) -> dict[str, dict[str, Any]]:
+    """Build compressed netCDF encoding for staged coarse partial files."""
+
+    encoding: dict[str, dict[str, Any]] = {}
+    for var_name, data in dataset.data_vars.items():
+        chunks: list[int] = []
+        for dim in data.dims:
+            if dim in {"lat", "lon", "y", "x"}:
+                chunks.append(min(256, int(data.sizes[dim])))
+            elif dim == "class_id":
+                chunks.append(min(15, int(data.sizes[dim])))
+            else:
+                chunks.append(1)
+        encoding[var_name] = {
+            "zlib": True,
+            "complevel": 4,
+            "shuffle": True,
+            "chunksizes": tuple(chunks),
+        }
+    return encoding
+
+
+def _stage_lock_path(stage_path: Path) -> Path:
+    """Return the lock-file path guarding one staged tile output."""
+
+    return stage_path.parent / f".{stage_path.name}.lock"
+
+
+def _is_stale_stage_lock(lock_path: Path, stale_after_seconds: int) -> bool:
+    """Return whether one stage lock is old enough to be treated as stale."""
+
+    try:
+        age_seconds = time.time() - lock_path.stat().st_mtime
+    except FileNotFoundError:
+        return False
+    return age_seconds >= stale_after_seconds
+
+
+def _try_acquire_stage_lock(stage_path: Path) -> Path | None:
+    """Try to exclusively claim one staged tile path across processes/nodes."""
+
+    lock_path = _stage_lock_path(stage_path)
+    for attempt in range(2):
+        try:
+            fd = os.open(lock_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o644)
+            break
+        except FileExistsError:
+            if attempt == 0 and _is_stale_stage_lock(lock_path, _GWD30_STAGE_LOCK_STALE_SECONDS):
+                logger.warning("Reclaiming stale GWD30 stage lock %s", lock_path.name)
+                lock_path.unlink(missing_ok=True)
+                continue
+            return None
+
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            handle.write(f"pid={os.getpid()}\n")
+    except Exception:
+        try:
+            os.close(fd)
+        except OSError:
+            pass
+        lock_path.unlink(missing_ok=True)
+        raise
+    return lock_path
+
+
+def _time_fraction_partials_to_dataset(
+    *,
+    weighted: np.ndarray,
+    coverage: np.ndarray,
+    y_dim: str,
+    x_dim: str,
+    y_coords: np.ndarray,
+    x_coords: np.ndarray,
+    year: int,
+    time_index: pd.DatetimeIndex,
+    source_tile: str,
+) -> xr.Dataset:
+    """Convert one tile's weighted/coverage partial arrays into a staged dataset."""
+
+    coords = {
+        "time": time_index,
+        "class_id": np.arange(_GWD30_CLASS_COUNT, dtype=np.int16),
+        y_dim: y_coords,
+        x_dim: x_coords,
+    }
+    return xr.Dataset(
+        data_vars={
+            "weighted": xr.DataArray(
+                weighted,
+                dims=("time", "class_id", y_dim, x_dim),
+                coords=coords,
+            ),
+            "coverage": xr.DataArray(
+                coverage,
+                dims=("time", y_dim, x_dim),
+                coords={
+                    "time": time_index,
+                    y_dim: y_coords,
+                    x_dim: x_coords,
+                },
+            ),
+        },
+        attrs={
+            "dataset_id": "gwd30",
+            "year": year,
+            "source_tile": source_tile,
+            "source": "coarse_time_fraction_tile_partial",
+        },
+    )
+
+
+def _staged_spatial_dims(data: xr.Dataset | xr.DataArray) -> tuple[str, str]:
+    dims = set(data.dims)
+    if {"lat", "lon"}.issubset(dims):
+        return "lat", "lon"
+    if {"y", "x"}.issubset(dims):
+        return "y", "x"
+    raise ValueError(f"Expected staged tile spatial dims lat/lon or y/x, got {sorted(dims)}")
+
+
+def phase36_reduce_staged_time_fraction_tile(source: xr.Dataset) -> xr.Dataset:
+    """Reduce one staged GWD30 tile to annual unified weighted sums for Phase 3.6."""
+
+    if "weighted" not in source.data_vars or "coverage" not in source.data_vars:
+        raise ValueError("Expected staged GWD30 tile dataset with weighted and coverage variables")
+
+    y_dim, x_dim = _staged_spatial_dims(source)
+    weighted = np.asarray(source["weighted"].values, dtype=np.float32)
+    coverage = np.asarray(source["coverage"].values, dtype=np.float32)
+    class_coords = np.asarray(source.coords["class_id"].values, dtype=np.int16)
+    class_index_by_id = {int(class_id): index for index, class_id in enumerate(class_coords)}
+    unified_ids = np.asarray(unified_class_ids(), dtype=np.int16)
+    grouped_source_ids = source_class_ids_by_unified_id("gwd30")
+    annual_source_weighted_sum = weighted.sum(axis=0, dtype=np.float32)
+
+    annual_unified_weighted_sum = np.zeros(
+        (len(unified_ids), weighted.shape[2], weighted.shape[3]),
+        dtype=np.float32,
+    )
+    for unified_index, unified_id in enumerate(unified_ids):
+        source_indices = [
+            class_index_by_id[source_id]
+            for source_id in grouped_source_ids.get(int(unified_id), ())
+            if source_id in class_index_by_id
+        ]
+        if not source_indices:
+            continue
+        annual_unified_weighted_sum[unified_index] = weighted[:, source_indices, :, :].sum(
+            axis=(0, 1),
+            dtype=np.float32,
+        )
+
+    annual_coverage_sum = coverage.sum(axis=0, dtype=np.float32)
+    reduced = xr.Dataset(
+        data_vars={
+            "annual_source_weighted_sum": xr.DataArray(
+                annual_source_weighted_sum,
+                dims=("source_class_id", y_dim, x_dim),
+                coords={
+                    "source_class_id": class_coords,
+                    y_dim: source.coords[y_dim].values,
+                    x_dim: source.coords[x_dim].values,
+                },
+            ),
+            "annual_unified_weighted_sum": xr.DataArray(
+                annual_unified_weighted_sum,
+                dims=("class_id", y_dim, x_dim),
+                coords={
+                    "class_id": unified_ids,
+                    y_dim: source.coords[y_dim].values,
+                    x_dim: source.coords[x_dim].values,
+                },
+            ),
+            "annual_coverage_sum": xr.DataArray(
+                annual_coverage_sum,
+                dims=(y_dim, x_dim),
+                coords={
+                    y_dim: source.coords[y_dim].values,
+                    x_dim: source.coords[x_dim].values,
+                },
+            ),
+        },
+        attrs={
+            "dataset_id": "gwd30",
+            "year": int(source.attrs.get("year", 0)),
+            "source": "phase36_annual_unified_weighted_tile",
+        },
+    )
+    return reduced
 
 
 def _extract_tile_code(path: Path) -> str | None:
@@ -172,14 +516,20 @@ def _masked_classes_to_binary_fraction(
 
 def _iter_tiles_with_progress(paths: list[Path], *, desc: str) -> Any:
     """Wrap tile iteration with tqdm for long-running HPC loads."""
-
-    return tqdm(
-        paths,
+    progress = tqdm(
+        total=len(paths),
         desc=desc,
         unit="tile",
         dynamic_ncols=True,
         mininterval=5.0,
     )
+    try:
+        for path in paths:
+            progress.set_postfix_str(path.name, refresh=False)
+            yield path
+            progress.update(1)
+    finally:
+        progress.close()
 
 
 def _resolve_parallel_worker_count(worker_count: int | None) -> int:
@@ -191,7 +541,6 @@ def _resolve_parallel_worker_count(worker_count: int | None) -> int:
     for env_name in (
         "WA_GWD30_WORKERS",
         "SLURM_CPUS_PER_TASK",
-        "SLURM_CPUS_ON_NODE",
         "OMP_NUM_THREADS",
         "PBS_NUM_PPN",
         "NSLOTS",
@@ -213,6 +562,35 @@ def _resolve_parallel_worker_count(worker_count: int | None) -> int:
     if affinity_count > 0:
         return affinity_count
     return max(1, os.cpu_count() or 1)
+
+
+def _resolve_stage_worker_count(worker_count: int | None, pending_tile_count: int) -> int:
+    """Resolve a memory-safe worker count for staged GWD30 tile preprocessing."""
+
+    if pending_tile_count <= 1:
+        return pending_tile_count
+
+    if worker_count is not None and worker_count > 0:
+        explicit = max(1, min(int(worker_count), pending_tile_count))
+        if explicit > _GWD30_STAGE_MAX_WORKERS:
+            logger.warning(
+                "GWD30 stage worker count explicitly set to %d, above the automatic safe cap %d; "
+                "use only when the HPC node has enough memory",
+                explicit,
+                _GWD30_STAGE_MAX_WORKERS,
+            )
+        return explicit
+
+    requested = _resolve_parallel_worker_count(worker_count)
+    capped = max(1, min(requested, pending_tile_count, _GWD30_STAGE_MAX_WORKERS))
+    if capped < requested:
+        logger.info(
+            "GWD30 stage worker count capped at %d (requested %d) to avoid OOM "
+            "from per-tile coarse arrays",
+            capped,
+            requested,
+        )
+    return capped
 
 
 def _normalize_shard_spec(shard_index: int, shard_count: int) -> tuple[int, int]:
@@ -446,6 +824,272 @@ def _process_fine_tile_to_fractions(
         return fractions, valid_mask
 
 
+def _process_time_fraction_tile_to_partial(
+    *,
+    path: str,
+    bbox: BBox,
+    reference_crs: str,
+    reference_transform: Any,
+    width: int,
+    height: int,
+) -> tuple[np.ndarray | None, np.ndarray | None]:
+    """Project one GWD30 tile into coarse-grid time-resolved class fractions.
+
+    Returns
+    -------
+    tuple[np.ndarray | None, np.ndarray | None]
+        ``(weighted_fractions, coverage)`` where:
+        - ``weighted_fractions`` has shape ``(time, class_id, lat, lon)``
+          and stores ``class_fraction * valid_coverage`` for one tile
+        - ``coverage`` has shape ``(time, lat, lon)`` and stores the fraction
+          of each coarse cell covered by valid source pixels from this tile
+    """
+
+    with rasterio.open(path) as src:
+        window = _source_window_for_bbox(src, bbox)
+        if window is None:
+            return None, None
+
+        source_height = int(window.height)
+        source_width = int(window.width)
+        if source_height <= 0 or source_width <= 0:
+            return None, None
+
+        source_transform = src.window_transform(window)
+        source_crs = src.crs
+        if source_crs is None:
+            return None, None
+
+        weighted = np.zeros((src.count, _GWD30_CLASS_COUNT, height, width), dtype=np.float32)
+        coverage = np.zeros((src.count, height, width), dtype=np.float32)
+
+        for band_index in range(1, src.count + 1):
+            band = src.read(band_index, window=window, masked=True)
+            if band.size == 0:
+                continue
+
+            band_mask = np.ma.getmaskarray(band)
+            valid = ~band_mask
+            if not np.any(valid):
+                continue
+
+            source_coverage = np.where(valid, 1.0, np.nan).astype(np.float32)
+            coarse_coverage = np.full((height, width), np.nan, dtype=np.float32)
+            reproject(
+                source=source_coverage,
+                destination=coarse_coverage,
+                src_transform=source_transform,
+                src_crs=source_crs,
+                dst_transform=reference_transform,
+                dst_crs=reference_crs,
+                src_nodata=np.nan,
+                dst_nodata=np.nan,
+                resampling=Resampling.average,
+            )
+            coarse_coverage = np.where(np.isfinite(coarse_coverage), coarse_coverage, 0.0)
+            if not np.any(coarse_coverage > 0):
+                continue
+            coverage[band_index - 1] = coarse_coverage
+
+            safe = np.clip(
+                np.asarray(np.ma.filled(band, 0), dtype=np.int16),
+                0,
+                _GWD30_CLASS_COUNT - 1,
+            )
+            for class_id in range(_GWD30_CLASS_COUNT):
+                binary = np.where(valid & (safe == class_id), 1.0, 0.0).astype(np.float32)
+                binary[~valid] = np.nan
+                coarse = np.full((height, width), np.nan, dtype=np.float32)
+                reproject(
+                    source=binary,
+                    destination=coarse,
+                    src_transform=source_transform,
+                    src_crs=source_crs,
+                    dst_transform=reference_transform,
+                    dst_crs=reference_crs,
+                    src_nodata=np.nan,
+                    dst_nodata=np.nan,
+                    resampling=Resampling.average,
+                )
+                weighted[band_index - 1, class_id] = np.where(
+                    np.isfinite(coarse),
+                    coarse * coarse_coverage,
+                    0.0,
+                )
+
+    if not np.any(coverage > 0):
+        return None, None
+    return weighted, coverage
+
+
+def _process_time_fraction_tile_to_stage_file(
+    *,
+    path: str,
+    stage_path: str,
+    manifest_bbox: BBox,
+    stage_bbox: BBox,
+    reference_crs: str,
+    reference_transform: Any,
+    width: int,
+    height: int,
+    y_dim: str,
+    x_dim: str,
+    y_coords: np.ndarray,
+    x_coords: np.ndarray,
+    year: int,
+    time_index: pd.DatetimeIndex,
+) -> tuple[Path, BBox] | None:
+    """Process one tile and write its staged coarse partial directly to disk."""
+
+    stage_path_obj = Path(stage_path)
+    if stage_path_obj.exists():
+        return stage_path_obj, manifest_bbox
+
+    lock_path = _try_acquire_stage_lock(stage_path_obj)
+    if lock_path is None:
+        if stage_path_obj.exists():
+            return stage_path_obj, manifest_bbox
+        logger.info("GWD30 staged tile already claimed elsewhere, skipping %s", stage_path_obj.name)
+        return None
+    try:
+        weighted, coverage = _process_time_fraction_tile_to_partial(
+            path=path,
+            bbox=stage_bbox,
+            reference_crs=reference_crs,
+            reference_transform=reference_transform,
+            width=width,
+            height=height,
+        )
+        if weighted is None or coverage is None:
+            return None
+
+        dataset = _time_fraction_partials_to_dataset(
+            weighted=weighted,
+            coverage=coverage,
+            y_dim=y_dim,
+            x_dim=x_dim,
+            y_coords=y_coords,
+            x_coords=x_coords,
+            year=year,
+            time_index=time_index,
+            source_tile=Path(path).name,
+        )
+        temp_stage_path = stage_path_obj.parent / (
+            f".{stage_path_obj.name}.tmp-{os.getpid()}-{uuid4().hex}"
+        )
+        try:
+            dataset.to_netcdf(
+                temp_stage_path,
+                format="NETCDF4",
+                engine="netcdf4",
+                encoding=_build_partial_encoding(dataset),
+            )
+            os.replace(temp_stage_path, stage_path_obj)
+        finally:
+            dataset.close()
+            temp_stage_path.unlink(missing_ok=True)
+    finally:
+        lock_path.unlink(missing_ok=True)
+    return stage_path_obj, manifest_bbox
+
+
+def _stage_file_signature(stage_path: Path) -> tuple[int, int]:
+    """Return one compact signature for a staged tile file."""
+
+    stat = stage_path.stat()
+    return int(stat.st_size), int(stat.st_mtime_ns)
+
+
+def _transformed_tile_cache_is_current(
+    *,
+    output_path: Path,
+    stage_path: Path,
+    transform_name: str,
+    transform_version: int,
+) -> bool:
+    """Return whether one transformed tile still matches its staged source."""
+
+    if not output_path.is_file() or not stage_path.is_file():
+        return False
+
+    stage_size, stage_mtime_ns = _stage_file_signature(stage_path)
+    try:
+        with xr.open_dataset(output_path, engine="netcdf4") as cached:
+            attrs = dict(cached.attrs)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Ignoring unreadable transformed GWD30 tile %s: %s", output_path, exc)
+        return False
+
+    if str(attrs.get("transform_name", "")) != transform_name:
+        return False
+    if int(attrs.get("transform_version", -1)) != int(transform_version):
+        return False
+    if str(attrs.get("source_stage_path", "")) != str(stage_path):
+        return False
+    if int(attrs.get("source_stage_size", -1)) != stage_size:
+        return False
+    if int(attrs.get("source_stage_mtime_ns", -1)) != stage_mtime_ns:
+        return False
+    return True
+
+
+def _transform_staged_time_fraction_tile_to_file(
+    *,
+    stage_path: str,
+    output_path: str,
+    manifest_bbox: BBox,
+    transform_name: str,
+    transform_version: int,
+    transform_tile: StagedTileTransform,
+) -> tuple[Path, BBox] | None:
+    """Load one staged tile netCDF, transform it, and write one reduced tile netCDF."""
+
+    stage_path_obj = Path(stage_path)
+    output_path_obj = Path(output_path)
+    if output_path_obj.exists():
+        return output_path_obj, manifest_bbox
+
+    lock_path = _try_acquire_stage_lock(output_path_obj)
+    if lock_path is None:
+        if output_path_obj.exists():
+            return output_path_obj, manifest_bbox
+        logger.info(
+            "GWD30 transformed tile already claimed elsewhere, skipping %s",
+            output_path_obj.name,
+        )
+        return None
+    try:
+        with xr.open_dataset(stage_path, engine="netcdf4") as source:
+            transformed = transform_tile(source.load())
+        stage_size, stage_mtime_ns = _stage_file_signature(stage_path_obj)
+        transformed.attrs.update(
+            {
+                "transform_name": transform_name,
+                "transform_version": int(transform_version),
+                "source_stage_path": str(stage_path_obj),
+                "source_stage_size": stage_size,
+                "source_stage_mtime_ns": stage_mtime_ns,
+            }
+        )
+        temp_output_path = output_path_obj.parent / (
+            f".{output_path_obj.name}.tmp-{os.getpid()}-{uuid4().hex}"
+        )
+        try:
+            transformed.to_netcdf(
+                temp_output_path,
+                format="NETCDF4",
+                engine="netcdf4",
+                encoding=_build_partial_encoding(transformed),
+            )
+            os.replace(temp_output_path, output_path_obj)
+        finally:
+            transformed.close()
+            temp_output_path.unlink(missing_ok=True)
+    finally:
+        lock_path.unlink(missing_ok=True)
+    return output_path_obj, manifest_bbox
+
+
 def _reproject_tile_bands_to_grid(
     *,
     path: str,
@@ -518,6 +1162,11 @@ class GWD30Loader(DatasetLoader):
             tuple[BBox | None, TimeRange | None],
             dict[int, list[Path]],
         ] = {}
+        self._tile_bbox_cache: dict[Path, BBox | None] = {}
+        self._merge_index_cache: dict[
+            int,
+            tuple[dict[tuple[int, int], list[tuple[Path, BBox]]], float],
+        ] = {}
 
     def metadata(self) -> DatasetMetadata:
         return DatasetMetadata(
@@ -578,7 +1227,7 @@ class GWD30Loader(DatasetLoader):
         for year, paths in sorted(tiles_by_year.items()):
             if not paths:
                 continue
-            logger.info("GWD30 loading year %s with %s tile(s)", year, len(paths))
+            logger.debug("GWD30 loading year %s with %s tile(s)", year, len(paths))
             band_indexes: list[int] | None = None
             selected_times: list[pd.Timestamp] | None = None
             if time_range is not None:
@@ -641,7 +1290,7 @@ class GWD30Loader(DatasetLoader):
         for year, paths in sorted(tiles_by_year.items()):
             if not paths:
                 continue
-            logger.info(
+            logger.debug(
                 "GWD30 loading year %s with %s tile(s) [reference_grid]",
                 year,
                 len(paths),
@@ -881,6 +1530,905 @@ class GWD30Loader(DatasetLoader):
         )
         return dataset
 
+    def load_time_fraction_grid(
+        self,
+        *,
+        bbox: BBox,
+        reference_grid: xr.DataArray,
+        year: int,
+        worker_count: int | None = None,
+        show_progress: bool = True,
+    ) -> xr.Dataset:
+        """Load one GWD30 year into coarse, time-resolved per-class fractions.
+
+        The returned dataset contains ``frac_0`` ... ``frac_14`` variables with
+        dimensions ``(time, lat, lon)`` (or ``time, y, x`` when the reference
+        grid uses projected spatial dimension names).
+        """
+
+        time_range = (f"{year}-01-01", f"{year}-12-31")
+        tiles_by_year = self._discover_tiles(bbox=bbox, time_range=time_range)
+        paths = list(tiles_by_year.get(year, []))
+        if not paths:
+            raise FileNotFoundError(f"No GWD30 tiles found under {self.base_path} for year {year}")
+
+        reference_crs, reference_transform, width, height = _reference_grid_spec(reference_grid)
+        resolved_worker_count = _resolve_parallel_worker_count(worker_count)
+        y_dim = "lat" if "lat" in reference_grid.coords else "y"
+        x_dim = "lon" if "lon" in reference_grid.coords else "x"
+
+        if not show_progress:
+            logger.info(
+                "GWD30 %s: chunk bbox=%s matched %d tile(s), worker_count=%d",
+                year,
+                bbox,
+                len(paths),
+                resolved_worker_count,
+            )
+
+        with rasterio.open(paths[0]) as sample:
+            band_count = int(sample.count)
+        time_index = four_day_index_for_year(year, band_count)
+
+        weighted_sum = np.zeros(
+            (band_count, _GWD30_CLASS_COUNT, height, width),
+            dtype=np.float32,
+        )
+        coverage_sum = np.zeros((band_count, height, width), dtype=np.float32)
+
+        def accumulate_partial(
+            weighted: np.ndarray | None,
+            coverage: np.ndarray | None,
+        ) -> None:
+            if weighted is None or coverage is None:
+                return
+            weighted_sum[...] += weighted
+            coverage_sum[...] += coverage
+
+        def process_tile(tile_path: Path) -> tuple[np.ndarray | None, np.ndarray | None]:
+            return _process_time_fraction_tile_to_partial(
+                path=str(tile_path),
+                bbox=bbox,
+                reference_crs=reference_crs,
+                reference_transform=reference_transform,
+                width=width,
+                height=height,
+            )
+
+        if resolved_worker_count > 1 and len(paths) > 1:
+            fallback_to_serial = False
+            processed_indices: set[int] = set()
+            progress = (
+                tqdm(
+                    total=len(paths),
+                    desc=f"GWD30 {year} time-frac-parallel",
+                    unit="tile",
+                    dynamic_ncols=True,
+                    mininterval=5.0,
+                )
+                if show_progress
+                else None
+            )
+            try:
+                try:
+                    with ProcessPoolExecutor(
+                        max_workers=resolved_worker_count,
+                        max_tasks_per_child=1,
+                    ) as executor:
+                        future_to_meta = {
+                            executor.submit(
+                                _process_time_fraction_tile_to_partial,
+                                path=str(path),
+                                bbox=bbox,
+                                reference_crs=reference_crs,
+                                reference_transform=reference_transform,
+                                width=width,
+                                height=height,
+                            ): (index, path)
+                            for index, path in enumerate(paths)
+                        }
+                        for future in as_completed(future_to_meta):
+                            index, path = future_to_meta[future]
+                            if progress is not None:
+                                progress.set_postfix_str(path.name, refresh=False)
+                            try:
+                                weighted, coverage = future.result()
+                                processed_indices.add(index)
+                                accumulate_partial(weighted, coverage)
+                                if progress is not None:
+                                    progress.update(1)
+                            except BrokenProcessPool:
+                                fallback_to_serial = True
+                                break
+                            except Exception as exc:
+                                logger.warning(
+                                    "GWD30 tile %s skipped during time-fraction "
+                                    "parallel reduction (%s: %s)",
+                                    path.name,
+                                    type(exc).__name__,
+                                    exc,
+                                )
+                                processed_indices.add(index)
+                                if progress is not None:
+                                    progress.update(1)
+                except Exception as pool_exc:
+                    logger.warning(
+                        "GWD30 time-fraction parallel execution failed "
+                        "(%s: %s); will retry serially",
+                        type(pool_exc).__name__,
+                        pool_exc,
+                    )
+                    fallback_to_serial = True
+
+                if fallback_to_serial:
+                    remaining = [
+                        index for index in range(len(paths))
+                        if index not in processed_indices
+                    ]
+                    logger.warning(
+                        "GWD30 time-fraction parallel failed after %d/%d tiles; "
+                        "falling back to serial for %d remaining",
+                        len(processed_indices),
+                        len(paths),
+                        len(remaining),
+                    )
+                    for index in remaining:
+                        path = paths[index]
+                        if progress is not None:
+                            progress.set_postfix_str(path.name, refresh=False)
+                        try:
+                            weighted, coverage = process_tile(path)
+                            accumulate_partial(weighted, coverage)
+                        except Exception as exc:
+                            logger.warning(
+                                "GWD30 tile %s failed during time-fraction "
+                                "serial fallback (%s: %s)",
+                                path.name,
+                                type(exc).__name__,
+                                exc,
+                            )
+                        if progress is not None:
+                            progress.update(1)
+            finally:
+                if progress is not None:
+                    progress.close()
+        else:
+            iter_paths = (
+                _iter_tiles_with_progress(paths, desc=f"GWD30 {year} time-frac")
+                if show_progress
+                else paths
+            )
+            for index, path in enumerate(iter_paths, start=1):
+                if not show_progress and (
+                    index == 1 or index == len(paths) or index % 8 == 0
+                ):
+                    logger.info(
+                        "GWD30 %s: reading tile %d/%d | %s",
+                        year,
+                        index,
+                        len(paths),
+                        path.name,
+                    )
+                weighted, coverage = process_tile(path)
+                accumulate_partial(weighted, coverage)
+
+        coverage = coverage_sum[:, None, :, :]
+        if not np.any(coverage > 0):
+            raise FileNotFoundError(
+                "GWD30 tiles found under "
+                f"{self.base_path} for year {year} but none intersected {bbox}"
+            )
+
+        fractions = np.full_like(weighted_sum, np.nan)
+        np.divide(
+            weighted_sum,
+            coverage,
+            out=fractions,
+            where=coverage > 0,
+        )
+        fractions = np.clip(fractions, 0.0, 1.0)
+
+        coords = {
+            "time": time_index,
+            y_dim: reference_grid.coords[y_dim].values,
+            x_dim: reference_grid.coords[x_dim].values,
+        }
+        data_vars = {
+            f"frac_{class_id}": xr.DataArray(
+                fractions[:, class_id],
+                dims=("time", y_dim, x_dim),
+                coords=coords,
+                attrs={
+                    "dataset_id": self.dataset_id,
+                    "year": year,
+                    "source": "low_memory_time_fraction_grid",
+                    "description": f"GWD30 raw class-{class_id} fraction on coarse grid",
+                },
+            )
+            for class_id in range(_GWD30_CLASS_COUNT)
+        }
+        dataset = xr.Dataset(data_vars)
+        dataset = self.finalize_dataset(
+            dataset,
+            bbox=bbox,
+            time_range=time_range,
+            reference_grid=reference_grid,
+        )
+        dataset.attrs.update({"year": year, "source": "low_memory_time_fraction_grid"})
+        return dataset
+
+    def stage_time_fraction_tiles(
+        self,
+        *,
+        bbox: BBox,
+        reference_grid: xr.DataArray,
+        year: int,
+        staging_dir: Path,
+        worker_count: int | None = None,
+        show_progress: bool = True,
+        skip_existing: bool = False,
+        shard_index: int | None = None,
+        shard_count: int | None = None,
+    ) -> list[tuple[Path, BBox]]:
+        """Preprocess each source TIFF into one coarse local partial file.
+
+        Each staged file stores:
+        - ``weighted``: ``class_fraction * valid_coverage`` on the tile's local coarse grid
+        - ``coverage``: valid coarse coverage per timestep on the same local grid
+        """
+
+        time_range = (f"{year}-01-01", f"{year}-12-31")
+        logger.info("GWD30 %s: discovering source tiles for bbox=%s", year, bbox)
+        tiles_by_year = self._discover_tiles(bbox=bbox, time_range=time_range)
+        paths = list(tiles_by_year.get(year, []))
+        if not paths:
+            raise FileNotFoundError(f"No GWD30 tiles found under {self.base_path} for year {year}")
+        logger.info("GWD30 %s: %d source tile(s) matched after filtering", year, len(paths))
+
+        if shard_index is not None or shard_count is not None:
+            if shard_index is None or shard_count is None:
+                raise ValueError("shard_index and shard_count must be provided together")
+            shard_index, shard_count = _normalize_shard_spec(shard_index, shard_count)
+            total_paths = len(paths)
+            paths = _select_paths_for_shard(
+                paths,
+                shard_index=shard_index,
+                shard_count=shard_count,
+            )
+            logger.info(
+                "GWD30 %s: shard %d/%d assigned %d/%d source tile(s)",
+                year,
+                shard_index + 1,
+                shard_count,
+                len(paths),
+                total_paths,
+            )
+            if not paths:
+                return []
+
+        staging_dir.mkdir(parents=True, exist_ok=True)
+
+        with rasterio.open(paths[0]) as sample:
+            time_index = four_day_index_for_year(year, int(sample.count))
+
+        reusable_stage_paths: list[tuple[Path, BBox]] = []
+        pending_specs: list[dict[str, Any]] = []
+        planning_iterable = (
+            _iter_tiles_with_progress(paths, desc=f"GWD30 {year} plan")
+            if show_progress and len(paths) > 1
+            else paths
+        )
+        for path in planning_iterable:
+            tile_bounds = self._tile_bounds_for_stage(path)
+            if tile_bounds is None:
+                continue
+            stage_bbox = _bbox_intersection(tile_bounds, bbox)
+            if stage_bbox is None:
+                continue
+            stage_grid = _reference_subgrid_for_bbox(reference_grid, stage_bbox)
+            if stage_grid is None:
+                continue
+
+            stage_path = staging_dir / f"tile_{path.stem}.nc"
+            manifest_bbox = _grid_bbox(stage_grid)
+            if skip_existing and stage_path.exists():
+                reusable_stage_paths.append((stage_path, manifest_bbox))
+                continue
+
+            reference_crs, reference_transform, width, height = _reference_grid_spec(stage_grid)
+            pending_specs.append(
+                {
+                    "path": path,
+                    "stage_path": stage_path,
+                    "manifest_bbox": manifest_bbox,
+                    "stage_bbox": stage_bbox,
+                    "reference_crs": reference_crs,
+                    "reference_transform": reference_transform,
+                    "width": width,
+                    "height": height,
+                    "y_dim": "lat" if "lat" in stage_grid.coords else "y",
+                    "x_dim": "lon" if "lon" in stage_grid.coords else "x",
+                    "y_coords": np.asarray(
+                        stage_grid.coords["lat" if "lat" in stage_grid.coords else "y"].values
+                    ),
+                    "x_coords": np.asarray(
+                        stage_grid.coords["lon" if "lon" in stage_grid.coords else "x"].values
+                    ),
+                }
+            )
+
+        staged_paths: list[tuple[Path, BBox]] = list(reusable_stage_paths)
+        logger.info(
+            "GWD30 %s: stage plan prepared %d pending tile(s), reused %d staged tile(s)",
+            year,
+            len(pending_specs),
+            len(reusable_stage_paths),
+        )
+        if not pending_specs:
+            return staged_paths
+
+        resolved_worker_count = _resolve_stage_worker_count(worker_count, len(pending_specs))
+        logger.info(
+            "GWD30 %s: staging %d pending tile(s) with %d worker(s)",
+            year,
+            len(pending_specs),
+            resolved_worker_count,
+        )
+
+        def process_spec(spec: dict[str, Any]) -> tuple[Path, BBox] | None:
+            return _process_time_fraction_tile_to_stage_file(
+                path=str(cast(Path, spec["path"])),
+                stage_path=str(cast(Path, spec["stage_path"])),
+                manifest_bbox=cast(BBox, spec["manifest_bbox"]),
+                stage_bbox=cast(BBox, spec["stage_bbox"]),
+                reference_crs=cast(str, spec["reference_crs"]),
+                reference_transform=spec["reference_transform"],
+                width=cast(int, spec["width"]),
+                height=cast(int, spec["height"]),
+                y_dim=cast(str, spec["y_dim"]),
+                x_dim=cast(str, spec["x_dim"]),
+                y_coords=cast(np.ndarray, spec["y_coords"]),
+                x_coords=cast(np.ndarray, spec["x_coords"]),
+                year=year,
+                time_index=time_index,
+            )
+
+        if resolved_worker_count > 1 and len(pending_specs) > 1:
+            fallback_to_serial = False
+            processed_indices: set[int] = set()
+            progress = (
+                tqdm(
+                    total=len(pending_specs),
+                    desc=f"GWD30 {year} stage",
+                    unit="tile",
+                    dynamic_ncols=True,
+                    mininterval=5.0,
+                )
+                if show_progress
+                else None
+            )
+            try:
+                try:
+                    with ProcessPoolExecutor(
+                        max_workers=resolved_worker_count,
+                        max_tasks_per_child=1,
+                    ) as executor:
+                        future_to_meta = {
+                            executor.submit(
+                                _process_time_fraction_tile_to_stage_file,
+                                path=str(cast(Path, spec["path"])),
+                                stage_path=str(cast(Path, spec["stage_path"])),
+                                manifest_bbox=cast(BBox, spec["manifest_bbox"]),
+                                stage_bbox=cast(BBox, spec["stage_bbox"]),
+                                reference_crs=cast(str, spec["reference_crs"]),
+                                reference_transform=spec["reference_transform"],
+                                width=cast(int, spec["width"]),
+                                height=cast(int, spec["height"]),
+                                y_dim=cast(str, spec["y_dim"]),
+                                x_dim=cast(str, spec["x_dim"]),
+                                y_coords=cast(np.ndarray, spec["y_coords"]),
+                                x_coords=cast(np.ndarray, spec["x_coords"]),
+                                year=year,
+                                time_index=time_index,
+                            ): (index, spec)
+                            for index, spec in enumerate(pending_specs)
+                        }
+                        for future in as_completed(future_to_meta):
+                            index, spec = future_to_meta[future]
+                            path = cast(Path, spec["path"])
+                            if progress is not None:
+                                progress.set_postfix_str(path.name, refresh=False)
+                            try:
+                                staged = future.result()
+                                processed_indices.add(index)
+                                if staged is not None:
+                                    staged_paths.append(staged)
+                                if progress is not None:
+                                    progress.update(1)
+                            except BrokenProcessPool:
+                                fallback_to_serial = True
+                                break
+                            except Exception as exc:
+                                logger.warning(
+                                    "GWD30 tile %s failed during coarse stage (%s: %s)",
+                                    path.name,
+                                    type(exc).__name__,
+                                    exc,
+                                )
+                                processed_indices.add(index)
+                                if progress is not None:
+                                    progress.update(1)
+                except Exception as pool_exc:
+                    logger.warning(
+                        "GWD30 coarse stage parallel execution failed (%s: %s); "
+                        "will retry serially",
+                        type(pool_exc).__name__,
+                        pool_exc,
+                    )
+                    fallback_to_serial = True
+
+                if fallback_to_serial:
+                    remaining = [
+                        index for index in range(len(pending_specs))
+                        if index not in processed_indices
+                    ]
+                    logger.warning(
+                        "GWD30 coarse stage parallel failed after %d/%d tiles; "
+                        "falling back to serial for %d remaining",
+                        len(processed_indices),
+                        len(pending_specs),
+                        len(remaining),
+                    )
+                    for index in remaining:
+                        spec = pending_specs[index]
+                        path = cast(Path, spec["path"])
+                        if progress is not None:
+                            progress.set_postfix_str(path.name, refresh=False)
+                        try:
+                            staged = process_spec(spec)
+                            if staged is not None:
+                                staged_paths.append(staged)
+                        except Exception as exc:
+                            logger.warning(
+                                "GWD30 tile %s failed during coarse stage serial fallback "
+                                "(%s: %s)",
+                                path.name,
+                                type(exc).__name__,
+                                exc,
+                            )
+                        if progress is not None:
+                            progress.update(1)
+            finally:
+                if progress is not None:
+                    progress.close()
+        else:
+            iterable = (
+                _iter_tiles_with_progress(
+                    [cast(Path, spec["path"]) for spec in pending_specs],
+                    desc=f"GWD30 {year} stage",
+                )
+                if show_progress
+                else [cast(Path, spec["path"]) for spec in pending_specs]
+            )
+            spec_by_path = {cast(Path, spec["path"]): spec for spec in pending_specs}
+            for index, path in enumerate(iterable, start=1):
+                spec = spec_by_path[path]
+                if not show_progress and (
+                    index == 1 or index == len(pending_specs) or index % 8 == 0
+                ):
+                    logger.info(
+                        "GWD30 %s: staging tile %d/%d | %s",
+                        year,
+                        index,
+                        len(pending_specs),
+                        path.name,
+                    )
+                staged = process_spec(spec)
+                if staged is not None:
+                    staged_paths.append(staged)
+
+        logger.info("GWD30 %s: staged %d tile partial(s)", year, len(staged_paths))
+
+        return staged_paths
+
+    def transform_staged_time_fraction_tiles(
+        self,
+        *,
+        staged_tiles: list[tuple[Path, BBox]],
+        output_dir: Path,
+        transform_name: str,
+        transform_version: int,
+        transform_tile: StagedTileTransform,
+        year: int,
+        worker_count: int | None = None,
+        show_progress: bool = True,
+        skip_existing: bool = False,
+    ) -> list[tuple[Path, BBox]]:
+        """Apply one tile-local transform to staged tile netCDF files.
+
+        The transform must be a top-level callable so it can be executed in worker
+        processes. Each transformed output is guarded by the same atomic lock and
+        rename strategy used by `stage_time_fraction_tiles()`.
+        """
+
+        output_dir.mkdir(parents=True, exist_ok=True)
+        if not skip_existing:
+            stale_outputs = list(output_dir.glob("tile_*.nc"))
+            for stale_output in stale_outputs:
+                stale_output.unlink()
+            if stale_outputs:
+                logger.info(
+                    "GWD30 %s: cleared %d stale transformed tile file(s) under %s",
+                    year,
+                    len(stale_outputs),
+                    output_dir,
+                )
+
+        reusable_outputs: list[tuple[Path, BBox]] = []
+        pending_specs: list[dict[str, Any]] = []
+        stale_output_count = 0
+        for stage_path, manifest_bbox in staged_tiles:
+            output_path = output_dir / stage_path.name
+            if skip_existing and output_path.exists():
+                if _transformed_tile_cache_is_current(
+                    output_path=output_path,
+                    stage_path=stage_path,
+                    transform_name=transform_name,
+                    transform_version=transform_version,
+                ):
+                    reusable_outputs.append((output_path, manifest_bbox))
+                    continue
+                output_path.unlink(missing_ok=True)
+                stale_output_count += 1
+            pending_specs.append(
+                {
+                    "stage_path": stage_path,
+                    "output_path": output_path,
+                    "manifest_bbox": manifest_bbox,
+                }
+            )
+
+        transformed_paths: list[tuple[Path, BBox]] = list(reusable_outputs)
+        logger.info(
+            "GWD30 %s: transform[%s] plan prepared %d pending tile(s), "
+            "reused %d transformed tile(s), refreshed %d stale tile(s)",
+            year,
+            transform_name,
+            len(pending_specs),
+            len(reusable_outputs),
+            stale_output_count,
+        )
+        if not pending_specs:
+            return transformed_paths
+
+        resolved_worker_count = _resolve_stage_worker_count(worker_count, len(pending_specs))
+        logger.info(
+            "GWD30 %s: transform[%s] running %d pending tile(s) with %d worker(s)",
+            year,
+            transform_name,
+            len(pending_specs),
+            resolved_worker_count,
+        )
+
+        def process_spec(spec: dict[str, Any]) -> tuple[Path, BBox] | None:
+            return _transform_staged_time_fraction_tile_to_file(
+                stage_path=str(cast(Path, spec["stage_path"])),
+                output_path=str(cast(Path, spec["output_path"])),
+                manifest_bbox=cast(BBox, spec["manifest_bbox"]),
+                transform_name=transform_name,
+                transform_version=transform_version,
+                transform_tile=transform_tile,
+            )
+
+        if resolved_worker_count > 1 and len(pending_specs) > 1:
+            fallback_to_serial = False
+            processed_indices: set[int] = set()
+            progress = (
+                tqdm(
+                    total=len(pending_specs),
+                    desc=f"GWD30 {year} transform[{transform_name}]",
+                    unit="tile",
+                    dynamic_ncols=True,
+                    mininterval=5.0,
+                )
+                if show_progress
+                else None
+            )
+            try:
+                try:
+                    with ProcessPoolExecutor(
+                        max_workers=resolved_worker_count,
+                        max_tasks_per_child=1,
+                    ) as executor:
+                        future_to_meta = {
+                            executor.submit(
+                                _transform_staged_time_fraction_tile_to_file,
+                                stage_path=str(cast(Path, spec["stage_path"])),
+                                output_path=str(cast(Path, spec["output_path"])),
+                                manifest_bbox=cast(BBox, spec["manifest_bbox"]),
+                                transform_name=transform_name,
+                                transform_version=transform_version,
+                                transform_tile=transform_tile,
+                            ): (index, spec)
+                            for index, spec in enumerate(pending_specs)
+                        }
+                        for future in as_completed(future_to_meta):
+                            index, spec = future_to_meta[future]
+                            path = cast(Path, spec["stage_path"])
+                            if progress is not None:
+                                progress.set_postfix_str(path.name, refresh=False)
+                            try:
+                                transformed = future.result()
+                                processed_indices.add(index)
+                                if transformed is not None:
+                                    transformed_paths.append(transformed)
+                                if progress is not None:
+                                    progress.update(1)
+                            except BrokenProcessPool:
+                                fallback_to_serial = True
+                                break
+                            except Exception as exc:
+                                logger.warning(
+                                    "GWD30 staged tile %s failed during transform[%s] (%s: %s)",
+                                    path.name,
+                                    transform_name,
+                                    type(exc).__name__,
+                                    exc,
+                                )
+                                processed_indices.add(index)
+                                if progress is not None:
+                                    progress.update(1)
+                except Exception as pool_exc:
+                    logger.warning(
+                        "GWD30 transform[%s] parallel execution failed (%s: %s); "
+                        "will retry serially",
+                        transform_name,
+                        type(pool_exc).__name__,
+                        pool_exc,
+                    )
+                    fallback_to_serial = True
+
+                if fallback_to_serial:
+                    remaining = [
+                        index
+                        for index in range(len(pending_specs))
+                        if index not in processed_indices
+                    ]
+                    logger.warning(
+                        "GWD30 transform[%s] parallel failed after %d/%d tiles; "
+                        "falling back to serial for %d remaining",
+                        transform_name,
+                        len(processed_indices),
+                        len(pending_specs),
+                        len(remaining),
+                    )
+                    for index in remaining:
+                        spec = pending_specs[index]
+                        path = cast(Path, spec["stage_path"])
+                        if progress is not None:
+                            progress.set_postfix_str(path.name, refresh=False)
+                        try:
+                            transformed = process_spec(spec)
+                            if transformed is not None:
+                                transformed_paths.append(transformed)
+                        except Exception as exc:
+                            logger.warning(
+                                "GWD30 staged tile %s failed during transform[%s] serial fallback "
+                                "(%s: %s)",
+                                path.name,
+                                transform_name,
+                                type(exc).__name__,
+                                exc,
+                            )
+                        if progress is not None:
+                            progress.update(1)
+            finally:
+                if progress is not None:
+                    progress.close()
+        else:
+            iterable = (
+                _iter_tiles_with_progress(
+                    [cast(Path, spec["stage_path"]) for spec in pending_specs],
+                    desc=f"GWD30 {year} transform[{transform_name}]",
+                )
+                if show_progress
+                else [cast(Path, spec["stage_path"]) for spec in pending_specs]
+            )
+            spec_by_path = {cast(Path, spec["stage_path"]): spec for spec in pending_specs}
+            for index, path in enumerate(iterable, start=1):
+                spec = spec_by_path[path]
+                if not show_progress and (
+                    index == 1 or index == len(pending_specs) or index % 8 == 0
+                ):
+                    logger.info(
+                        "GWD30 %s: transform[%s] tile %d/%d | %s",
+                        year,
+                        transform_name,
+                        index,
+                        len(pending_specs),
+                        path.name,
+                    )
+                transformed = process_spec(spec)
+                if transformed is not None:
+                    transformed_paths.append(transformed)
+
+        logger.info(
+            "GWD30 %s: transform[%s] produced %d tile cache(s)",
+            year,
+            transform_name,
+            len(transformed_paths),
+        )
+        return transformed_paths
+
+    def prepare_staged_tile_merge_index(
+        self,
+        *,
+        year: int,
+        staged_tiles: list[tuple[Path, BBox]],
+    ) -> None:
+        """Build and cache a spatial index for one year's staged tile partials."""
+
+        self._merge_index_cache[year] = _build_staged_tile_index(staged_tiles)
+
+    def _candidate_staged_tiles_for_merge(
+        self,
+        *,
+        staged_tiles: list[tuple[Path, BBox]],
+        bbox: BBox,
+        year: int,
+    ) -> list[tuple[Path, BBox]]:
+        """Return staged tile partials whose coarse bbox intersects one merge chunk."""
+
+        cached = self._merge_index_cache.get(year)
+        if cached is None:
+            cached = _build_staged_tile_index(staged_tiles)
+            self._merge_index_cache[year] = cached
+
+        index, bin_size_deg = cached
+        candidate_by_path: dict[Path, tuple[Path, BBox]] = {}
+        for key in _grid_hash_key(bbox, bin_size_deg):
+            for stage_path, stage_bbox in index.get(key, []):
+                candidate_by_path[stage_path] = (stage_path, stage_bbox)
+
+        return [
+            (stage_path, stage_bbox)
+            for stage_path, stage_bbox in candidate_by_path.values()
+            if _bbox_intersects(stage_bbox, bbox)
+        ]
+
+    def merge_staged_time_fraction_tiles(
+        self,
+        *,
+        staged_tiles: list[tuple[Path, BBox]],
+        reference_grid: xr.DataArray,
+        bbox: BBox,
+        year: int,
+        batch_size: int = 100,
+    ) -> xr.Dataset:
+        """Merge staged tiles into one output chunk.
+
+        Processes tiles in batches to control memory usage.
+
+        Args:
+            staged_tiles: List of (path, bbox) tuples
+            reference_grid: Target reference grid
+            bbox: Target bounding box
+            year: Year to process
+            batch_size: Process N tiles at a time (default: 100)
+        """
+
+        time_range = (f"{year}-01-01", f"{year}-12-31")
+
+        candidate_tiles = self._candidate_staged_tiles_for_merge(
+            staged_tiles=staged_tiles,
+            bbox=bbox,
+            year=year,
+        )
+
+        if not candidate_tiles:
+            raise FileNotFoundError(f"No staged GWD30 coarse tiles intersect {bbox}")
+
+        y_dim = "lat" if "lat" in reference_grid.coords else "y"
+        x_dim = "lon" if "lon" in reference_grid.coords else "x"
+        chunk_y = reference_grid.coords[y_dim].values
+        chunk_x = reference_grid.coords[x_dim].values
+
+        # Pre-read time/class coords from first tile
+        first_path = candidate_tiles[0][0]
+        with xr.open_dataset(first_path, engine="netcdf4") as first_source:
+            time_coords = np.asarray(first_source.coords["time"].values)
+            class_coords = np.asarray(first_source.coords["class_id"].values)
+
+        # Accumulate in batches
+        weighted_sum: np.ndarray | None = None
+        coverage_sum: np.ndarray | None = None
+
+        total = len(candidate_tiles)
+        for batch_start in range(0, total, batch_size):
+            batch_end = min(batch_start + batch_size, total)
+            batch = candidate_tiles[batch_start:batch_end]
+
+            batch_weighted = None
+            batch_coverage = None
+
+            for stage_path, _ in batch:
+                with xr.open_dataset(stage_path, engine="netcdf4") as source:
+                    weighted = source["weighted"].reindex(
+                        {y_dim: chunk_y, x_dim: chunk_x},
+                        fill_value=0.0,
+                    ).transpose("time", "class_id", y_dim, x_dim)
+                    coverage = source["coverage"].reindex(
+                        {y_dim: chunk_y, x_dim: chunk_x},
+                        fill_value=0.0,
+                    ).transpose("time", y_dim, x_dim)
+
+                    w = np.asarray(weighted.values, dtype=np.float32)
+                    c = np.asarray(coverage.values, dtype=np.float32)
+
+                    if batch_weighted is None:
+                        batch_weighted = w
+                        batch_coverage = c
+                    else:
+                        batch_weighted = batch_weighted + w
+                        batch_coverage = batch_coverage + c
+
+            # Accumulate batch result
+            if weighted_sum is None:
+                weighted_sum = batch_weighted
+                coverage_sum = batch_coverage
+            else:
+                weighted_sum = weighted_sum + batch_weighted
+                coverage_sum = coverage_sum + batch_coverage
+
+            # Clear batch memory
+            del batch_weighted, batch_coverage
+            gc.collect()
+
+        if weighted_sum is None or coverage_sum is None:
+            raise FileNotFoundError(f"Failed to merge staged GWD30 coarse tiles for {bbox}")
+
+        # Compute fractions: weighted / coverage
+        fractions = np.full_like(weighted_sum, np.nan)
+        np.divide(
+            weighted_sum,
+            coverage_sum[:, None, :, :],
+            out=fractions,
+            where=coverage_sum[:, None, :, :] > 0,
+        )
+        fractions = np.clip(fractions, 0.0, 1.0)
+
+        coords = {
+            "time": time_coords,
+            y_dim: chunk_y,
+            x_dim: chunk_x,
+        }
+        dataset = xr.Dataset(
+            {
+                f"frac_{int(class_id)}": xr.DataArray(
+                    fractions[:, class_index],
+                    dims=("time", y_dim, x_dim),
+                    coords=coords,
+                    attrs={
+                        "dataset_id": self.dataset_id,
+                        "year": year,
+                        "source": "staged_time_fraction_tiles",
+                        "description": (
+                            f"GWD30 raw class-{int(class_id)} fraction on coarse grid"
+                        ),
+                    },
+                )
+                for class_index, class_id in enumerate(class_coords)
+            }
+        )
+        dataset = self.finalize_dataset(
+            dataset,
+            bbox=bbox,
+            time_range=time_range,
+            reference_grid=reference_grid,
+        )
+        dataset.attrs.update({"year": year, "source": "staged_time_fraction_tiles"})
+        return dataset
+
     def _discover_tiles(
         self,
         *,
@@ -901,10 +2449,14 @@ class GWD30Loader(DatasetLoader):
         for year in sorted(allowed_years):
             pattern = str(self.config["pattern"]).format(year=year)
             paths = sorted(self.base_path.glob(pattern))
-            logger.info("GWD30 discovered %s candidate tile(s) for year %s", len(paths), year)
+            logger.debug("GWD30 discovered %s candidate tile(s) for year %s", len(paths), year)
             if bbox is not None:
                 paths = self._filter_tiles_for_bbox(paths, bbox)
-                logger.info("GWD30 kept %s tile(s) for year %s after bbox filter", len(paths), year)
+                logger.debug(
+                    "GWD30 kept %s tile(s) for year %s after bbox filter",
+                    len(paths),
+                    year,
+                )
             for path in paths:
                 grouped[year].append(path)
         self._discover_tiles_cache[cache_key] = grouped
@@ -922,7 +2474,7 @@ class GWD30Loader(DatasetLoader):
                 if (tile_code := _extract_tile_code(path)) is not None and tile_code in tile_codes
             ]
             if matched:
-                logger.info(
+                logger.debug(
                     "GWD30 tile-code prefilter matched %s/%s tile(s) for bbox %s",
                     len(matched),
                     len(paths),
@@ -930,7 +2482,7 @@ class GWD30Loader(DatasetLoader):
                 )
                 return matched
 
-        logger.info("GWD30 falling back to raster-bounds scan for bbox %s", bbox)
+        logger.debug("GWD30 falling back to raster-bounds scan for bbox %s", bbox)
         return _filter_files_by_bounds(paths, bbox)
 
     def load_rough_binary_surface(
@@ -1410,6 +2962,17 @@ class GWD30Loader(DatasetLoader):
             return self._tiling.tile_to_extent(tile_code)
         except Exception:
             return None
+
+    def _tile_bounds_for_stage(self, path: Path) -> BBox | None:
+        cached = self._tile_bbox_cache.get(path)
+        if path in self._tile_bbox_cache:
+            return cached
+
+        bounds = self._tile_bbox(_extract_tile_code(path))
+        if bounds is None:
+            bounds = _path_bounds_wgs84(path)
+        self._tile_bbox_cache[path] = bounds
+        return bounds
 
     def _process_rough_tile_to_temp(
         self,

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Mapping
+from pathlib import Path
 from typing import Literal, cast
 
 import numpy as np
@@ -12,6 +13,7 @@ import rioxarray  # noqa: F401
 import xarray as xr
 from rasterio.enums import Resampling
 
+from WA.classification import binary_class_mapping, wetland_fraction_from_standardized_classes
 from WA.loaders.base import BBox
 
 logger = logging.getLogger(__name__)
@@ -24,71 +26,8 @@ EXCLUDED_BINARY_DATASET_IDS = frozenset({"berkeley_rwawc", "lstm_wetland"})
 SUBMONTHLY_TIME_RESOLUTIONS = frozenset({"daily", "4-day"})
 
 _CLASSIFICATION_BINARY_MAPS: dict[str, dict[int, float]] = {
-    "g2017": {
-        10: 0.0,
-        20: 1.0,
-        30: 1.0,
-        40: 1.0,
-        50: 1.0,
-        60: 1.0,
-        70: 1.0,
-        80: 1.0,
-        90: 1.0,
-        100: 1.0,
-    },
-    "glwd_v2": {
-        0: 0.0,
-        1: 0.0,
-        2: 0.0,
-        3: 0.0,
-        4: 0.0,
-        5: 0.0,
-        6: 0.0,
-        7: 0.0,
-        8: 1.0,
-        9: 1.0,
-        10: 1.0,
-        11: 1.0,
-        12: 1.0,
-        13: 1.0,
-        14: 1.0,
-        15: 1.0,
-        16: 1.0,
-        17: 1.0,
-        18: 1.0,
-        19: 1.0,
-        20: 1.0,
-        21: 1.0,
-        22: 1.0,
-        23: 1.0,
-        24: 1.0,
-        25: 1.0,
-        26: 1.0,
-        27: 1.0,
-        28: 1.0,
-        29: 1.0,
-        30: 1.0,
-        31: 1.0,
-        32: 1.0,
-        33: 0.0,
-    },
-    "gwd30": {
-        0: 0.0,
-        1: 0.0,
-        2: 0.0,
-        3: 0.0,
-        4: 0.0,
-        5: 0.0,
-        6: 0.0,
-        7: 0.0,
-        8: 1.0,
-        9: 1.0,
-        10: 1.0,
-        11: 1.0,
-        12: 1.0,
-        13: 1.0,
-        14: 0.0,
-    },
+    dataset_id: binary_class_mapping(dataset_id, include_water=False)
+    for dataset_id in ("g2017", "glwd_v2", "gwd30")
 }
 
 
@@ -276,6 +215,22 @@ def _prepare_binary_source(
             stage="prepared_source",
         )
         return source, Resampling.bilinear, "wetland_fraction"
+
+    standardized_fraction = wetland_fraction_from_standardized_classes(dataset_id, dataset)
+    if standardized_fraction is not None:
+        standardized_fraction = _clip_fraction(standardized_fraction)
+        standardized_fraction = _aggregate_submonthly_time(
+            standardized_fraction,
+            dataset,
+            aggregation=aggregation,
+        )
+        _ensure_non_empty_binary_surface(
+            standardized_fraction,
+            dataset_id=dataset_id,
+            source_variable="classified_fractions",
+            stage="prepared_source",
+        )
+        return standardized_fraction, Resampling.bilinear, "classified_fractions"
 
     if dataset_id == "g2017" and "wetland" in dataset:
         mapped = _map_classification_to_binary_fraction(
@@ -585,3 +540,118 @@ def _prepare_spatial_array(data: xr.DataArray) -> xr.DataArray:
     if prepared.rio.crs is None:
         prepared = cast(xr.DataArray, prepared.rio.write_crs("EPSG:4326", inplace=False))
     return prepared
+
+
+# =============================================================================
+# 标准化数据支持函数 (Phase 2.6)
+# =============================================================================
+
+def harmonize_standardized_datasets(
+    standardized_dir: str | Path,
+    reference_grid: xr.DataArray | None = None,
+    bbox: BBox | None = None,
+    years: list[int] | None = None,
+    exclude: list[str] | None = None,
+) -> dict[str, xr.DataArray]:
+    """从标准化目录加载并 harmonize 所有可用数据集。
+
+    Parameters
+    ----------
+    standardized_dir : str | Path
+        标准化数据目录 (output/standardized)
+    reference_grid : xr.DataArray | None
+        参考网格，若为 None 则从 bbox 创建默认 0.25° 网格
+    bbox : BBox | None
+        空间范围，用于创建参考网格或直接裁剪
+    years : list[int] | None
+        目标年份列表，若为 None 则加载所有年份
+    exclude : list[str] | None
+        排除的数据集 ID 列表
+
+    Returns
+    -------
+    dict[str, xr.DataArray]
+        {dataset_id: wetland_fraction DataArray}
+    """
+    from WA.standardized_loader import StandardizedDataLoader
+
+    loader = StandardizedDataLoader(standardized_dir)
+    exclude = set(exclude or [])
+
+    # 创建参考网格
+    if reference_grid is None:
+        if bbox is None:
+            bbox = (-180, -35, 180, 35)  # 默认热带/亚热带全域
+        reference_grid = create_comparison_grid(bbox, resolution_deg=0.004491)  # ~500m
+
+    harmonized: dict[str, xr.DataArray] = {}
+
+    for ds_info in loader.list_available_datasets():
+        # 跳过排除的数据集
+        base_id = ds_info.dataset_id.rsplit("_", 1)[0]
+        if base_id in exclude or ds_info.dataset_id in exclude:
+            continue
+
+        # 跳过不在目标年份的数据
+        if years is not None and ds_info.year is not None and ds_info.year not in years:
+            continue
+
+        try:
+            dataset = loader.load(
+                ds_info.dataset_id.rsplit("_", 1)[0],
+                year=ds_info.year,
+                bbox=bbox,
+            )
+            harmonized[ds_info.dataset_id] = harmonize_binary_dataset(
+                ds_info.dataset_id,
+                dataset,
+                reference_grid=reference_grid,
+            )
+        except Exception as e:
+            logger.warning(f"跳过 {ds_info.dataset_id}: {e}")
+
+    if not harmonized:
+        raise BinaryComparisonUnavailableError("标准化目录中没有可用的数据集")
+
+    return harmonized
+
+
+def load_standardized_surface(
+    dataset_id: str,
+    standardized_dir: str | Path,
+    year: int | None = None,
+    bbox: BBox | None = None,
+    reference_grid: xr.DataArray | None = None,
+) -> xr.DataArray:
+    """从标准化目录加载单个数据集并转换为 wetland_fraction 表面。
+
+    Parameters
+    ----------
+    dataset_id : str
+        数据集 ID (如 "g2017", "wad2m")
+    standardized_dir : str | Path
+        标准化数据目录
+    year : int | None
+        年份（动态数据集必需）
+    bbox : BBox | None
+        空间范围
+    reference_grid : xr.DataArray | None
+        参考网格
+
+    Returns
+    -------
+    xr.DataArray
+        wetland_fraction DataArray
+    """
+    from WA.standardized_loader import StandardizedDataLoader
+
+    loader = StandardizedDataLoader(standardized_dir)
+    dataset = loader.load(dataset_id, year=year, bbox=bbox)
+
+    if reference_grid is None and bbox is not None:
+        reference_grid = create_comparison_grid(bbox, resolution_deg=0.004491)
+
+    if reference_grid is None:
+        raise ValueError("必须提供 bbox 或 reference_grid")
+
+    return harmonize_binary_dataset(dataset_id, dataset, reference_grid=reference_grid)

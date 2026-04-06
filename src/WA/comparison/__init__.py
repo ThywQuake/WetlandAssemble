@@ -34,6 +34,18 @@ from WA.comparison.hotspots import (
     extract_hotspots,
     get_representative_sites,
 )
+from WA.comparison.phase36 import (
+    DEFAULT_PHASE36_TARGET_YEAR,
+    PHASE36_DATASET_IDS,
+    aggregate_source_fractions_to_unified,
+    build_joint_dominant_class_dataset,
+    compute_dominant_class,
+    compute_joint_valid_mask,
+    compute_valid_mask,
+    compute_vote_entropy,
+    load_phase36_inputs,
+    run_phase36_analysis,
+)
 from WA.comparison.rough_binary import RoughBinaryResult, compute_rough_binary_metrics
 from WA.comparison.trend_agreement import (
     TrendAgreementResult,
@@ -46,12 +58,14 @@ from WA.comparison.trends import (
     compute_pixel_trends,
     compute_regional_summary,
     compute_year_over_year_change,
+    load_trend_surface,
 )
 
 __all__ = [
     "BINARY_WETLAND_THRESHOLD",
     "CLASSIFICATION_DATASET_IDS",
     "DEFAULT_FOCUS_REGION_BBOXES",
+    "DEFAULT_PHASE36_TARGET_YEAR",
     "AggregationLevel",
     "BinaryComparisonUnavailableError",
     "EmptyBinarySurfaceError",
@@ -59,6 +73,7 @@ __all__ = [
     "FINE_4CLASS_MAPS",
     "FINE_8CLASS_LABELS",
     "FINE_8CLASS_MAPS",
+    "PHASE36_DATASET_IDS",
     "EntropyHotspot",
     "REPRESENTATIVE_WETLAND_SITES",
     "FineComparisonUnavailableError",
@@ -66,13 +81,19 @@ __all__ = [
     "RoughFocusArea",
     "TrendAgreementResult",
     "TrendResult",
+    "aggregate_source_fractions_to_unified",
+    "build_joint_dominant_class_dataset",
     "compute_class_agreement",
+    "compute_dominant_class",
+    "compute_joint_valid_mask",
     "compute_overlap_window",
     "compute_pixel_trends",
     "compute_regional_summary",
     "compute_rough_binary_metrics",
     "compute_shannon_entropy",
     "compute_trend_agreement",
+    "compute_valid_mask",
+    "compute_vote_entropy",
     "compute_year_over_year_change",
     "create_comparison_grid",
     "dataset_supports_binary_comparison",
@@ -83,6 +104,9 @@ __all__ = [
     "harmonize_binary_dataset",
     "harmonize_fine_collection",
     "harmonize_fine_dataset",
+    "load_phase36_inputs",
+    "load_trend_surface",
+    "run_phase36_analysis",
     "select_comparison_slice",
     "select_focus_areas",
 ]

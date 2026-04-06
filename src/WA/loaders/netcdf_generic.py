@@ -91,6 +91,37 @@ class GenericNetCDFLoader(DatasetLoader):
             dataset, bbox=bbox, time_range=time_range, reference_grid=reference_grid,
         )
 
+    def open_time_series(
+        self,
+        bbox: BBox | None = None,
+        time_range: TimeRange | None = None,
+    ) -> xr.Dataset:
+        """Open one lazily-backed time-series window for repeated chunk access."""
+
+        source = xr.open_dataset(self.base_path / str(self.config["file"]))
+        try:
+            spec = self._spec()
+            source_variable = str(spec["source_variable"])
+            target_variable = str(spec["target_variable"])
+
+            if source_variable not in source:
+                raise KeyError(f"{source_variable!r} was not found in {self.dataset_id}")
+
+            dataset = source[[source_variable]].rename({source_variable: target_variable})
+            for mask_value in spec["mask_values"]:
+                dataset[target_variable] = dataset[target_variable].where(
+                    dataset[target_variable] != mask_value, np.nan
+                )
+
+            dataset = ensure_datetime_index(dataset)
+            dataset = self.finalize_dataset(dataset, bbox=bbox, time_range=time_range)
+        except Exception:
+            source.close()
+            raise
+
+        dataset.set_close(source.close)
+        return dataset
+
     def _spec(self) -> Mapping[str, Any]:
         try:
             return SUPPORTED_NETCDF_DATASETS[self.dataset_id]
