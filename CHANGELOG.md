@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-04-07
+
+- Added `.gsd/milestones/M001/slices/S05/S05-OPERATOR-RECOVERY-PACK.md` as the canonical first-stop operator recovery index and added `docs/stashes/2026-04-07-009-m001-s05-operator-recovery-pack-reentry.md` as the subordinate Chinese-friendly breadcrumb; both explicitly send route-truth questions back to S03, actual execution copying back to S04, and keep the inherited HPC-only proof gap open while closing `R008` around the compact recovery pack.
+- Added `.gsd/milestones/M001/slices/S03/S03-ROUTE-AUDIT-RISK-REGISTER.md` as the canonical Phase 4 route audit / risk register, naming the current Stage-1 pixel-stats plus Stage-2 regional-table chain, the still-usable trend probe lane, the historical/stale full-tropics and missing-runner routes, and the carry-forward proof gaps tied to R003 / R004 / R005.
+- Added `docs/stashes/2026-04-07-004-m001-s03-route-audit-reentry.md` as the compact Chinese-friendly pointer back to `.gsd/milestones/M001/slices/S03/S03-ROUTE-AUDIT-RISK-REGISTER.md`, preserving the current route, the routes to avoid, and the still-open HPC-only proof boundaries without creating a second source of truth.
+- Added `.gsd/milestones/M001/slices/S02/S02-PHASE-MODULE-MATRIX.md` as the canonical evidence-graded matrix for M001/S02, with a grading contract that restates the D002 vocabulary, cross-links S01's frozen inventory/drift-boundary artifacts, and separates local proof from HPC/external proof for the early/core phase rows (`Phase 1` through `Phase 3.5`).
+- Extended the same matrix with late-phase rows for `Phase 3.6`, `Phase 3.6.1`, `Phase 3.7`, and an explicit Phase 4 split between the current Stage-1 / Stage-2 regional chain and the historical full-tropics reducer route, so newer 2026-04-06 continuation signals are visibly separated from the older 2026-04-05 path.
+- Added the first `Module Matrix` block for loader/comparison-core families (`loaders/classification`, `standardized loader`, `standardization & GWD30 staging`, `rough comparison`, `fine-grained comparison`), reusing the D002 rubric and pairing each row with concrete `src/WA/...` + regression-test anchors.
+- Completed the remaining higher-level `Module Matrix` families (`validation/GEE references`, `Phase 2.6 regional metrics`, `Phase 3.6 global disagreement`, `Phase 3.7 hotspot/plotting`, `Phase 4 regional/trends`, `visualization surfaces`) and added `Requirement Coverage` plus `Open Proof Gaps` so the matrix now states which surfaces are locally exercised versus which ones still need HPC / external proof.
+- Validated `R002` and `R007` against `.gsd/milestones/M001/slices/S02/S02-PHASE-MODULE-MATRIX.md` in `.gsd/REQUIREMENTS.md` and added `docs/stashes/2026-04-07-003-m001-s02-phase-matrix-reentry.md` as the compact Chinese-friendly re-entry note covering the canonical matrix path, the current-vs-historical Phase 4 split, the still-relevant verification commands, and the remaining HPC-only gaps.
+- Validated `R006` against `.gsd/milestones/M001/slices/S04/S04-NEXT-STEP-EXECUTION-MAP.md`, added the map’s explicit `Requirement Coverage` section, and added `docs/stashes/2026-04-07-008-m001-s04-next-step-execution-map-reentry.md` as a compact Chinese-friendly breadcrumb that points operators back to the canonical next-step execution map instead of creating a second source of truth.
+
 ## 2026-04-06
 
 - Phase 4 Berkeley valid-mask cold-start generation now uses a single
