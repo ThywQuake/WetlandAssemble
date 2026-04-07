@@ -200,6 +200,7 @@ TEST_CATEGORIES: tuple[TestCategory, ...] = (
             "tests/test_comparison/test_trend_agreement.py",
             "tests/test_visualization/test_phase4.py",
             "tests/test_submit_phase4_gwd30_pixel_stats.py",
+            "tests/test_submit_phase4_gwd30_regional_year_split.py",
             "tests/test_submit_phase4_gwd30_tropical_shards.py",
         ),
         triggers=(
@@ -214,6 +215,7 @@ TEST_CATEGORIES: tuple[TestCategory, ...] = (
             "scripts/run_phase4_gwd30_tropical_shard.py",
             "scripts/run_phase4_regional.py",
             "scripts/submit_phase4_gwd30_pixel_stats.sh",
+            "scripts/submit_phase4_gwd30_regional_year_split.sh",
             "scripts/submit_phase4_gwd30_tropical_shards.sh",
         ),
     ),

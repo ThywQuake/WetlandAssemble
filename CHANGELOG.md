@@ -2,6 +2,7 @@
 
 ## 2026-04-07
 
+- Added `scripts/submit_phase4_gwd30_regional_year_split.sh`, which submits one `run_phase4_regional.py` job per selected year for `gwd30` and one dependent merge job that rebuilds the final `regional_series.csv` and region table from the yearly caches.
 - Phase 4 `gwd30` regional processing now supports year-split execution and merge-on-read. The `gwd30` path writes one monthly region cache per year under `results/phase4/cache/gwd30/<region>/years/regional_series_<year>.csv`, and later wide-window runs can reuse those year caches to assemble the final `regional_series.csv` without recomputing every year in one task.
 - Phase 4 `gwd30` pixel-statistics regional reduction now accumulates one year's monthly totals incrementally instead of storing every tile-month DataFrame in memory before concatenation. This reduces memory pressure and makes year-scoped HPC fanout practical for large regions such as `pan_trop_subtrop`.
 - Phase 4 Berkeley/shared-mask projection for pixel-statistics tiles now subsets the region mask to the target tile bbox before reprojection. This avoids repeatedly reprojecting the full pan-tropical mask for every tile and removes the next OOM bottleneck after the Berkeley mask cold-start fix.
