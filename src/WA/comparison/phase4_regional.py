@@ -1711,11 +1711,28 @@ def _resolve_phase4_berkeley_mask_source_time_range(
     """
 
     standardized = StandardizedDataLoader(standardized_dir)
-    source_paths = standardized.resolve_file_paths(
-        "berkeley_rwawc",
-        time_range=requested_time_range,
-    )
-    first_path = source_paths[0]
+    selection_mode = "overlap"
+    try:
+        source_paths = standardized.resolve_file_paths(
+            "berkeley_rwawc",
+            time_range=requested_time_range,
+        )
+        first_path = source_paths[0]
+    except FileNotFoundError:
+        fallback_matches = standardized._dynamic_matches("berkeley_rwawc")
+        if not fallback_matches:
+            raise
+        earliest_year = min(fallback_matches)
+        first_path = fallback_matches[earliest_year]
+        selection_mode = "earliest-available"
+        logger.warning(
+            "Phase4 Berkeley mask source window fallback: requested=%s has no overlap; "
+            "using earliest available file=%s year=%s",
+            requested_time_range,
+            first_path.name,
+            earliest_year,
+        )
+
     with xr.open_dataset(first_path, decode_cf=True) as source:
         if "time" not in source.coords:
             raise ValueError(f"Berkeley mask source file has no time coordinate: {first_path}")
@@ -1727,10 +1744,11 @@ def _resolve_phase4_berkeley_mask_source_time_range(
     selected_time = first_time.date().isoformat()
     selected_range = (selected_time, selected_time)
     logger.info(
-        "Phase4 Berkeley mask source window: requested=%s selected=%s file=%s",
+        "Phase4 Berkeley mask source window: requested=%s selected=%s file=%s mode=%s",
         requested_time_range,
         selected_range,
         first_path.name,
+        selection_mode,
     )
     return selected_range
 

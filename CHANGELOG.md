@@ -2,6 +2,7 @@
 
 ## 2026-04-07
 
+- Phase 4 Berkeley valid-mask source-window resolution now falls back to the earliest available standardized Berkeley file when a year-split request (for example `2017`) does not overlap Berkeley coverage. The valid-mask path still uses one real Berkeley time slice, but it no longer aborts pre-coverage GWD30 yearly runs with `FileNotFoundError`.
 - Added `scripts/submit_phase4_gwd30_regional_year_split.sh`, which submits one `run_phase4_regional.py` job per selected year for `gwd30` and one dependent merge job that rebuilds the final `regional_series.csv` and region table from the yearly caches.
 - Phase 4 `gwd30` regional processing now supports year-split execution and merge-on-read. The `gwd30` path writes one monthly region cache per year under `results/phase4/cache/gwd30/<region>/years/regional_series_<year>.csv`, and later wide-window runs can reuse those year caches to assemble the final `regional_series.csv` without recomputing every year in one task.
 - Phase 4 `gwd30` pixel-statistics regional reduction now accumulates one year's monthly totals incrementally instead of storing every tile-month DataFrame in memory before concatenation. This reduces memory pressure and makes year-scoped HPC fanout practical for large regions such as `pan_trop_subtrop`.
