@@ -2,6 +2,9 @@
 
 ## 2026-04-07
 
+- Phase 4 `gwd30` regional processing now supports year-split execution and merge-on-read. The `gwd30` path writes one monthly region cache per year under `results/phase4/cache/gwd30/<region>/years/regional_series_<year>.csv`, and later wide-window runs can reuse those year caches to assemble the final `regional_series.csv` without recomputing every year in one task.
+- Phase 4 `gwd30` pixel-statistics regional reduction now accumulates one year's monthly totals incrementally instead of storing every tile-month DataFrame in memory before concatenation. This reduces memory pressure and makes year-scoped HPC fanout practical for large regions such as `pan_trop_subtrop`.
+- Phase 4 Berkeley/shared-mask projection for pixel-statistics tiles now subsets the region mask to the target tile bbox before reprojection. This avoids repeatedly reprojecting the full pan-tropical mask for every tile and removes the next OOM bottleneck after the Berkeley mask cold-start fix.
 - Added `docs/testing/test-categories.md` as the canonical test-family index and added `scripts/run_related_tests.py` plus `src/WA/test_selection.py` so changed-file paths can be mapped to the smallest relevant pytest subset instead of defaulting to full-suite reruns.
 - Added `tests/test_test_selection.py` to lock the related-test mapping behavior for Phase 4, loaders, standardization, and direct test-file selection.
 - Phase 4 Berkeley valid-mask cold start now narrows the standardized Berkeley source request to the first real available timestamp inside the requested analysis window before opening any data. On cache miss, the regional workflow no longer concatenates all overlapping Berkeley annual files just to derive one spatial footprint, which directly targets the remaining `berkeley_valid_mask` OOM seen on the long `2013-2022` Amazon run.

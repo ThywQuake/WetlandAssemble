@@ -173,6 +173,61 @@ def test_build_or_load_phase4_mask_fraction_writes_same_grid_cache(tmp_path: Pat
     assert np.allclose(mask.values, base_mask.values)
 
 
+def test_mask_fraction_for_template_subsets_large_mask_before_reproject(monkeypatch) -> None:
+    base_mask = xr.DataArray(
+        np.arange(16, dtype=np.float32).reshape(4, 4),
+        coords={"lat": [3.0, 2.0, 1.0, 0.0], "lon": [100.0, 101.0, 102.0, 103.0]},
+        dims=("lat", "lon"),
+        name="shared_mask_fraction",
+    )
+    base_mask = base_mask.rio.write_crs("EPSG:4326", inplace=False)
+    base_mask = base_mask.rio.set_spatial_dims(x_dim="lon", y_dim="lat", inplace=False)
+
+    template = xr.DataArray(
+        np.zeros((2, 2), dtype=np.float32),
+        coords={"lat": [1.8, 1.2], "lon": [101.2, 101.8]},
+        dims=("lat", "lon"),
+        name="template",
+    )
+    template = template.rio.write_crs("EPSG:4326", inplace=False)
+    template = template.rio.set_spatial_dims(x_dim="lon", y_dim="lat", inplace=False)
+
+    recorded: dict[str, object] = {}
+
+    def fake_subset_phase4_mask_to_bbox(mask, bbox):
+        recorded["bbox"] = bbox
+        subset = xr.DataArray(
+            np.ones((2, 2), dtype=np.float32),
+            coords={"lat": [2.0, 1.0], "lon": [101.0, 102.0]},
+            dims=("lat", "lon"),
+            name="shared_mask_fraction",
+        )
+        subset = subset.rio.write_crs("EPSG:4326", inplace=False)
+        subset = subset.rio.set_spatial_dims(x_dim="lon", y_dim="lat", inplace=False)
+        return subset
+
+    def fake_reproject_to_grid(source_mask, reference_grid, *, resampling):
+        recorded["source_shape"] = source_mask.shape
+        recorded["target_shape"] = reference_grid.shape
+        return xr.zeros_like(reference_grid, dtype=np.float32)
+
+    monkeypatch.setattr(
+        phase4_regional_module,
+        "subset_phase4_mask_to_bbox",
+        fake_subset_phase4_mask_to_bbox,
+    )
+    monkeypatch.setattr(phase4_regional_module, "reproject_to_grid", fake_reproject_to_grid)
+
+    phase4_regional_module._mask_fraction_for_template(
+        base_mask=base_mask,
+        template=template,
+    )
+
+    assert recorded["bbox"] == (101.2, 1.2, 101.8, 1.8)
+    assert recorded["source_shape"] == (2, 2)
+    assert recorded["target_shape"] == (2, 2)
+
+
 def test_build_or_load_phase4_berkeley_valid_mask_uses_finite_extent(
     tmp_path: Path,
 ) -> None:
@@ -842,11 +897,20 @@ def test_build_phase4_gwd30_monthly_series_from_pixel_stats_tiles(
         region_mask=base_mask,
         output_root=output_root,
         time_range=("2013-01-01", "2013-12-31"),
+        skip_existing=False,
         show_progress=False,
     )
 
     assert monthly["month"].tolist() == [1, 2]
     assert np.allclose(monthly["wetland_percentage"].to_numpy(dtype=float), [25.0, 75.0])
+    assert (
+        output_root
+        / "cache"
+        / "gwd30"
+        / "demo_region"
+        / "years"
+        / "regional_series_2013.csv"
+    ).is_file()
 
 
 def test_compute_phase4_region_dataset_table_gwd30_uses_pixel_stats_tiles(
@@ -933,4 +997,86 @@ def test_compute_phase4_region_dataset_table_gwd30_uses_pixel_stats_tiles(
     annual = table.loc[table["series_type"] == "annual"].reset_index(drop=True)
     assert len(annual) == 1
     assert annual.loc[0, "wetland_percentage"] == 50.0
+    assert (output_root / "cache" / "gwd30" / "demo_region" / "regional_series.csv").is_file()
+    assert (
+        output_root
+        / "cache"
+        / "gwd30"
+        / "demo_region"
+        / "years"
+        / "regional_series_2013.csv"
+    ).is_file()
+
+
+def test_compute_phase4_region_dataset_table_gwd30_merges_existing_year_caches(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    output_root = tmp_path / "results"
+    year_cache_dir = output_root / "cache" / "gwd30" / "demo_region" / "years"
+    year_cache_dir.mkdir(parents=True)
+
+    pd.DataFrame(
+        {
+            "time": pd.to_datetime(["2013-01-01", "2013-02-01"]),
+            "year": [2013, 2013],
+            "month": [1, 2],
+            "wetland_area_km2": [10.0, 20.0],
+            "valid_area_km2": [20.0, 40.0],
+            "wetland_percentage": [50.0, 50.0],
+            "observation_count": [3, 3],
+        }
+    ).to_csv(year_cache_dir / "regional_series_2013.csv", index=False)
+    pd.DataFrame(
+        {
+            "time": pd.to_datetime(["2014-01-01", "2014-02-01"]),
+            "year": [2014, 2014],
+            "month": [1, 2],
+            "wetland_area_km2": [30.0, 40.0],
+            "valid_area_km2": [60.0, 80.0],
+            "wetland_percentage": [50.0, 50.0],
+            "observation_count": [4, 4],
+        }
+    ).to_csv(year_cache_dir / "regional_series_2014.csv", index=False)
+
+    monkeypatch.setattr(
+        "WA.comparison.phase4_regional.get_dataset_config",
+        lambda _dataset: {"years": [2013, 2014]},
+    )
+
+    base_mask = xr.DataArray(
+        np.array([[1.0]], dtype=np.float32),
+        coords={"lat": [0.5], "lon": [100.5]},
+        dims=("lat", "lon"),
+        name="shared_mask_fraction",
+    )
+    base_mask = base_mask.rio.write_crs("EPSG:4326", inplace=False)
+    base_mask = base_mask.rio.set_spatial_dims(x_dim="lon", y_dim="lat", inplace=False)
+    region = Phase4Region(
+        region_id="demo_region",
+        label="Demo",
+        label_zh="示例",
+        bbox=(100.0, 0.0, 101.0, 1.0),
+        kind="priority_region",
+        priority=1,
+        is_priority_region=True,
+    )
+
+    table = compute_phase4_region_dataset_table(
+        "gwd30",
+        region=region,
+        base_mask=base_mask,
+        output_root=output_root,
+        standardized_dir=tmp_path / "standardized",
+        time_range=("2013-01-01", "2014-12-31"),
+        skip_existing=True,
+        show_progress=False,
+    )
+
+    monthly = table.loc[table["series_type"] == "monthly"].reset_index(drop=True)
+    assert monthly["year"].tolist() == [2013.0, 2013.0, 2014.0, 2014.0]
+    assert np.allclose(
+        monthly["wetland_percentage"].to_numpy(dtype=float),
+        [50.0, 50.0, 50.0, 50.0],
+    )
     assert (output_root / "cache" / "gwd30" / "demo_region" / "regional_series.csv").is_file()

@@ -385,6 +385,7 @@ def compute_phase4_region_dataset_table(
             region_mask=base_mask,
             output_root=output_root,
             time_range=time_range,
+            skip_existing=skip_existing,
             show_progress=show_progress,
         )
     else:
@@ -474,6 +475,25 @@ def phase4_dataset_region_cache_path(
     """Return the cache path for one dataset × region table."""
 
     return Path(output_root) / "cache" / dataset_id / region_id / "regional_series.csv"
+
+
+def phase4_dataset_region_year_cache_path(
+    *,
+    output_root: str | Path,
+    dataset_id: str,
+    region_id: str,
+    year: int,
+) -> Path:
+    """Return the monthly year-cache path for one dataset × region × year."""
+
+    return (
+        Path(output_root)
+        / "cache"
+        / dataset_id
+        / region_id
+        / "years"
+        / f"regional_series_{year}.csv"
+    )
 
 
 def phase4_gwd30_tropical_tile_cache_path(
@@ -875,15 +895,28 @@ def build_phase4_gwd30_monthly_series_from_pixel_stats_tiles(
     region_mask: xr.DataArray,
     output_root: str | Path,
     time_range: tuple[str, str],
+    skip_existing: bool,
     show_progress: bool,
 ) -> pd.DataFrame:
     """Build one region's GWD30 monthly series from Stage-1 native pixel-statistics tiles."""
 
     dataset_config = get_dataset_config("gwd30")
     years = _gwd30_years_for_time_range(dataset_config, time_range)
-    tile_frames: list[pd.DataFrame] = []
+    year_frames: list[pd.DataFrame] = []
 
     for year in years:
+        year_cache_path = phase4_dataset_region_year_cache_path(
+            output_root=output_root,
+            dataset_id="gwd30",
+            region_id=region.region_id,
+            year=year,
+        )
+        year_time_range = (f"{year}-01-01", f"{year}-12-31")
+        if skip_existing and year_cache_path.is_file():
+            logger.info("Phase4 cache hit: gwd30 regional year <- %s", year_cache_path)
+            year_frames.append(_read_phase4_table(year_cache_path))
+            continue
+
         stats_tiles = load_phase4_gwd30_pixel_stats_tiles(
             output_root,
             year=year,
@@ -901,33 +934,119 @@ def build_phase4_gwd30_monthly_series_from_pixel_stats_tiles(
             len(stats_tiles),
             len(candidate_tiles),
         )
-        tile_progress = tqdm(
-            candidate_tiles,
-            total=len(candidate_tiles),
-            desc=f"Phase4 gwd30 stats {region.region_id} {year}",
-            disable=not show_progress,
+        year_frame = _accumulate_phase4_gwd30_pixel_stats_tiles(
+            candidate_tiles=candidate_tiles,
+            region=region,
+            region_mask=region_mask,
+            time_range=year_time_range,
+            year=year,
+            show_progress=show_progress,
         )
-        for tile_path, tile_bbox in tile_progress:
-            monthly_tile = build_phase4_gwd30_monthly_tile_from_pixel_stats_file(
-                tile_path=tile_path,
-                tile_bbox=tile_bbox,
-                time_range=time_range,
-                region_mask=region_mask,
-            )
-            if monthly_tile.empty:
-                continue
-            tile_frames.append(monthly_tile)
+        year_cache_path.parent.mkdir(parents=True, exist_ok=True)
+        year_frame.to_csv(year_cache_path, index=False)
+        logger.info(
+            "Phase4 cache write: dataset=gwd30 region=%s year=%s rows=%s path=%s",
+            region.region_id,
+            year,
+            len(year_frame),
+            year_cache_path,
+        )
+        year_frames.append(year_frame)
 
-    if not tile_frames:
+    if not year_frames:
         return _empty_phase4_monthly_series()
 
-    combined = pd.concat(tile_frames, ignore_index=True).sort_values(
-        ["time", "tile_id"]
-    ).reset_index(drop=True)
-    return build_phase4_gwd30_monthly_series_from_tropical_tile_cache(
-        tropical_tile_cache=combined,
-        region=region,
+    return pd.concat(year_frames, ignore_index=True).sort_values("time").reset_index(drop=True)
+
+
+def _accumulate_phase4_gwd30_pixel_stats_tiles(
+    *,
+    candidate_tiles: Sequence[tuple[Path, BBox]],
+    region: Phase4Region,
+    region_mask: xr.DataArray,
+    time_range: tuple[str, str],
+    year: int,
+    show_progress: bool,
+) -> pd.DataFrame:
+    """Reduce one year's Stage-1 pixel-statistics tiles into one monthly regional series."""
+
+    if not candidate_tiles:
+        return _empty_phase4_monthly_series()
+
+    accumulated: dict[pd.Timestamp, dict[str, float | int]] = {}
+
+    tile_progress = tqdm(
+        candidate_tiles,
+        total=len(candidate_tiles),
+        desc=f"Phase4 gwd30 stats {region.region_id} {year}",
+        disable=not show_progress,
     )
+    for tile_path, tile_bbox in tile_progress:
+        monthly_tile = build_phase4_gwd30_monthly_tile_from_pixel_stats_file(
+            tile_path=tile_path,
+            tile_bbox=tile_bbox,
+            time_range=time_range,
+            region_mask=region_mask,
+        )
+        if monthly_tile.empty:
+            continue
+
+        for row in monthly_tile.itertuples(index=False):
+            timestamp = pd.Timestamp(row.time)
+            bucket = accumulated.setdefault(
+                timestamp,
+                {
+                    "wetland_area_km2": 0.0,
+                    "valid_area_km2": 0.0,
+                    "observation_count": 0,
+                },
+            )
+            bucket["wetland_area_km2"] += float(row.wetland_area_km2)
+            bucket["valid_area_km2"] += float(row.valid_area_km2)
+            bucket["observation_count"] += 1
+
+    if not accumulated:
+        return _empty_phase4_monthly_series()
+
+    sorted_times = sorted(accumulated.keys())
+    monthly = pd.DataFrame(
+        {
+            "time": sorted_times,
+            "wetland_area_km2": [
+                float(accumulated[timestamp]["wetland_area_km2"])
+                for timestamp in sorted_times
+            ],
+            "valid_area_km2": [
+                float(accumulated[timestamp]["valid_area_km2"])
+                for timestamp in sorted_times
+            ],
+            "observation_count": [
+                int(accumulated[timestamp]["observation_count"])
+                for timestamp in sorted_times
+            ],
+        }
+    )
+    percentage = np.full(len(monthly), np.nan, dtype=np.float64)
+    np.divide(
+        monthly["wetland_area_km2"].to_numpy(dtype=np.float64),
+        monthly["valid_area_km2"].to_numpy(dtype=np.float64),
+        out=percentage,
+        where=monthly["valid_area_km2"].to_numpy(dtype=np.float64) > 0,
+    )
+    monthly["wetland_percentage"] = percentage * 100.0
+    monthly["year"] = monthly["time"].dt.year.astype(np.int64)
+    monthly["month"] = monthly["time"].dt.month.astype(np.int64)
+    return monthly[
+        [
+            "time",
+            "year",
+            "month",
+            "wetland_area_km2",
+            "valid_area_km2",
+            "wetland_percentage",
+            "observation_count",
+        ]
+    ]
 
 
 def build_phase4_gwd30_tropical_tile_index_for_staged_tiles(
@@ -1964,7 +2083,19 @@ def _mask_fraction_for_template(
     """Project one region mask to one target grid without persisting a cache file."""
 
     target_template = _spatial_template(template)
-    source_mask = _ensure_spatial_rio(base_mask.astype(np.float32))
+    source_base = _ensure_spatial_rio(base_mask)
+    try:
+        source_subset = subset_phase4_mask_to_bbox(
+            source_base,
+            _bbox_from_spatial_template(target_template),
+        )
+    except ValueError:
+        empty = xr.zeros_like(target_template, dtype=np.float32)
+        empty = _ensure_spatial_rio(empty)
+        empty.name = "shared_mask_fraction"
+        return empty
+
+    source_mask = _ensure_spatial_rio(source_subset.astype(np.float32))
     if _same_spatial_grid(source_mask, target_template):
         return source_mask.copy()
 
@@ -1974,6 +2105,20 @@ def _mask_fraction_for_template(
         resampling=Resampling.average,
     )
     return _ensure_spatial_rio(mask_fraction.astype(np.float32).fillna(0.0))
+
+
+def _bbox_from_spatial_template(template: xr.DataArray) -> BBox:
+    """Return a simple lon/lat bbox from one target spatial template."""
+
+    y_dim, x_dim = _spatial_dims(template)
+    lon_values = np.asarray(template.coords[x_dim].values, dtype=np.float64)
+    lat_values = np.asarray(template.coords[y_dim].values, dtype=np.float64)
+    return (
+        float(np.min(lon_values)),
+        float(np.min(lat_values)),
+        float(np.max(lon_values)),
+        float(np.max(lat_values)),
+    )
 
 
 def _ensure_spatial_rio(data: xr.DataArray) -> xr.DataArray:
