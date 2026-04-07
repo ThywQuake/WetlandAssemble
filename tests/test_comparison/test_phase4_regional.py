@@ -263,6 +263,81 @@ def test_build_or_load_phase4_berkeley_valid_mask_uses_single_time_slice(
     assert np.array_equal(mask.values, np.array([[1.0, 0.0], [0.0, 0.0]], dtype=np.float32))
 
 
+def test_build_or_load_phase4_berkeley_valid_mask_uses_first_available_source_window(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    standardized_dir = tmp_path / "standardized"
+    standardized_dir.mkdir()
+    for year, times in (
+        (2018, ["2018-08-01", "2018-09-01"]),
+        (2019, ["2019-01-01", "2019-02-01"]),
+    ):
+        xr.Dataset(
+            {
+                "watermask": xr.DataArray(
+                    np.ones((len(times), 1, 1), dtype=np.float32),
+                    dims=("time", "lat", "lon"),
+                    coords={"time": pd.to_datetime(times), "lat": [0.5], "lon": [100.5]},
+                )
+            }
+        ).to_netcdf(standardized_dir / f"berkeley_rwawc_{year}.nc")
+
+    recorded: dict[str, object] = {}
+
+    def fake_open_phase4_dataset(
+        dataset_id,
+        *,
+        bbox,
+        time_range,
+        standardized_dir,
+        topmodel_raw_path,
+    ):
+        recorded["dataset_id"] = dataset_id
+        recorded["bbox"] = bbox
+        recorded["time_range"] = time_range
+        dataset = xr.Dataset(
+            {
+                "watermask": xr.DataArray(
+                    np.array([[[1.0]]], dtype=np.float32),
+                    dims=("time", "lat", "lon"),
+                    coords={
+                        "time": pd.to_datetime([time_range[0]]),
+                        "lat": [0.5],
+                        "lon": [100.5],
+                    },
+                )
+            }
+        )
+        dataset = dataset.rio.write_crs("EPSG:4326", inplace=False)
+        dataset = dataset.rio.set_spatial_dims(x_dim="lon", y_dim="lat", inplace=False)
+        return dataset
+
+    monkeypatch.setattr(phase4_regional_module, "_open_phase4_dataset", fake_open_phase4_dataset)
+
+    region = Phase4Region(
+        region_id="amazon",
+        label="Amazon",
+        label_zh="亚马孙",
+        bbox=(99.5, -0.5, 101.5, 1.5),
+        kind="priority_region",
+        priority=1,
+        is_priority_region=True,
+    )
+    mask = build_or_load_phase4_berkeley_valid_mask(
+        region=region,
+        output_root=tmp_path / "results",
+        standardized_dir=standardized_dir,
+        time_range=("2013-01-01", "2022-12-31"),
+        skip_existing=False,
+    )
+
+    assert recorded["dataset_id"] == "berkeley_rwawc"
+    assert recorded["bbox"] == region.bbox
+    assert recorded["time_range"] == ("2018-08-01", "2018-08-01")
+    assert np.array_equal(mask.values, np.array([[1.0]], dtype=np.float32))
+
+
 def test_open_phase4_dataset_passes_bbox_to_berkeley_open_time_series(monkeypatch) -> None:
     recorded: dict[str, object] = {}
 

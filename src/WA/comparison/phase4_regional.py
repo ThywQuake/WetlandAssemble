@@ -28,6 +28,7 @@ from WA.config import get_dataset_config
 from WA.loaders import get_loader
 from WA.loaders._shared import reproject_to_grid
 from WA.loaders.base import BBox
+from WA.standardized_loader import StandardizedDataLoader
 from WA.utils.progress import tqdm
 
 logger = logging.getLogger(__name__)
@@ -1529,10 +1530,14 @@ def build_or_load_phase4_berkeley_valid_mask(
         cache_path,
         region.region_id,
     )
+    mask_source_time_range = _resolve_phase4_berkeley_mask_source_time_range(
+        standardized_dir=standardized_dir,
+        requested_time_range=time_range,
+    )
     dataset = _open_phase4_dataset(
         "berkeley_rwawc",
         bbox=region.bbox,
-        time_range=time_range,
+        time_range=mask_source_time_range,
         standardized_dir=standardized_dir,
         topmodel_raw_path=None,
     )
@@ -1571,6 +1576,44 @@ def _select_phase4_berkeley_mask_slice(data: xr.DataArray) -> xr.DataArray:
         pd.Timestamp(time_values[0]).date().isoformat(),
     )
     return _ensure_spatial_rio(selected)
+
+
+def _resolve_phase4_berkeley_mask_source_time_range(
+    *,
+    standardized_dir: str | Path,
+    requested_time_range: tuple[str, str],
+) -> tuple[str, str]:
+    """Resolve the minimal Berkeley source window needed for the valid-mask footprint.
+
+    The Phase 4 regional valid-mask is a spatial footprint, so on cache miss it only
+    needs one real Berkeley time slice rather than the full requested analysis window.
+    Narrowing the open-time-series request to the first available timestamp avoids
+    concatenating multiple annual standardized Berkeley files during cold start.
+    """
+
+    standardized = StandardizedDataLoader(standardized_dir)
+    source_paths = standardized.resolve_file_paths(
+        "berkeley_rwawc",
+        time_range=requested_time_range,
+    )
+    first_path = source_paths[0]
+    with xr.open_dataset(first_path, decode_cf=True) as source:
+        if "time" not in source.coords:
+            raise ValueError(f"Berkeley mask source file has no time coordinate: {first_path}")
+        time_values = pd.to_datetime(source.coords["time"].values)
+        if len(time_values) == 0:
+            raise ValueError(f"Berkeley mask source file has no time values: {first_path}")
+        first_time = pd.Timestamp(time_values[0])
+
+    selected_time = first_time.date().isoformat()
+    selected_range = (selected_time, selected_time)
+    logger.info(
+        "Phase4 Berkeley mask source window: requested=%s selected=%s file=%s",
+        requested_time_range,
+        selected_range,
+        first_path.name,
+    )
+    return selected_range
 
 
 def build_phase4_annual_series(monthly: pd.DataFrame) -> pd.DataFrame:
