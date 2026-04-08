@@ -45,7 +45,7 @@
   - Verify: ruff check src/WA/comparison/trend_contract.py scripts/run_phase4_trend_contract.py src/WA/comparison/percentage_backbone.py src/WA/visualization/phase4.py tests/test_comparison/test_trend_contract.py tests/test_visualization/test_phase4.py
 python scripts/run_phase4_trend_contract.py --help
 python -m pytest tests/test_comparison/test_trend_contract.py tests/test_visualization/test_phase4.py -q
-- [ ] **T02: Build the derived paper-pack module and CLI** — This is the primary R113 delivery: turn contract-backed science artifacts into thesis-facing figures, joined evidence tables, narrative summaries, and a deterministic pack manifest without mutating the science contract tree.
+- [x] **T02: Added a contract-reload Phase 4 paper-pack builder and CLI with deterministic manifesting.** — This is the primary R113 delivery: turn contract-backed science artifacts into thesis-facing figures, joined evidence tables, narrative summaries, and a deterministic pack manifest without mutating the science contract tree.
 
 ## Failure Modes
 

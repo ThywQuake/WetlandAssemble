@@ -194,8 +194,8 @@ TEST_CATEGORIES: tuple[TestCategory, ...] = (
     TestCategory(
         key="phase4",
         description=(
-            "Phase 4 contract, regional analysis, trend, readiness, ledger, and "
-            "submit-script tests."
+            "Phase 4 contract, regional analysis, trend, readiness, ledger, paper-pack, "
+            "and submit-script tests."
         ),
         tests=(
             "tests/test_comparison/test_classification_contract.py",
@@ -210,6 +210,7 @@ TEST_CATEGORIES: tuple[TestCategory, ...] = (
             "tests/test_comparison/test_trend_hotspots.py",
             "tests/test_comparison/test_trends.py",
             "tests/test_visualization/test_phase4.py",
+            "tests/test_visualization/test_phase4_pack.py",
             "tests/test_submit_phase4_gwd30_pixel_stats.py",
             "tests/test_submit_phase4_gwd30_regional_year_split.py",
             "tests/test_submit_phase4_gwd30_tropical_shards.py",
@@ -228,6 +229,7 @@ TEST_CATEGORIES: tuple[TestCategory, ...] = (
             "src/WA/comparison/trend_hotspots.py",
             "src/WA/comparison/trends.py",
             "src/WA/visualization/phase4.py",
+            "src/WA/visualization/phase4_pack.py",
             "scripts/build_phase4_gwd30_pixel_stats.py",
             "scripts/build_phase4_gwd30_shard_lists.py",
             "scripts/hpc_probe_trends.py",
@@ -236,6 +238,7 @@ TEST_CATEGORIES: tuple[TestCategory, ...] = (
             "scripts/run_phase4_gwd30_tropical_shard.py",
             "scripts/run_phase4_hotspot_ledger.py",
             "scripts/run_phase4_percentage_contract.py",
+            "scripts/run_phase4_evidence_pack.py",
             "scripts/run_phase4_regional.py",
             "scripts/run_phase4_scaleout_readiness.py",
             "scripts/run_phase4_trend_contract.py",

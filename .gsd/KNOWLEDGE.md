@@ -102,3 +102,9 @@
 - In this repo’s Phase 4 scale-out path, `scripts/run_phase4_scaleout_readiness.py` is the first operator check for `percentage / classification / trend` hotspot-family completeness across `--region`, `--subset canonical`, or `--subset ten`.
 - Treat `missing` as “both manifest and CSV are absent”; treat partial pairs, semantic reload failures, mixed rows, or bad provenance as `partial` instead of collapsing everything into one missing state.
 - `scripts/run_phase4_hotspot_ledger.py` remains fail-closed by design, but on failure it now auto-writes a single-region readiness CSV/JSON and logs family-specific paths/reasons. Use that report before re-running wide ledger jobs so operators do not debug from a naked first exception.
+
+## 2026-04-09 — Unified-ledger reloads return parsed helper columns, not just CSV columns
+
+- In this repo, `load_phase4_unified_hotspot_ledger(...)` / `load_contract_unified_hotspot_ledger(...)` return the original ledger columns **plus** parsed helper columns like `contract_metadata` and `line_specific`.
+- If a downstream pack/export wants a deterministic CSV, re-select `UNIFIED_HOTSPOT_LEDGER_COLUMNS` before writing; otherwise pandas will serialize Python dict reprs for those helper columns and quietly change the output schema.
+- This matters for `src/WA/visualization/phase4_pack.py`, which needs the semantic reload convenience in memory but must preserve the ledger’s stable on-disk column contract in the derived hotspot table.

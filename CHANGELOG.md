@@ -2,6 +2,10 @@
 
 ## 2026-04-08
 
+- Added `src/WA/visualization/phase4_pack.py` plus `scripts/run_phase4_evidence_pack.py`, which reopen contract-backed percentage/classification/trend/ledger artifacts semantically, write percentage interannual + climatology figures, assemble one joined regional evidence table plus one unified hotspot table, emit a narrative `summary.md`, and only write a deterministic `manifest.json` after the full derived pack succeeds under a dedicated root outside `results/phase4`.
+- Added fixture-backed coverage in `tests/test_visualization/test_phase4_pack.py` for one-region smoke packs, ordered `--subset ten` packs, malformed/missing inputs, invalid pack roots, and fail-closed CLI behavior when one family reload breaks.
+- Updated `src/WA/test_selection.py` and `docs/testing/test-categories.md` so the new paper-pack module, CLI, and tests stay inside the focused Phase 4 related-test bundle.
+
 - Added `src/WA/comparison/scaleout_readiness.py` plus `scripts/run_phase4_scaleout_readiness.py`, which semantically scan the percentage/classification/trend hotspot families for one region, `--subset canonical`, or `--subset ten`, then write deterministic CSV/JSON readiness reports with explicit `ready` / `missing` / `partial` rows, reasons, and artifact paths before any wide ledger rerun.
 - Updated `scripts/run_phase4_hotspot_ledger.py` to stay fail-closed while auto-writing a per-region readiness diagnostic report on failure, logging family-specific status/path context, and pointing operators at the readiness CLI instead of surfacing only the first raw exception.
 - Expanded the Phase 4 related-test catalog in `src/WA/test_selection.py` so the newer classification/trend contract surfaces and the new scale-out readiness gate all route back to the focused Phase 4 pytest bundle.

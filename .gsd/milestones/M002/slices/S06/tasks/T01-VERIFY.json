@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "taskId": "T01",
+  "unitId": "M002/S06/T01",
+  "timestamp": 1775682422920,
+  "passed": true,
+  "discoverySource": "task-plan",
+  "checks": [
+    {
+      "command": "ruff check src/WA/comparison/trend_contract.py scripts/run_phase4_trend_contract.py src/WA/comparison/percentage_backbone.py src/WA/visualization/phase4.py tests/test_comparison/test_trend_contract.py tests/test_visualization/test_phase4.py\npython scripts/run_phase4_trend_contract.py --help\npython -m pytest tests/test_comparison/test_trend_contract.py tests/test_visualization/test_phase4.py -q",
+      "exitCode": 0,
+      "durationMs": 7048,
+      "verdict": "pass"
+    }
+  ]
+}
