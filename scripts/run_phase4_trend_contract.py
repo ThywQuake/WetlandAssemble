@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate contract-backed Phase 4 trend agreement and trend-hotspot artifacts."""
+"""Generate contract-backed Phase 4 trend surfaces, summaries, agreement, and hotspots."""
 
 from __future__ import annotations
 
@@ -30,6 +30,16 @@ from WA.comparison.trend_agreement import (  # noqa: E402
     TrendAgreementResult,
     compute_trend_agreement,
 )
+from WA.comparison.trend_contract import (  # noqa: E402
+    TrendSummaryBundle,
+    TrendSurfaceBundle,
+    load_contract_trend_summary,
+    load_contract_trend_surface,
+    trend_summary_output_path,
+    trend_surface_output_path,
+    write_contract_trend_summary,
+    write_contract_trend_surface,
+)
 from WA.comparison.trend_hotspots import (  # noqa: E402
     build_participant_set_key,
     load_contract_trend_hotspot_table,
@@ -39,8 +49,8 @@ from WA.comparison.trend_hotspots import (  # noqa: E402
     write_trend_hotspot_outputs,
 )
 from WA.comparison.trends import (  # noqa: E402
-    compute_pixel_trends,
-    load_trend_surface,
+    TrendCheckpointBundle,
+    materialize_trend_checkpoint,
 )
 
 logger = logging.getLogger(__name__)
@@ -82,9 +92,11 @@ REQUIRED_AGREEMENT_SUMMARY_COLUMNS = (
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Generate Phase 4 trend agreement artifacts and the contract-backed "
-            "trend-hotspots JSON/CSV family. The trend-hotspots stage reloads by "
-            "participant-set semantics instead of filename guessing."
+            "Generate one contract-backed Phase 4 trend family: per-dataset "
+            "trend_surface and trend_regional_summary artifacts, then the "
+            "participant-set trend agreement and trend-hotspots JSON/CSV outputs. "
+            "Wide runs first reuse or rebuild explicit region/dataset/time-window "
+            "checkpoints before the agreement stage."
         )
     )
     parser.add_argument("--regions-file", default=str(DEFAULT_PHASE4_REGIONS_FILE))
@@ -165,7 +177,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--skip",
         action=argparse.BooleanOptionalAction,
         default=True,
-        help="Reuse complete agreement/hotspot artifacts when present (default: True).",
+        help=(
+            "Reuse valid dataset checkpoints plus complete trend/agreement/hotspot "
+            "artifacts when present (default: True)."
+        ),
     )
     parser.add_argument(
         "--progress",
@@ -187,6 +202,9 @@ def main(argv: list[str] | None = None) -> int:
         level=getattr(logging, args.log_level),
         format="[%(levelname)s] %(message)s",
     )
+
+    if args.start_year > args.end_year:
+        raise ValueError("start_year must be <= end_year")
 
     contract = load_phase4_evidence_contract(
         output_root=args.output_root,
@@ -223,12 +241,13 @@ def main(argv: list[str] | None = None) -> int:
     )
     logger.info(
         "Phase4 trend contract start: subset=%s regions=%s participant_set_key=%s "
-        "time_range=%s aggregation=%s",
+        "time_range=%s aggregation=%s skip=%s",
         selector_subset,
         [region.region_id for region in regions],
         participant_set_key,
         time_range,
         args.aggregation,
+        args.skip,
     )
 
     for region in regions:
@@ -240,24 +259,24 @@ def main(argv: list[str] | None = None) -> int:
         )
         trend_results = {}
         for dataset_id in participant_ids:
-            logger.info(
-                "stage=trend region=%s participant_set_key=%s dataset_id=%s action=compute",
-                region.region_id,
-                participant_set_key,
-                dataset_id,
-            )
-            surface = load_trend_surface(
-                dataset_id,
+            checkpoint_bundle = materialize_trend_checkpoint(
+                output_root=args.output_root,
+                region_id=region.region_id,
                 bbox=region.bbox,
-                time_range=time_range,
-                gwd30_standardized_dir=args.standardized_dir,
-                show_progress=args.progress,
-            )
-            trend_results[dataset_id] = compute_pixel_trends(
-                surface,
                 dataset_id=dataset_id,
+                time_range=time_range,
                 aggregation=args.aggregation,
                 min_observations=args.min_observations,
+                gwd30_standardized_dir=args.standardized_dir,
+                show_progress=args.progress,
+                skip_existing=args.skip,
+            )
+            trend_results[dataset_id] = checkpoint_bundle.trend_result
+            _materialize_trend_artifacts(
+                contract=contract,
+                region=region,
+                checkpoint_bundle=checkpoint_bundle,
+                skip_existing=args.skip,
             )
 
         agreement_result = compute_trend_agreement(
@@ -300,6 +319,90 @@ def main(argv: list[str] | None = None) -> int:
     return 0
 
 
+def _materialize_trend_artifacts(
+    *,
+    contract,
+    region,
+    checkpoint_bundle: TrendCheckpointBundle,
+    skip_existing: bool,
+) -> tuple[TrendSurfaceBundle, TrendSummaryBundle]:
+    surface_path = trend_surface_output_path(
+        contract,
+        region_id=region.region_id,
+        dataset_id=checkpoint_bundle.dataset_id,
+    )
+    summary_path = trend_summary_output_path(
+        contract,
+        region_id=region.region_id,
+        dataset_id=checkpoint_bundle.dataset_id,
+    )
+
+    if skip_existing and (surface_path.exists() or summary_path.exists()):
+        _require_complete_pair(
+            label="trend-write",
+            region_id=region.region_id,
+            family_key=checkpoint_bundle.dataset_id,
+            left_path=surface_path,
+            right_path=summary_path,
+        )
+        logger.info(
+            "stage=trend-write region=%s dataset_id=%s action=reload surface=%s summary=%s",
+            region.region_id,
+            checkpoint_bundle.dataset_id,
+            surface_path,
+            summary_path,
+        )
+        surface_bundle = load_contract_trend_surface(
+            contract=contract,
+            region_id=region.region_id,
+            dataset_id=checkpoint_bundle.dataset_id,
+            expected_aggregation=checkpoint_bundle.aggregation,
+            expected_time_range=checkpoint_bundle.time_range,
+        )
+        summary_bundle = load_contract_trend_summary(
+            contract=contract,
+            region_id=region.region_id,
+            dataset_id=checkpoint_bundle.dataset_id,
+            expected_aggregation=checkpoint_bundle.aggregation,
+            expected_time_range=checkpoint_bundle.time_range,
+        )
+    else:
+        logger.info(
+            "stage=trend-write region=%s dataset_id=%s action=%s surface=%s summary=%s",
+            region.region_id,
+            checkpoint_bundle.dataset_id,
+            "rebuild" if surface_path.exists() or summary_path.exists() else "write",
+            surface_path,
+            summary_path,
+        )
+        surface_bundle = write_contract_trend_surface(
+            contract=contract,
+            region_id=region.region_id,
+            region_label=region.label,
+            bbox=region.bbox,
+            trend_result=checkpoint_bundle.trend_result,
+        )
+        summary_bundle = write_contract_trend_summary(
+            contract=contract,
+            region_id=region.region_id,
+            region_label=region.label,
+            bbox=region.bbox,
+            trend_result=checkpoint_bundle.trend_result,
+            surface_output_path=surface_bundle.surface_path,
+        )
+
+    logger.info(
+        "stage=trend-write region=%s dataset_id=%s action=ready checkpoint=%s "
+        "surface=%s summary=%s",
+        region.region_id,
+        checkpoint_bundle.dataset_id,
+        checkpoint_bundle.checkpoint_path,
+        surface_bundle.surface_path,
+        summary_bundle.summary_path,
+    )
+    return (surface_bundle, summary_bundle)
+
+
 def _materialize_agreement_artifacts(
     *,
     contract,
@@ -324,7 +427,7 @@ def _materialize_agreement_artifacts(
         _require_complete_pair(
             label="agreement",
             region_id=region_id,
-            participant_set_key=participant_set_key,
+            family_key=participant_set_key,
             left_path=surface_path,
             right_path=summary_path,
         )
@@ -390,7 +493,7 @@ def _materialize_trend_hotspots(
         _require_complete_pair(
             label="trend-hotspots",
             region_id=region_id,
-            participant_set_key=participant_set_key,
+            family_key=participant_set_key,
             left_path=manifest_path,
             right_path=table_path,
         )
@@ -532,7 +635,7 @@ def _load_trend_agreement_artifacts(
     _require_complete_pair(
         label="agreement",
         region_id=region_id,
-        participant_set_key=participant_set_key,
+        family_key=participant_set_key,
         left_path=surface_path,
         right_path=summary_path,
     )
@@ -631,7 +734,7 @@ def _require_complete_pair(
     *,
     label: str,
     region_id: str,
-    participant_set_key: str,
+    family_key: str,
     left_path: Path,
     right_path: Path,
 ) -> None:
@@ -642,7 +745,7 @@ def _require_complete_pair(
     if left_exists or right_exists:
         raise FileNotFoundError(
             f"stage={label} region={region_id} "
-            f"participant_set_key={participant_set_key} found partial artifact pair: "
+            f"family_key={family_key} found partial artifact pair: "
             f"{left_path} exists={left_exists} {right_path} exists={right_exists}"
         )
 

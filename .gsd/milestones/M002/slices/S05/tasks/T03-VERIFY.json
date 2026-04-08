@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "taskId": "T03",
+  "unitId": "M002/S05/T03",
+  "timestamp": 1775675641073,
+  "passed": true,
+  "discoverySource": "task-plan",
+  "checks": [
+    {
+      "command": "ruff check src/WA/comparison/classification_contract.py scripts/run_phase4_classification_contract.py src/WA/visualization/phase4.py tests/test_comparison/test_classification_contract.py tests/test_visualization/test_phase4.py\npython scripts/run_phase4_classification_contract.py --help\npython -m pytest tests/test_comparison/test_classification_contract.py tests/test_visualization/test_phase4.py -q",
+      "exitCode": 0,
+      "durationMs": 7656,
+      "verdict": "pass"
+    }
+  ]
+}

@@ -67,6 +67,12 @@
 - The safe source of truth is the evidence-contract artifact semantics in `src/WA/comparison/evidence_contract.py` plus the on-disk family manifests/CSVs (`hotspot_manifest`, `classification_hotspot_manifest`, `trend_hotspot_manifest`), not the stale planner module paths.
 - When extending the unified hotspot ledger, add semantic reloaders around those contract artifact families instead of inventing new imports just to match an outdated plan snapshot.
 
+## 2026-04-09 — Trend checkpoints must separate requested windows from actual result coverage
+
+- In this repo’s Phase 4 trend path, the user-requested window (for example `2000-01-01 .. 2004-12-31`) does not always match the last actual timestamp in the loaded surface (`2004-12-01` for month-start series).
+- For resumable trend checkpoints, store both the requested window and the actual result time range; otherwise a valid checkpoint can be rejected later as "mixed metadata" just because the dataset cadence uses month starts or yearly anchors.
+- This matters for `src/WA/comparison/trends.py`, where the checkpoint key should stay tied to the requested rerun window while the reloaded `TrendResult` still needs the actual observed time bounds for agreement math.
+
 ## 2026-04-09 — `run_related_tests.py` is advisory, not executable verification
 
 - In this repo, `python scripts/run_related_tests.py <changed-paths...>` only prints the matched categories and the recommended pytest command; it does **not** run the tests for you.

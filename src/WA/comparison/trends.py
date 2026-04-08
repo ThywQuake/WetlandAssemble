@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import json
 import logging
+import os
+import tempfile
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal, cast
+from typing import Any, Literal, cast
 
 import numpy as np
 import pandas as pd
@@ -15,6 +18,7 @@ import xarray as xr
 from scipy import stats
 
 from WA.classification import wetland_class_ids
+from WA.comparison.evidence_contract import metadata_json, validate_stem_token
 from WA.comparison.harmonize import create_comparison_grid, harmonize_binary_dataset
 from WA.config import get_dataset_config
 from WA.loaders import get_loader
@@ -53,6 +57,352 @@ class TrendResult:
     significant: xr.DataArray  # bool mask (p < alpha)
     trend_direction: xr.DataArray  # +1 increasing, 0 stable, -1 decreasing
     status: str  # "computed" | "insufficient_observations"
+
+
+@dataclass(frozen=True)
+class TrendCheckpointBundle:
+    """One resumable region/dataset/time-window trend checkpoint."""
+
+    checkpoint_path: Path
+    region_id: str
+    dataset_id: str
+    aggregation: AggregationLevel
+    requested_time_range: tuple[str, str]
+    time_range: tuple[str, str]
+    bbox: BBox
+    observation_count: int
+    status: str
+    trend_result: TrendResult
+    checkpoint_metadata_json: str
+    checkpoint_metadata: dict[str, Any]
+
+
+TREND_CHECKPOINT_VERSION = 1
+TREND_CHECKPOINT_DIRNAME = "trend_checkpoints"
+TREND_CHECKPOINT_SUFFIX = "trend_checkpoint"
+REQUIRED_TREND_CHECKPOINT_VARS = (
+    "sens_slope",
+    "p_value",
+    "z_score",
+    "significant",
+    "trend_direction",
+)
+
+
+def trend_checkpoint_output_path(
+    output_root: str | Path,
+    *,
+    region_id: str,
+    dataset_id: str,
+    aggregation: AggregationLevel,
+    time_range: tuple[str, str],
+) -> Path:
+    """Return the checkpoint path for one region/dataset/time window."""
+
+    dataset_slot = validate_stem_token(dataset_id, label="dataset_id")
+    region_slot = validate_stem_token(region_id, label="region_id")
+    start_token, end_token = _trend_checkpoint_time_tokens(time_range)
+    return (
+        Path(output_root)
+        / TREND_CHECKPOINT_DIRNAME
+        / region_slot
+        / (
+            f"{dataset_slot}__{region_slot}__{aggregation}"
+            f"__{start_token}_{end_token}__{TREND_CHECKPOINT_SUFFIX}.nc"
+        )
+    )
+
+
+def materialize_trend_checkpoint(
+    *,
+    output_root: str | Path,
+    region_id: str,
+    bbox: BBox,
+    dataset_id: str,
+    time_range: tuple[str, str],
+    aggregation: AggregationLevel,
+    min_observations: int = DEFAULT_MIN_OBSERVATIONS,
+    gwd30_standardized_dir: str | Path = DEFAULT_GWD30_STANDARDIZED_DIR,
+    show_progress: bool = True,
+    skip_existing: bool = True,
+) -> TrendCheckpointBundle:
+    """Load or compute one region/dataset/time-window trend checkpoint."""
+
+    checkpoint_path = trend_checkpoint_output_path(
+        output_root,
+        region_id=region_id,
+        dataset_id=dataset_id,
+        aggregation=aggregation,
+        time_range=time_range,
+    )
+    if skip_existing and checkpoint_path.is_file():
+        logger.info(
+            "stage=trend-load region=%s dataset_id=%s aggregation=%s "
+            "time_range=%s action=reload checkpoint=%s",
+            region_id,
+            dataset_id,
+            aggregation,
+            time_range,
+            checkpoint_path,
+        )
+        return load_trend_checkpoint(
+            checkpoint_path,
+            expected_region_id=region_id,
+            expected_dataset_id=dataset_id,
+            expected_aggregation=aggregation,
+            expected_time_range=time_range,
+        )
+
+    logger.info(
+        "stage=trend-load region=%s dataset_id=%s aggregation=%s "
+        "time_range=%s action=compute checkpoint=%s",
+        region_id,
+        dataset_id,
+        aggregation,
+        time_range,
+        checkpoint_path,
+    )
+    reference_grid = create_comparison_grid(bbox)
+    surface = load_trend_surface(
+        dataset_id,
+        bbox=bbox,
+        time_range=time_range,
+        reference_grid=reference_grid,
+        gwd30_standardized_dir=gwd30_standardized_dir,
+        show_progress=show_progress,
+    )
+    trend_result = compute_pixel_trends(
+        surface,
+        dataset_id=dataset_id,
+        aggregation=aggregation,
+        min_observations=min_observations,
+    )
+    return write_trend_checkpoint(
+        checkpoint_path,
+        region_id=region_id,
+        requested_time_range=time_range,
+        bbox=bbox,
+        trend_result=trend_result,
+    )
+
+
+def write_trend_checkpoint(
+    path: str | Path,
+    *,
+    region_id: str,
+    requested_time_range: tuple[str, str],
+    bbox: BBox,
+    trend_result: TrendResult,
+) -> TrendCheckpointBundle:
+    """Write one resumable trend checkpoint and reload it semantically."""
+
+    normalized_dataset_id = validate_stem_token(trend_result.dataset_id, label="dataset_id")
+    checkpoint_path = Path(path)
+    checkpoint_metadata = {
+        "checkpoint_kind": TREND_CHECKPOINT_SUFFIX,
+        "checkpoint_version": TREND_CHECKPOINT_VERSION,
+        "region_id": region_id,
+        "dataset_id": normalized_dataset_id,
+        "aggregation": trend_result.aggregation,
+        "requested_time_range": list(requested_time_range),
+        "result_time_range": list(trend_result.time_range),
+        "observation_count": int(trend_result.observation_count),
+        "status": trend_result.status,
+        "bbox": list(bbox),
+    }
+    checkpoint_metadata_json = metadata_json(checkpoint_metadata)
+    dataset = xr.Dataset(
+        {
+            "sens_slope": trend_result.sens_slope.astype(np.float32),
+            "p_value": trend_result.p_value.astype(np.float32),
+            "z_score": trend_result.z_score.astype(np.float32),
+            "significant": trend_result.significant.astype(np.int8),
+            "trend_direction": trend_result.trend_direction.astype(np.int8),
+        }
+    )
+    dataset.attrs.update(
+        {
+            "checkpoint_kind": TREND_CHECKPOINT_SUFFIX,
+            "checkpoint_version": TREND_CHECKPOINT_VERSION,
+            "region_id": region_id,
+            "dataset_id": normalized_dataset_id,
+            "aggregation": trend_result.aggregation,
+            "requested_time_range_start": requested_time_range[0],
+            "requested_time_range_end": requested_time_range[1],
+            "result_time_range_start": trend_result.time_range[0],
+            "result_time_range_end": trend_result.time_range[1],
+            "observation_count": int(trend_result.observation_count),
+            "status": trend_result.status,
+            "bbox_json": json.dumps(list(bbox), separators=(",", ":")),
+            "checkpoint_metadata_json": checkpoint_metadata_json,
+        }
+    )
+    _write_dataset_atomic(path=checkpoint_path, dataset=dataset)
+    return load_trend_checkpoint(
+        checkpoint_path,
+        expected_region_id=region_id,
+        expected_dataset_id=normalized_dataset_id,
+        expected_aggregation=trend_result.aggregation,
+        expected_time_range=requested_time_range,
+    )
+
+
+def load_trend_checkpoint(
+    path: str | Path,
+    *,
+    expected_region_id: str,
+    expected_dataset_id: str,
+    expected_aggregation: AggregationLevel,
+    expected_time_range: tuple[str, str],
+) -> TrendCheckpointBundle:
+    """Reload one trend checkpoint with strict metadata validation."""
+
+    checkpoint_path = Path(path)
+    if not checkpoint_path.is_file():
+        raise FileNotFoundError(
+            "stage=trend-load "
+            f"region_id={expected_region_id} dataset_id={expected_dataset_id} "
+            f"missing checkpoint path={checkpoint_path}"
+        )
+
+    dataset = xr.load_dataset(checkpoint_path)
+    missing_vars = [
+        name for name in REQUIRED_TREND_CHECKPOINT_VARS if name not in dataset.data_vars
+    ]
+    if missing_vars:
+        raise ValueError(
+            "stage=trend-load "
+            f"region_id={expected_region_id} dataset_id={expected_dataset_id} "
+            "checkpoint is missing required variables: " + ", ".join(missing_vars)
+        )
+
+    checkpoint_kind = str(dataset.attrs.get("checkpoint_kind", "")).strip()
+    if checkpoint_kind != TREND_CHECKPOINT_SUFFIX:
+        raise ValueError(
+            "stage=trend-load "
+            f"region_id={expected_region_id} dataset_id={expected_dataset_id} "
+            f"mixed checkpoint metadata: checkpoint_kind={checkpoint_kind!r}"
+        )
+    checkpoint_version = int(dataset.attrs.get("checkpoint_version", 0))
+    if checkpoint_version != TREND_CHECKPOINT_VERSION:
+        raise ValueError(
+            "stage=trend-load "
+            f"region_id={expected_region_id} dataset_id={expected_dataset_id} "
+            f"mixed checkpoint metadata: checkpoint_version={checkpoint_version}"
+        )
+
+    actual_region_id = str(dataset.attrs.get("region_id", "")).strip()
+    if actual_region_id != expected_region_id:
+        raise ValueError(
+            "stage=trend-load "
+            f"region_id={expected_region_id} dataset_id={expected_dataset_id} "
+            f"mixed checkpoint metadata: region_id={actual_region_id!r}"
+        )
+    actual_dataset_id = str(dataset.attrs.get("dataset_id", "")).strip()
+    if actual_dataset_id != expected_dataset_id:
+        raise ValueError(
+            "stage=trend-load "
+            f"region_id={expected_region_id} dataset_id={expected_dataset_id} "
+            f"mixed checkpoint metadata: dataset_id={actual_dataset_id!r}"
+        )
+
+    aggregation = cast(
+        AggregationLevel,
+        str(dataset.attrs.get("aggregation", "")).strip(),
+    )
+    if aggregation not in {"annual", "seasonal", "monthly"}:
+        raise ValueError(
+            "stage=trend-load "
+            f"region_id={expected_region_id} dataset_id={expected_dataset_id} "
+            f"mixed checkpoint metadata: aggregation={aggregation!r}"
+        )
+    if aggregation != expected_aggregation:
+        raise ValueError(
+            "stage=trend-load "
+            f"region_id={expected_region_id} dataset_id={expected_dataset_id} "
+            f"mixed checkpoint metadata: aggregation={aggregation!r}"
+        )
+
+    requested_time_range = (
+        str(dataset.attrs.get("requested_time_range_start", "")).strip(),
+        str(dataset.attrs.get("requested_time_range_end", "")).strip(),
+    )
+    if requested_time_range != expected_time_range:
+        raise ValueError(
+            "stage=trend-load "
+            f"region_id={expected_region_id} dataset_id={expected_dataset_id} "
+            f"mixed checkpoint metadata: requested_time_range={requested_time_range!r}"
+        )
+
+    result_time_range = (
+        str(dataset.attrs.get("result_time_range_start", "")).strip(),
+        str(dataset.attrs.get("result_time_range_end", "")).strip(),
+    )
+    if not result_time_range[0] or not result_time_range[1]:
+        raise ValueError(
+            "stage=trend-load "
+            f"region_id={expected_region_id} dataset_id={expected_dataset_id} "
+            "missing result_time_range metadata"
+        )
+
+    observation_count = int(dataset.attrs.get("observation_count", 0))
+    if observation_count < 0:
+        raise ValueError(
+            "stage=trend-load "
+            f"region_id={expected_region_id} dataset_id={expected_dataset_id} "
+            f"invalid observation_count={observation_count}"
+        )
+    status = str(dataset.attrs.get("status", "")).strip()
+    if not status:
+        raise ValueError(
+            "stage=trend-load "
+            f"region_id={expected_region_id} dataset_id={expected_dataset_id} missing status"
+        )
+
+    bbox = _parse_bbox_json(
+        dataset.attrs.get("bbox_json", ""),
+        region_id=expected_region_id,
+        dataset_id=expected_dataset_id,
+    )
+    checkpoint_metadata_json = str(dataset.attrs.get("checkpoint_metadata_json", "")).strip()
+    if not checkpoint_metadata_json:
+        raise ValueError(
+            "stage=trend-load "
+            f"region_id={expected_region_id} dataset_id={expected_dataset_id} "
+            "missing checkpoint_metadata_json"
+        )
+    checkpoint_metadata = _parse_checkpoint_metadata_json(
+        checkpoint_metadata_json,
+        region_id=expected_region_id,
+        dataset_id=expected_dataset_id,
+    )
+
+    trend_result = TrendResult(
+        dataset_id=expected_dataset_id,
+        aggregation=aggregation,
+        time_range=result_time_range,
+        observation_count=observation_count,
+        sens_slope=dataset["sens_slope"],
+        p_value=dataset["p_value"],
+        z_score=dataset["z_score"],
+        significant=dataset["significant"].astype(bool),
+        trend_direction=dataset["trend_direction"].astype(np.int8),
+        status=status,
+    )
+    return TrendCheckpointBundle(
+        checkpoint_path=checkpoint_path.resolve(),
+        region_id=expected_region_id,
+        dataset_id=expected_dataset_id,
+        aggregation=aggregation,
+        requested_time_range=requested_time_range,
+        time_range=result_time_range,
+        bbox=bbox,
+        observation_count=observation_count,
+        status=status,
+        trend_result=trend_result,
+        checkpoint_metadata_json=checkpoint_metadata_json,
+        checkpoint_metadata=checkpoint_metadata,
+    )
 
 
 def build_gwd30_pixel_statistics(
@@ -501,6 +851,79 @@ def compute_regional_summary(
         )
 
     return pd.DataFrame(rows)
+
+
+def _trend_checkpoint_time_tokens(time_range: tuple[str, str]) -> tuple[str, str]:
+    start_token = validate_stem_token(time_range[0], label="time_range_start").replace("-", "")
+    end_token = validate_stem_token(time_range[1], label="time_range_end").replace("-", "")
+    return (start_token, end_token)
+
+
+def _parse_checkpoint_metadata_json(
+    value: object,
+    *,
+    region_id: str,
+    dataset_id: str,
+) -> dict[str, Any]:
+    try:
+        payload = json.loads(str(value))
+    except json.JSONDecodeError as exc:
+        raise ValueError(
+            "stage=trend-load "
+            f"region_id={region_id} dataset_id={dataset_id} malformed checkpoint_metadata_json"
+        ) from exc
+    if not isinstance(payload, dict):
+        raise ValueError(
+            "stage=trend-load "
+            f"region_id={region_id} dataset_id={dataset_id} "
+            "checkpoint_metadata_json must decode to an object"
+        )
+    return payload
+
+
+def _parse_bbox_json(
+    value: object,
+    *,
+    region_id: str,
+    dataset_id: str,
+) -> BBox:
+    try:
+        payload = json.loads(str(value))
+    except json.JSONDecodeError as exc:
+        raise ValueError(
+            "stage=trend-load "
+            f"region_id={region_id} dataset_id={dataset_id} malformed bbox_json"
+        ) from exc
+    if not isinstance(payload, list) or len(payload) != 4:
+        raise ValueError(
+            "stage=trend-load "
+            f"region_id={region_id} dataset_id={dataset_id} bbox_json must decode to a 4-item list"
+        )
+    bbox = tuple(float(item) for item in payload)
+    west, south, east, north = bbox
+    if west >= east or south >= north:
+        raise ValueError(
+            "stage=trend-load "
+            f"region_id={region_id} dataset_id={dataset_id} invalid bbox_json bounds"
+        )
+    return cast(BBox, bbox)
+
+
+def _write_dataset_atomic(path: Path, dataset: xr.Dataset) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, temp_name = tempfile.mkstemp(
+        dir=path.parent,
+        prefix=f".{path.name}.",
+        suffix=".tmp",
+    )
+    os.close(fd)
+    temp_path = Path(temp_name)
+    try:
+        dataset.to_netcdf(temp_path)
+        temp_path.replace(path)
+    finally:
+        if temp_path.exists():
+            temp_path.unlink()
 
 
 # ---------------------------------------------------------------------------

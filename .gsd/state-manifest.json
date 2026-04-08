@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "exported_at": "2026-04-08T19:13:28.236Z",
+  "exported_at": "2026-04-08T19:43:44.759Z",
   "milestones": [
     {
       "id": "M001",
@@ -1673,19 +1673,32 @@
       "milestone_id": "M002",
       "slice_id": "S05",
       "id": "T04",
-      "title": "Restore trend surface writes and add checkpointed HPC submit fanout",
-      "status": "pending",
-      "one_liner": "",
-      "narrative": "",
-      "verification_result": "",
+      "title": "Restored dataset-scoped Phase 4 trend outputs and resumable trend-contract fanout via explicit checkpoints.",
+      "status": "complete",
+      "one_liner": "Restored dataset-scoped Phase 4 trend outputs and resumable trend-contract fanout via explicit checkpoints.",
+      "narrative": "Added src/WA/comparison/trend_contract.py as the missing dataset-scoped contract layer for Phase 4 trends, writing one semantic trend_surface NetCDF and one trend_regional_summary CSV per dataset_id + region_id and reloading them fail-closed. Extended src/WA/comparison/trends.py with explicit trend checkpoint paths plus write/reload helpers under results/phase4/trend_checkpoints/, so the runner now persists one resumable checkpoint per region + dataset + aggregation + requested window before agreement. The checkpoint metadata now stores both the requested rerun window and the actual result time range, which avoids false stale/mixed reload failures on month-start series. Updated scripts/run_phase4_trend_contract.py to reuse or rebuild dataset checkpoints first, then write/reload dataset-scoped contract artifacts, and only then compute participant-set agreement plus trend-hotspot families. Added scripts/submit_phase4_trend_contract.sh as the HPC fanout wrapper that requires explicit --repo, hardcodes --no-skip into every generated job script, writes every participant dataset id explicitly, and emits one summary TSV per fanout run. Added focused regressions for contract round-trips, checkpoint reload behavior, mixed checkpoint metadata rejection, duplicate participant-id rejection, and submit-wrapper dry-run/error handling. Recorded D046, updated CHANGELOG.md and .gsd/KNOWLEDGE.md, and wrote docs/stashes/2026-04-09-008-m002-s05-t04-trend-checkpoints.md with copy-pasteable HPC commands.",
+      "verification_result": "Passed the task-plan verification commands exactly as written: ruff check on the touched trend files, bash -n scripts/submit_phase4_trend_contract.sh, python scripts/run_phase4_trend_contract.py --help, and python -m pytest tests/test_comparison/test_trend_contract.py tests/test_comparison/test_trends.py tests/test_comparison/test_trend_agreement.py tests/test_submit_phase4_trend_contract.py -q (34 passed). I also ran the project-required broader suite check python -m pytest tests/, which still reproduces the existing unrelated tests/test_mgrs_tiling.py::test_tile_to_extent_matches_reference_case failure and later exits 137, and reran python -m pytest tests/test_mgrs_tiling.py -q to confirm that red bar in isolation.",
       "duration": "",
-      "completed_at": null,
+      "completed_at": "2026-04-08T19:43:44.729Z",
       "blocker_discovered": false,
-      "deviations": "",
-      "known_issues": "",
-      "key_files": [],
-      "key_decisions": [],
-      "full_summary_md": "",
+      "deviations": "Beyond the task plan’s expected output files, I also updated CHANGELOG.md, .gsd/KNOWLEDGE.md, recorded D046, and wrote docs/stashes/2026-04-09-008-m002-s05-t04-trend-checkpoints.md because the project contract requires changelog maintenance, durable execution breadcrumbs, and explicit HPC commands after user-visible CLI/workflow changes. I also preserved the runner’s existing agreement/hotspot validation helpers instead of refactoring them into the new module, because the blocker was missing dataset-scoped outputs plus checkpoints—not broken participant-set artifact semantics.",
+      "known_issues": "python -m pytest tests/ still reproduces the pre-existing unrelated failure at tests/test_mgrs_tiling.py::test_tile_to_extent_matches_reference_case, and the broader suite is later killed with exit 137 before completing. No real HPC SLURM execution against external standardized inputs was run from this worktree; only the submit-wrapper dry-run surface and focused local tests were exercised here.",
+      "key_files": [
+        "src/WA/comparison/trend_contract.py",
+        "src/WA/comparison/trends.py",
+        "scripts/run_phase4_trend_contract.py",
+        "scripts/submit_phase4_trend_contract.sh",
+        "tests/test_comparison/test_trend_contract.py",
+        "tests/test_comparison/test_trends.py",
+        "tests/test_submit_phase4_trend_contract.py",
+        "CHANGELOG.md",
+        ".gsd/KNOWLEDGE.md",
+        "docs/stashes/2026-04-09-008-m002-s05-t04-trend-checkpoints.md"
+      ],
+      "key_decisions": [
+        "D046 — keep contract trend_surface/trend_regional_summary artifacts keyed by dataset_id + region_id, and keep resumable trend checkpoints as separate region/dataset/aggregation/requested-window cache files consumed before agreement."
+      ],
+      "full_summary_md": "---\nid: T04\nparent: S05\nmilestone: M002\nkey_files:\n  - src/WA/comparison/trend_contract.py\n  - src/WA/comparison/trends.py\n  - scripts/run_phase4_trend_contract.py\n  - scripts/submit_phase4_trend_contract.sh\n  - tests/test_comparison/test_trend_contract.py\n  - tests/test_comparison/test_trends.py\n  - tests/test_submit_phase4_trend_contract.py\n  - CHANGELOG.md\n  - .gsd/KNOWLEDGE.md\n  - docs/stashes/2026-04-09-008-m002-s05-t04-trend-checkpoints.md\nkey_decisions:\n  - D046 — keep contract trend_surface/trend_regional_summary artifacts keyed by dataset_id + region_id, and keep resumable trend checkpoints as separate region/dataset/aggregation/requested-window cache files consumed before agreement.\nduration: \nverification_result: mixed\ncompleted_at: 2026-04-08T19:43:44.723Z\nblocker_discovered: false\n---\n\n# T04: Restored dataset-scoped Phase 4 trend outputs and resumable trend-contract fanout via explicit checkpoints.\n\n**Restored dataset-scoped Phase 4 trend outputs and resumable trend-contract fanout via explicit checkpoints.**\n\n## What Happened\n\nAdded src/WA/comparison/trend_contract.py as the missing dataset-scoped contract layer for Phase 4 trends, writing one semantic trend_surface NetCDF and one trend_regional_summary CSV per dataset_id + region_id and reloading them fail-closed. Extended src/WA/comparison/trends.py with explicit trend checkpoint paths plus write/reload helpers under results/phase4/trend_checkpoints/, so the runner now persists one resumable checkpoint per region + dataset + aggregation + requested window before agreement. The checkpoint metadata now stores both the requested rerun window and the actual result time range, which avoids false stale/mixed reload failures on month-start series. Updated scripts/run_phase4_trend_contract.py to reuse or rebuild dataset checkpoints first, then write/reload dataset-scoped contract artifacts, and only then compute participant-set agreement plus trend-hotspot families. Added scripts/submit_phase4_trend_contract.sh as the HPC fanout wrapper that requires explicit --repo, hardcodes --no-skip into every generated job script, writes every participant dataset id explicitly, and emits one summary TSV per fanout run. Added focused regressions for contract round-trips, checkpoint reload behavior, mixed checkpoint metadata rejection, duplicate participant-id rejection, and submit-wrapper dry-run/error handling. Recorded D046, updated CHANGELOG.md and .gsd/KNOWLEDGE.md, and wrote docs/stashes/2026-04-09-008-m002-s05-t04-trend-checkpoints.md with copy-pasteable HPC commands.\n\n## Verification\n\nPassed the task-plan verification commands exactly as written: ruff check on the touched trend files, bash -n scripts/submit_phase4_trend_contract.sh, python scripts/run_phase4_trend_contract.py --help, and python -m pytest tests/test_comparison/test_trend_contract.py tests/test_comparison/test_trends.py tests/test_comparison/test_trend_agreement.py tests/test_submit_phase4_trend_contract.py -q (34 passed). I also ran the project-required broader suite check python -m pytest tests/, which still reproduces the existing unrelated tests/test_mgrs_tiling.py::test_tile_to_extent_matches_reference_case failure and later exits 137, and reran python -m pytest tests/test_mgrs_tiling.py -q to confirm that red bar in isolation.\n\n## Verification Evidence\n\n| # | Command | Exit Code | Verdict | Duration |\n|---|---------|-----------|---------|----------|\n| 1 | `ruff check src/WA/comparison/trend_contract.py src/WA/comparison/trends.py scripts/run_phase4_trend_contract.py tests/test_comparison/test_trend_contract.py tests/test_comparison/test_trends.py tests/test_submit_phase4_trend_contract.py` | 0 | ✅ pass | 117ms |\n| 2 | `bash -n scripts/submit_phase4_trend_contract.sh` | 0 | ✅ pass | 3ms |\n| 3 | `python scripts/run_phase4_trend_contract.py --help` | 0 | ✅ pass | 1589ms |\n| 4 | `python -m pytest tests/test_comparison/test_trend_contract.py tests/test_comparison/test_trends.py tests/test_comparison/test_trend_agreement.py tests/test_submit_phase4_trend_contract.py -q` | 0 | ✅ pass | 4450ms |\n| 5 | `python -m pytest tests/` | 137 | ❌ fail | 59100ms |\n| 6 | `python -m pytest tests/test_mgrs_tiling.py -q` | 1 | ❌ fail | 400ms |\n\n## Deviations\n\nBeyond the task plan’s expected output files, I also updated CHANGELOG.md, .gsd/KNOWLEDGE.md, recorded D046, and wrote docs/stashes/2026-04-09-008-m002-s05-t04-trend-checkpoints.md because the project contract requires changelog maintenance, durable execution breadcrumbs, and explicit HPC commands after user-visible CLI/workflow changes. I also preserved the runner’s existing agreement/hotspot validation helpers instead of refactoring them into the new module, because the blocker was missing dataset-scoped outputs plus checkpoints—not broken participant-set artifact semantics.\n\n## Known Issues\n\npython -m pytest tests/ still reproduces the pre-existing unrelated failure at tests/test_mgrs_tiling.py::test_tile_to_extent_matches_reference_case, and the broader suite is later killed with exit 137 before completing. No real HPC SLURM execution against external standardized inputs was run from this worktree; only the submit-wrapper dry-run surface and focused local tests were exercised here.\n\n## Files Created/Modified\n\n- `src/WA/comparison/trend_contract.py`\n- `src/WA/comparison/trends.py`\n- `scripts/run_phase4_trend_contract.py`\n- `scripts/submit_phase4_trend_contract.sh`\n- `tests/test_comparison/test_trend_contract.py`\n- `tests/test_comparison/test_trends.py`\n- `tests/test_submit_phase4_trend_contract.py`\n- `CHANGELOG.md`\n- `.gsd/KNOWLEDGE.md`\n- `docs/stashes/2026-04-09-008-m002-s05-t04-trend-checkpoints.md`\n",
       "description": "Current `scripts/run_phase4_trend_contract.py` only persists agreement/hotspot artifacts and still recomputes region-scoped trend inputs from staged tiles for each run. S05 must restore the missing per-dataset trend surface/summary writes and add a resumable submit/checkpoint path before any ten-region trend proof is credible.\n\n## Failure Modes\n\n| Dependency | On error | On timeout | On malformed response |\n|------------|----------|-----------|----------------------|\n| `src/WA/comparison/trends.py`, staged GWD30 manifests, `src/WA/comparison/trend_agreement.py`, and the new submit wrapper | Fail with stage, `dataset_id`, `region_id`, and participant-set context; never treat a half-written checkpoint or partial artifact pair as reusable. | Resume at the region/dataset boundary through explicit checkpoint and submit surfaces instead of recomputing the whole ladder. | Reject malformed participant keys, missing staged tiles, mixed checkpoint metadata, or invalid submit arguments instead of silently broadening or reusing bad state. |\n\n## Load Profile\n\n- **Shared resources**: staged GWD30 tile manifests, trend checkpoint caches, trend NetCDF/CSV outputs, and one submit-summary surface per fanout run.\n- **Per-operation cost**: one trend surface load/checkpoint plus Mann-Kendall write per dataset×region, then one agreement/hotspot pass per region.\n- **10x breakpoint**: staged-tile I/O and agreement stacking become the first wall-time bottleneck when the canonical subset widens to all ten regions.\n\n## Negative Tests\n\n- **Malformed inputs**: missing staged GWD30 manifests, bad participant ids, mixed checkpoint metadata, and illegal submit-script flag combinations.\n- **Error paths**: partial checkpoints, missing trend output files, or empty agreement overlap windows must surface explicit failures with region/dataset context.\n- **Boundary conditions**: dataset-id order differences, `amazon → canonical → ten` widening, and `--repo` / `--no-skip` submit generation remain deterministic.\n\n## Steps\n\n1. Add `src/WA/comparison/trend_contract.py` to write and semantically reload per-dataset `trend_surface` and `trend_regional_summary` artifacts keyed by dataset id + region, keeping participant-set handling only for agreement/hotspot families.\n2. Extend `src/WA/comparison/trends.py` and `scripts/run_phase4_trend_contract.py` so wide runs can write and reuse explicit region/dataset/time-window checkpoints before agreement, with logs that distinguish compute vs reload and with `--subset ten` using the shared selector.\n3. Add `scripts/submit_phase4_trend_contract.sh` to fan out one region per job on HPC with explicit `--repo`, `--no-skip`, participant dataset lists, and summary-file output instead of relying on ad hoc manual command editing.\n4. Add `tests/test_comparison/test_trend_contract.py`, extend `tests/test_comparison/test_trends.py`, and add `tests/test_submit_phase4_trend_contract.py` covering checkpoint writes/reloads, per-dataset trend outputs, invalid participant sets, and generated SLURM commands.\n\n## Must-Haves\n\n- [ ] The trend line regains real contract-backed `trend_surface` and `trend_regional_summary` outputs in addition to the existing agreement/hotspot families.\n- [ ] Trend wide runs can resume from explicit region/dataset checkpoints instead of recomputing everything after one failure.\n- [ ] The trend submit wrapper makes `--repo` and `--no-skip` explicit so operators do not silently fall back to stale defaults like `$HOME/repos/WA2`.\n\n## Done when\n\n- The trend contract runner can materialize per-dataset trend surfaces/summaries plus agreement/hotspot families for one region and `--subset ten`, and the new submit wrapper plus focused tests prove the ladder is resumable and HPC-safe.",
       "estimate": "3h",
       "files": [
@@ -2306,6 +2319,18 @@
       "decision": "Phase 4 classification contract family identity and hotspot provenance",
       "choice": "Keep `classification_key=canonical` as the contract family key for the fixed `g2017+glwd_v2+gwd30` participant set, and rewrite region hotspot artifacts from the Phase 3.7 source trio instead of recomputing hotspot selection inside the Phase 4 adapter.",
       "rationale": "This preserves compatibility with the existing hotspot-ledger contract (`classification_key=canonical`), avoids duplicating Phase 3.6/3.7 disagreement science in a second code path, and lets the adapter fail closed by cross-checking Phase 3.6 source paths plus Phase 3.7 manifest/CSV/region-summary consistency before any contract hotspot pair is trusted.",
+      "revisable": "Yes",
+      "made_by": "agent",
+      "superseded_by": null
+    },
+    {
+      "seq": 48,
+      "id": "D046",
+      "when_context": "M002/S05/T04",
+      "scope": "architecture",
+      "decision": "How Phase 4 trend reruns separate downstream contract artifacts from resumable compute checkpoints",
+      "choice": "Keep contract trend_surface/trend_regional_summary artifacts keyed by dataset_id + region_id, and store resumable trend checkpoints as separate region/dataset/aggregation/requested-window cache files consumed before agreement.",
+      "rationale": "Downstream consumers need stable semantic artifact paths that do not change with every rerun, while HPC reruns need explicit window-scoped checkpoints that can resume safely without colliding with different time ranges or silently reusing stale compute state. Separating the two lets the runner validate checkpoint metadata strictly, reuse dataset-scoped compute before agreement, and still publish stable contract outputs for later ledger/readiness work.",
       "revisable": "Yes",
       "made_by": "agent",
       "superseded_by": null
@@ -4005,6 +4030,72 @@
       "verdict": "❌ fail",
       "duration_ms": 400,
       "created_at": "2026-04-08T19:13:28.210Z"
+    },
+    {
+      "id": 155,
+      "task_id": "T04",
+      "slice_id": "S05",
+      "milestone_id": "M002",
+      "command": "ruff check src/WA/comparison/trend_contract.py src/WA/comparison/trends.py scripts/run_phase4_trend_contract.py tests/test_comparison/test_trend_contract.py tests/test_comparison/test_trends.py tests/test_submit_phase4_trend_contract.py",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 117,
+      "created_at": "2026-04-08T19:43:44.729Z"
+    },
+    {
+      "id": 156,
+      "task_id": "T04",
+      "slice_id": "S05",
+      "milestone_id": "M002",
+      "command": "bash -n scripts/submit_phase4_trend_contract.sh",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 3,
+      "created_at": "2026-04-08T19:43:44.730Z"
+    },
+    {
+      "id": 157,
+      "task_id": "T04",
+      "slice_id": "S05",
+      "milestone_id": "M002",
+      "command": "python scripts/run_phase4_trend_contract.py --help",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 1589,
+      "created_at": "2026-04-08T19:43:44.730Z"
+    },
+    {
+      "id": 158,
+      "task_id": "T04",
+      "slice_id": "S05",
+      "milestone_id": "M002",
+      "command": "python -m pytest tests/test_comparison/test_trend_contract.py tests/test_comparison/test_trends.py tests/test_comparison/test_trend_agreement.py tests/test_submit_phase4_trend_contract.py -q",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 4450,
+      "created_at": "2026-04-08T19:43:44.730Z"
+    },
+    {
+      "id": 159,
+      "task_id": "T04",
+      "slice_id": "S05",
+      "milestone_id": "M002",
+      "command": "python -m pytest tests/",
+      "exit_code": 137,
+      "verdict": "❌ fail",
+      "duration_ms": 59100,
+      "created_at": "2026-04-08T19:43:44.730Z"
+    },
+    {
+      "id": 160,
+      "task_id": "T04",
+      "slice_id": "S05",
+      "milestone_id": "M002",
+      "command": "python -m pytest tests/test_mgrs_tiling.py -q",
+      "exit_code": 1,
+      "verdict": "❌ fail",
+      "duration_ms": 400,
+      "created_at": "2026-04-08T19:43:44.730Z"
     }
   ]
 }

@@ -6,6 +6,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import pytest
 import rioxarray  # noqa: F401
 import xarray as xr
 from pytest import MonkeyPatch
@@ -21,7 +22,11 @@ from WA.comparison.trends import (
     compute_pixel_trends,
     compute_regional_summary,
     compute_year_over_year_change,
+    load_trend_checkpoint,
+    materialize_trend_checkpoint,
     phase4_gwd30_pixel_stats_tile_dir,
+    trend_checkpoint_output_path,
+    write_trend_checkpoint,
 )
 
 # ---------------------------------------------------------------------------
@@ -152,6 +157,91 @@ def test_compute_pixel_trends_metadata():
     assert result.dataset_id == "swamps"
     assert result.aggregation == "monthly"
     assert result.time_range[0] <= result.time_range[1]
+
+
+def test_materialize_trend_checkpoint_reuses_existing_checkpoint(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    load_calls: list[dict[str, object]] = []
+    surface = _make_surface(_INCREASING)
+
+    def _fake_load_trend_surface(*args, **kwargs):  # type: ignore[no-untyped-def]
+        load_calls.append(kwargs)
+        return surface
+
+    monkeypatch.setattr(trends_module, "load_trend_surface", _fake_load_trend_surface)
+
+    first = materialize_trend_checkpoint(
+        output_root=tmp_path,
+        region_id="amazon",
+        bbox=(99.5, -0.5, 101.5, 1.5),
+        dataset_id="wad2m",
+        time_range=("2000-01-01", "2004-12-31"),
+        aggregation="annual",
+        min_observations=5,
+        show_progress=False,
+        skip_existing=True,
+    )
+    second = materialize_trend_checkpoint(
+        output_root=tmp_path,
+        region_id="amazon",
+        bbox=(99.5, -0.5, 101.5, 1.5),
+        dataset_id="wad2m",
+        time_range=("2000-01-01", "2004-12-31"),
+        aggregation="annual",
+        min_observations=5,
+        show_progress=False,
+        skip_existing=True,
+    )
+
+    assert len(load_calls) == 1
+    assert first.checkpoint_path == second.checkpoint_path
+    assert second.requested_time_range == ("2000-01-01", "2004-12-31")
+    assert second.time_range == ("2000-01-01", "2004-12-01")
+    assert second.trend_result.status == "computed"
+    assert trend_checkpoint_output_path(
+        tmp_path,
+        region_id="amazon",
+        dataset_id="wad2m",
+        aggregation="annual",
+        time_range=("2000-01-01", "2004-12-31"),
+    ).is_file()
+
+
+def test_load_trend_checkpoint_rejects_mixed_metadata(tmp_path: Path) -> None:
+    trend_result = compute_pixel_trends(
+        _make_surface(_INCREASING),
+        dataset_id="wad2m",
+        aggregation="annual",
+    )
+    checkpoint_path = trend_checkpoint_output_path(
+        tmp_path,
+        region_id="amazon",
+        dataset_id="wad2m",
+        aggregation="annual",
+        time_range=("2000-01-01", "2004-12-31"),
+    )
+    write_trend_checkpoint(
+        checkpoint_path,
+        region_id="amazon",
+        requested_time_range=("2000-01-01", "2004-12-31"),
+        bbox=(99.5, -0.5, 101.5, 1.5),
+        trend_result=trend_result,
+    )
+
+    broken = xr.load_dataset(checkpoint_path)
+    broken.attrs["aggregation"] = "monthly"
+    broken.to_netcdf(checkpoint_path, mode="w")
+
+    with pytest.raises(ValueError, match="mixed checkpoint metadata"):
+        load_trend_checkpoint(
+            checkpoint_path,
+            expected_region_id="amazon",
+            expected_dataset_id="wad2m",
+            expected_aggregation="annual",
+            expected_time_range=("2000-01-01", "2004-12-31"),
+        )
 
 
 def test_load_trend_surface_uses_gwd30_staged_tiles(

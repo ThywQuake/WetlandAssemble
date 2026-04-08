@@ -128,7 +128,7 @@ python scripts/run_related_tests.py src/WA/comparison/percentage_backbone.py src
   - Verify: ruff check src/WA/comparison/classification_contract.py scripts/run_phase4_classification_contract.py src/WA/visualization/phase4.py tests/test_comparison/test_classification_contract.py tests/test_visualization/test_phase4.py
 python scripts/run_phase4_classification_contract.py --help
 python -m pytest tests/test_comparison/test_classification_contract.py tests/test_visualization/test_phase4.py -q
-- [ ] **T04: Restore trend surface writes and add checkpointed HPC submit fanout** — Current `scripts/run_phase4_trend_contract.py` only persists agreement/hotspot artifacts and still recomputes region-scoped trend inputs from staged tiles for each run. S05 must restore the missing per-dataset trend surface/summary writes and add a resumable submit/checkpoint path before any ten-region trend proof is credible.
+- [x] **T04: Restored dataset-scoped Phase 4 trend outputs and resumable trend-contract fanout via explicit checkpoints.** — Current `scripts/run_phase4_trend_contract.py` only persists agreement/hotspot artifacts and still recomputes region-scoped trend inputs from staged tiles for each run. S05 must restore the missing per-dataset trend surface/summary writes and add a resumable submit/checkpoint path before any ten-region trend proof is credible.
 
 ## Failure Modes
 
