@@ -24,6 +24,18 @@ from WA.comparison.hotspot_ledger import (
     UnifiedHotspotLedgerReload,
     load_contract_unified_hotspot_ledger,
 )
+from WA.comparison.percentage_backbone import (
+    PercentageSummaryBundle,
+    PercentageSurfaceBundle,
+    load_contract_percentage_summary,
+    load_contract_percentage_surface,
+)
+from WA.comparison.trend_contract import (
+    TrendAgreementSummaryBundle,
+    TrendAgreementSurfaceBundle,
+    load_contract_trend_agreement_summary,
+    load_contract_trend_agreement_surface,
+)
 from WA.comparison.trend_hotspots import (
     TrendHotspotReload,
     load_contract_trend_hotspot_table,
@@ -93,6 +105,110 @@ def phase4_climatology_figure_path(
     """Return the climatology figure path for one region."""
 
     return Path(figures_root) / "climatology" / f"{region_id}.png"
+
+
+def load_phase4_contract_percentage_summary(
+    *,
+    region_id: str,
+    dataset_key: str = "canonical",
+    output_root: str | Path = DEFAULT_PHASE4_CONTRACT_OUTPUT_ROOT,
+    regions_file: str | Path = DEFAULT_PHASE4_REGIONS_FILE,
+) -> PercentageSummaryBundle:
+    """Reload one contract-backed percentage summary by semantics."""
+
+    contract = load_phase4_evidence_contract(
+        output_root=output_root,
+        regions_file=regions_file,
+    )
+    try:
+        return load_contract_percentage_summary(
+            contract=contract,
+            region_id=region_id,
+            dataset_key=dataset_key,
+        )
+    except Exception as exc:  # pragma: no cover - exercised by tests via message
+        raise ValueError(
+            "Phase4 semantic reload failed for percentage summary: "
+            f"region_id={region_id} dataset_key={dataset_key} error={exc}"
+        ) from exc
+
+
+def load_phase4_contract_percentage_surface(
+    *,
+    region_id: str,
+    dataset_key: str = "canonical",
+    output_root: str | Path = DEFAULT_PHASE4_CONTRACT_OUTPUT_ROOT,
+    regions_file: str | Path = DEFAULT_PHASE4_REGIONS_FILE,
+) -> PercentageSurfaceBundle:
+    """Reload one contract-backed percentage surface by semantics."""
+
+    contract = load_phase4_evidence_contract(
+        output_root=output_root,
+        regions_file=regions_file,
+    )
+    try:
+        return load_contract_percentage_surface(
+            contract=contract,
+            region_id=region_id,
+            dataset_key=dataset_key,
+        )
+    except Exception as exc:  # pragma: no cover - exercised by tests via message
+        raise ValueError(
+            "Phase4 semantic reload failed for percentage surface: "
+            f"region_id={region_id} dataset_key={dataset_key} error={exc}"
+        ) from exc
+
+
+def load_phase4_contract_trend_agreement_summary(
+    *,
+    region_id: str,
+    participant_ids: list[str] | tuple[str, ...],
+    output_root: str | Path = DEFAULT_PHASE4_CONTRACT_OUTPUT_ROOT,
+    regions_file: str | Path = DEFAULT_PHASE4_REGIONS_FILE,
+) -> TrendAgreementSummaryBundle:
+    """Reload one contract-backed trend agreement summary by semantics."""
+
+    contract = load_phase4_evidence_contract(
+        output_root=output_root,
+        regions_file=regions_file,
+    )
+    try:
+        return load_contract_trend_agreement_summary(
+            contract=contract,
+            region_id=region_id,
+            participant_ids=participant_ids,
+        )
+    except Exception as exc:  # pragma: no cover - exercised by tests via message
+        raise ValueError(
+            "Phase4 semantic reload failed for trend agreement summary: "
+            f"region_id={region_id} participant_ids={list(participant_ids)} error={exc}"
+        ) from exc
+
+
+def load_phase4_contract_trend_agreement_surface(
+    *,
+    region_id: str,
+    participant_ids: list[str] | tuple[str, ...],
+    output_root: str | Path = DEFAULT_PHASE4_CONTRACT_OUTPUT_ROOT,
+    regions_file: str | Path = DEFAULT_PHASE4_REGIONS_FILE,
+) -> TrendAgreementSurfaceBundle:
+    """Reload one contract-backed trend agreement surface by semantics."""
+
+    contract = load_phase4_evidence_contract(
+        output_root=output_root,
+        regions_file=regions_file,
+    )
+    try:
+        return load_contract_trend_agreement_surface(
+            contract=contract,
+            region_id=region_id,
+            participant_ids=participant_ids,
+        )
+    except Exception as exc:  # pragma: no cover - exercised by tests via message
+        raise ValueError(
+            "Phase4 semantic reload failed for trend agreement surface: "
+            f"region_id={region_id} participant_ids={list(participant_ids)} error={exc}"
+        ) from exc
 
 
 def load_phase4_contract_classification_summary(

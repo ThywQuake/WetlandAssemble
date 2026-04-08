@@ -96,3 +96,9 @@
 - In this repo, a Phase 3.7 hotspot CSV can look superficially valid for a target region even when one row’s `region_id` was mutated or the CSV drifted away from the manifest.
 - For the restored Phase 4 classification contract, do not trust `phase3_7_hotspots_<year>.csv` by filtering `region_id` alone; first take the hotspot ids for that region from the Phase 3.7 manifest, then require the CSV rows for exactly those ids and reject any mixed-region mismatch.
 - This matters for `src/WA/comparison/classification_contract.py`, where the adapter rewrites region hotspot families from the Phase 3.7 source trio and must fail closed on stale or hand-edited source tables.
+
+## 2026-04-09 — Use readiness before wide ledger, and treat ledger failure as a diagnostic producer
+
+- In this repo’s Phase 4 scale-out path, `scripts/run_phase4_scaleout_readiness.py` is the first operator check for `percentage / classification / trend` hotspot-family completeness across `--region`, `--subset canonical`, or `--subset ten`.
+- Treat `missing` as “both manifest and CSV are absent”; treat partial pairs, semantic reload failures, mixed rows, or bad provenance as `partial` instead of collapsing everything into one missing state.
+- `scripts/run_phase4_hotspot_ledger.py` remains fail-closed by design, but on failure it now auto-writes a single-region readiness CSV/JSON and logs family-specific paths/reasons. Use that report before re-running wide ledger jobs so operators do not debug from a naked first exception.

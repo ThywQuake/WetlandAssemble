@@ -2,7 +2,7 @@
 
 ## What This Is
 
-WA (Wetland Assemble) is a research-engineering workspace for comparing and ultimately fusing multiple wetland datasets around one thesis-sized logic chain. The project now centers on three coordinated evidence lines:
+WA (Wetland Assemble) is a research-engineering workspace for comparing and eventually fusing multiple wetland datasets around one thesis-sized logic chain. The project centers on three coordinated evidence lines:
 
 1. **湿地百分比** — normalize multiple datasets to `0-1` wetland fraction on a shared `0.25°` grid and compare their regional and pixel-scale behavior.
 2. **分类准确度 / 分类分歧** — compare `G2017 / GLWD / GWD30` after remapping to a shared 8-class wetland vocabulary on a `500m` grid.
@@ -16,59 +16,73 @@ One reproducible, paper-aligned evidence backbone that can show **where wetland 
 
 ## Current State
 
-M001 is complete and closed the audit / recovery-control problem. M002 is in execution and has now closed the canonical-subset contract surfaces for all three main evidence lines **plus** the cross-line hotspot integration layer.
+M001 is complete and closed the audit / recovery-control problem. M002 is still active, and S05 has now closed the **ten-region scale-out execution boundary** in code even though the worktree does not include freshly materialized ten-region science outputs.
 
 What is now stable in-code for M002:
 
 - shared Phase 4 evidence-contract semantics in `src/WA/comparison/evidence_contract.py`
-- contract-backed percentage surfaces, summaries, and hotspot families on the canonical subset
-- contract-backed trend agreement surfaces, trend hotspot manifests, and semantic trend-hotspot reloads
-- contract-backed classification surfaces, summaries, and hotspot manifests for the fixed `g2017+glwd_v2+gwd30` trio
-- a unified hotspot ledger in `src/WA/comparison/hotspot_ledger.py` that normalizes percentage / classification / trend hotspot families into stable long-form `analysis_object_id` rows with provenance
-- semantic reload helpers in `src/WA/visualization/phase4.py` so downstream code can reopen trend hotspots and unified ledgers by meaning instead of guessed filenames
-- fail-closed Phase 4 runners:
-  - `scripts/run_phase4_trend_contract.py`
+- one ordered shared `ten` selector plus explicit subset/region validation across the main Phase 4 CLIs
+- contract-backed percentage surfaces, summaries, and hotspot families via:
+  - `src/WA/comparison/percentage_backbone.py`
+  - `src/WA/comparison/percentage_hotspots.py`
+  - `scripts/run_phase4_percentage_contract.py`
+- GWD30 restored to the shared `0.25°` percentage path through Stage-1-backed surface recovery
+- contract-backed classification surfaces, summaries, and hotspot manifests for the fixed `g2017+glwd_v2+gwd30` trio via:
+  - `src/WA/comparison/classification_contract.py`
   - `scripts/run_phase4_classification_contract.py`
-  - `scripts/run_phase4_hotspot_ledger.py`
-- related-test routing that treats these contract and ledger paths as one Phase 4 verification family
+- dataset-scoped trend surfaces/summaries plus participant-set agreement/hotspot families via:
+  - `src/WA/comparison/trend_contract.py`
+  - `src/WA/comparison/trends.py`
+  - `scripts/run_phase4_trend_contract.py`
+- resumable trend checkpoints under `results/phase4/trend_checkpoints/` and the HPC-safe fanout wrapper `scripts/submit_phase4_trend_contract.sh`
+- a unified hotspot ledger in `src/WA/comparison/hotspot_ledger.py` that stays fail-closed unless all three hotspot families are complete and semantically valid
+- ten-region readiness diagnostics via:
+  - `src/WA/comparison/scaleout_readiness.py`
+  - `scripts/run_phase4_scaleout_readiness.py`
+- semantic reload helpers in `src/WA/visualization/phase4.py` so downstream code can reopen percentage/classification/trend/ledger artifacts by meaning instead of guessed filenames
+- related-test routing that treats the restored Phase 4 contract, readiness, and ledger paths as one verification family
 
 What is **not** closed yet:
 
-- ten-region scale-out proof for the full contract + ledger chain
-- fresh HPC/runtime proof on real canonical outputs for the newly added S04 surfaces
-- paper-ready figure/table packs that consume the unified ledger directly
+- fresh HPC materialization of the new S05 ten-region producers and readiness/ledger outputs on real external inputs
+- S06 paper-ready figure/table/summary packs that consume the ten-region contract outputs and unified ledger directly
+- milestone-level reintegration proof that the ten-region outputs are regenerated, reopened, and packaged end-to-end
 - hotspot-cause interpretation surfaces using MODIS / auxiliary hydro-climate evidence
 - fraction-first fusion and the multi-objective evaluation scorecard
 
 ## Current Recommended Route
 
-The next implementation bottleneck is **M002/S05: Ten-region scale-out with reproducible HPC-safe execution**.
+The next implementation bottleneck is **M002/S06: Paper-ready evidence pack and milestone integration proof**.
 
-Use the new S04 surfaces as the stable comparison/control plane:
+Use the S05 execution boundary in this order:
 
-1. rebuild one-region trend hotspots with `scripts/run_phase4_trend_contract.py --region amazon --no-skip`
-2. rebuild one-region unified ledger with `scripts/run_phase4_hotspot_ledger.py --region amazon --no-skip`
-3. widen to `--subset canonical`
-4. only then expand the same contract/ledger path to the ten-region set
+1. run `scripts/run_phase4_percentage_contract.py --subset ten --no-skip` on HPC
+2. run `scripts/run_phase4_classification_contract.py --subset ten --no-skip` on HPC
+3. fan out trend regeneration with `bash scripts/submit_phase4_trend_contract.sh --repo "$HOME/repos/WA" ... --subset ten --no-progress`
+4. scan completeness with `scripts/run_phase4_scaleout_readiness.py --subset ten`
+5. only after readiness is satisfactory, build the cross-line final gate with `scripts/run_phase4_hotspot_ledger.py --subset ten --no-skip`
+6. use those regenerated ten-region artifacts as the input pack for S06 figures/tables/integration validation
 
-Do **not** bypass the semantic reload helpers or rebuild downstream figure logic around ad hoc filename parsing; S04 established the ledger and reload helpers as the supported boundary.
+Do **not** bypass the shared `ten` selector, the semantic reload helpers, or the readiness gate by hand-writing region lists or guessing filenames.
 
 ## Architecture / Key Patterns
 
 - Python package under `src/WA`, mainly split across `loaders`, `comparison`, `validation`, and `visualization`
 - Comparison modules now expose three contract-backed hotspot families plus one unified long-form ledger
 - Shared evidence objects use paired manifest/data outputs, provenance-rich metadata, and fail-closed reload validation
-- Cross-line hotspot comparison preserves family-local score meaning via `primary_score_name`, `primary_score_value`, `family_percentile`, and `line_specific_json`
-- Validation modules still use thin wrappers and artifact-return-value patterns for reference imagery / external evidence workflows
+- Wide Phase 4 runs now follow an explicit selector -> producer/reload -> readiness -> ledger sequence rather than one opaque batch step
+- Percentage scale-out uses one multi-dataset contract bundle per region, including GWD30 restored through Stage-1 tile manifests
+- Classification scale-out wraps Phase 3.6 / 3.7 producers rather than duplicating disagreement science in Phase 4
+- Trend scale-out separates stable downstream contract artifacts from resumable region/dataset checkpoints
+- Unified hotspot comparison preserves family-local score meaning via `primary_score_name`, `primary_score_value`, `family_percentile`, and `line_specific_json`
 - HPC execution uses split/cache/merge patterns, explicit submit scripts, and rsync-based deployment rather than git-based remote execution
+- Failures should remain visible: readiness distinguishes `ready` / `missing` / `partial`, and ledger failures now emit family-specific diagnostics plus a single-region readiness report
 - M001 recovery precedence still stands:
   - S05 = first-stop recovery index
   - S03 = route truth
   - S04 = ordered execution truth
   - S02 = proof-boundary/status matrix
   - S01 = frozen evidence inventory
-- Broad Phase 4 defaults remain dangerous; year/dataset/region filters must stay explicit until proof gaps are retired
-- New milestone outputs must remain **paper evidence objects**, not just intermediate engineering artifacts
 
 ## Capability Contract
 
@@ -82,7 +96,7 @@ See `.gsd/REQUIREMENTS.md` for the explicit capability contract, requirement sta
   - [x] S02 Trend-correctness backbone on the shared contract
   - [x] S03 Classification-disagreement backbone on the shared contract
   - [x] S04 Unified hotspot ledger and cross-line evidence surfaces
-  - [ ] S05 Ten-region scale-out with reproducible HPC-safe execution
+  - [x] S05 Ten-region scale-out with reproducible HPC-safe execution
   - [ ] S06 Paper-ready evidence pack and milestone integration proof
 - [ ] M003: 热点成因解释与质量差异分析 — explain hotspot causes with quantitative auxiliary evidence plus land-cover context and turn those explanations into dataset-quality judgments
 - [ ] M004: Fraction-First 融合与多目标验证 — build a balanced scorecard and validate a fraction-first fused product against explicit baselines

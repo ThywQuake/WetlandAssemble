@@ -11,7 +11,6 @@ import sys
 import tempfile
 from pathlib import Path
 
-import pandas as pd
 import xarray as xr
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -33,8 +32,11 @@ from WA.comparison.trend_agreement import (  # noqa: E402
 from WA.comparison.trend_contract import (  # noqa: E402
     TrendSummaryBundle,
     TrendSurfaceBundle,
+    load_contract_trend_agreement_artifacts,
     load_contract_trend_summary,
     load_contract_trend_surface,
+    trend_agreement_summary_output_path,
+    trend_agreement_surface_output_path,
     trend_summary_output_path,
     trend_surface_output_path,
     write_contract_trend_summary,
@@ -61,31 +63,6 @@ DEFAULT_TREND_PARTICIPANT_IDS = (
     "topmodel",
     "swamps",
     "wad2m",
-)
-REQUIRED_AGREEMENT_VARS = (
-    "agreement_ratio",
-    "mean_slope",
-    "slope_std",
-    "robust_increase",
-    "robust_decrease",
-    "robust_stable",
-    "disputed",
-)
-REQUIRED_AGREEMENT_SUMMARY_COLUMNS = (
-    "region",
-    "total_valid_pixels",
-    "mean_agreement_ratio",
-    "fraction_robust_increase",
-    "fraction_robust_decrease",
-    "fraction_robust_stable",
-    "fraction_disputed",
-    "mean_slope_across_datasets",
-    "region_id",
-    "participant_set_key",
-    "participant_ids_json",
-    "overlap_window_start",
-    "overlap_window_end",
-    "contract_metadata_json",
 )
 
 
@@ -412,15 +389,15 @@ def _materialize_agreement_artifacts(
     skip_existing: bool,
 ) -> tuple[Path, Path]:
     participant_set_key = build_participant_set_key(participant_ids)
-    surface_path = contract.artifact_output_path(
-        kind="trend_agreement_surface",
-        dataset_or_key=participant_set_key,
+    surface_path = trend_agreement_surface_output_path(
+        contract,
         region_id=region_id,
+        participant_ids=participant_ids,
     )
-    summary_path = contract.artifact_output_path(
-        kind="trend_agreement_summary",
-        dataset_or_key=participant_set_key,
+    summary_path = trend_agreement_summary_output_path(
+        contract,
         region_id=region_id,
+        participant_ids=participant_ids,
     )
 
     if skip_existing and (surface_path.exists() or summary_path.exists()):
@@ -438,12 +415,13 @@ def _materialize_agreement_artifacts(
             surface_path,
             summary_path,
         )
-        _load_trend_agreement_artifacts(
+        reload_bundle = load_contract_trend_agreement_artifacts(
             contract=contract,
             region_id=region_id,
             participant_ids=participant_ids,
+            expected_overlap_window=agreement_result.overlap_window,
         )
-        return (surface_path, summary_path)
+        return (reload_bundle.surface.surface_path, reload_bundle.summary.summary_path)
 
     logger.info(
         "stage=agreement region=%s participant_set_key=%s action=write surface=%s summary=%s",
@@ -458,12 +436,13 @@ def _materialize_agreement_artifacts(
         participant_ids=participant_ids,
         agreement_result=agreement_result,
     )
-    _load_trend_agreement_artifacts(
+    reload_bundle = load_contract_trend_agreement_artifacts(
         contract=contract,
         region_id=region_id,
         participant_ids=participant_ids,
+        expected_overlap_window=agreement_result.overlap_window,
     )
-    return (surface_path, summary_path)
+    return (reload_bundle.surface.surface_path, reload_bundle.summary.summary_path)
 
 
 def _materialize_trend_hotspots(
@@ -553,15 +532,15 @@ def _write_trend_agreement_artifacts(
     agreement_result: TrendAgreementResult,
 ) -> tuple[Path, Path]:
     participant_set_key = build_participant_set_key(participant_ids)
-    surface_path = contract.artifact_output_path(
-        kind="trend_agreement_surface",
-        dataset_or_key=participant_set_key,
+    surface_path = trend_agreement_surface_output_path(
+        contract,
         region_id=region_id,
+        participant_ids=participant_ids,
     )
-    summary_path = contract.artifact_output_path(
-        kind="trend_agreement_summary",
-        dataset_or_key=participant_set_key,
+    summary_path = trend_agreement_summary_output_path(
+        contract,
         region_id=region_id,
+        participant_ids=participant_ids,
     )
     surface_path.parent.mkdir(parents=True, exist_ok=True)
     summary_path.parent.mkdir(parents=True, exist_ok=True)
@@ -615,121 +594,6 @@ def _write_trend_agreement_artifacts(
     return (surface_path, summary_path)
 
 
-def _load_trend_agreement_artifacts(
-    *,
-    contract,
-    region_id: str,
-    participant_ids: tuple[str, ...],
-) -> TrendAgreementResult:
-    participant_set_key = build_participant_set_key(participant_ids)
-    surface_path = contract.artifact_output_path(
-        kind="trend_agreement_surface",
-        dataset_or_key=participant_set_key,
-        region_id=region_id,
-    )
-    summary_path = contract.artifact_output_path(
-        kind="trend_agreement_summary",
-        dataset_or_key=participant_set_key,
-        region_id=region_id,
-    )
-    _require_complete_pair(
-        label="agreement",
-        region_id=region_id,
-        family_key=participant_set_key,
-        left_path=surface_path,
-        right_path=summary_path,
-    )
-
-    dataset = xr.load_dataset(surface_path)
-    missing_vars = [
-        name for name in REQUIRED_AGREEMENT_VARS if name not in dataset.data_vars
-    ]
-    if missing_vars:
-        raise ValueError(
-            "stage=agreement "
-            f"region={region_id} participant_set_key={participant_set_key} "
-            f"missing variables={', '.join(missing_vars)}"
-        )
-
-    surface_region_id = str(dataset.attrs.get("region_id", "")).strip()
-    if surface_region_id != region_id:
-        raise ValueError(
-            "stage=agreement "
-            f"region={region_id} participant_set_key={participant_set_key} "
-            f"surface region mismatch={surface_region_id}"
-        )
-    surface_participant_ids = _parse_participant_ids_json(
-        dataset.attrs.get("participant_ids_json", "")
-    )
-    if surface_participant_ids != participant_ids:
-        raise ValueError(
-            "stage=agreement "
-            f"region={region_id} participant_set_key={participant_set_key} "
-            "participant_ids mismatch"
-        )
-    _parse_contract_metadata_json(dataset.attrs.get("contract_metadata_json", ""))
-
-    summary = pd.read_csv(summary_path)
-    missing_columns = [
-        column
-        for column in REQUIRED_AGREEMENT_SUMMARY_COLUMNS
-        if column not in summary.columns
-    ]
-    if missing_columns:
-        raise ValueError(
-            "stage=agreement "
-            f"region={region_id} participant_set_key={participant_set_key} "
-            f"missing summary columns={', '.join(missing_columns)}"
-        )
-    if summary.empty:
-        raise ValueError(
-            "stage=agreement "
-            f"region={region_id} participant_set_key={participant_set_key} "
-            "summary must not be empty"
-        )
-    if any(str(value).strip() != region_id for value in summary["region_id"]):
-        raise ValueError(
-            "stage=agreement "
-            f"region={region_id} participant_set_key={participant_set_key} "
-            "summary contains mixed region_id values"
-        )
-    if any(
-        str(value).strip() != participant_set_key
-        for value in summary["participant_set_key"]
-    ):
-        raise ValueError(
-            "stage=agreement "
-            f"region={region_id} participant_set_key={participant_set_key} "
-            "summary contains mixed participant_set_key values"
-        )
-    for value in summary["participant_ids_json"]:
-        if _parse_participant_ids_json(value) != participant_ids:
-            raise ValueError(
-                "stage=agreement "
-                f"region={region_id} participant_set_key={participant_set_key} "
-                "summary contains mixed participant ids"
-            )
-    for value in summary["contract_metadata_json"]:
-        _parse_contract_metadata_json(value)
-
-    return TrendAgreementResult(
-        overlap_window=(
-            str(dataset.attrs.get("overlap_window_start", "")),
-            str(dataset.attrs.get("overlap_window_end", "")),
-        ),
-        participant_ids=list(participant_ids),
-        agreement_ratio=dataset["agreement_ratio"],
-        mean_slope=dataset["mean_slope"],
-        slope_std=dataset["slope_std"],
-        robust_increase=dataset["robust_increase"].astype(bool),
-        robust_decrease=dataset["robust_decrease"].astype(bool),
-        robust_stable=dataset["robust_stable"].astype(bool),
-        disputed=dataset["disputed"].astype(bool),
-        regional_summary=summary,
-        status=str(dataset.attrs.get("status", "computed")),
-    )
-
-
 def _require_complete_pair(
     *,
     label: str,
@@ -748,26 +612,6 @@ def _require_complete_pair(
             f"family_key={family_key} found partial artifact pair: "
             f"{left_path} exists={left_exists} {right_path} exists={right_exists}"
         )
-
-
-def _parse_participant_ids_json(value: object) -> tuple[str, ...]:
-    try:
-        payload = json.loads(str(value))
-    except json.JSONDecodeError as exc:
-        raise ValueError(f"Malformed participant_ids_json: {value!r}") from exc
-    if not isinstance(payload, list):
-        raise ValueError("participant_ids_json must decode to a list")
-    return normalize_participant_ids(payload)
-
-
-def _parse_contract_metadata_json(value: object) -> dict[str, object]:
-    try:
-        payload = json.loads(str(value))
-    except json.JSONDecodeError as exc:
-        raise ValueError(f"Malformed contract_metadata_json: {value!r}") from exc
-    if not isinstance(payload, dict):
-        raise ValueError("contract_metadata_json must decode to an object")
-    return payload
 
 
 def _write_dataset_atomic(path: Path, dataset: xr.Dataset) -> None:

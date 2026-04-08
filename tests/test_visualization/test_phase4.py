@@ -25,11 +25,29 @@ from WA.comparison.hotspot_ledger import (
     hotspot_family_table_output_path,
     write_unified_hotspot_ledger,
 )
+from WA.comparison.percentage_backbone import (
+    DEFAULT_PERCENTAGE_CONTRACT_DATASET_IDS,
+    build_percentage_dataset_key,
+    write_contract_percentage_summary,
+    write_contract_percentage_surface,
+)
 from WA.comparison.trend_agreement import TrendAgreementResult
-from WA.comparison.trend_hotspots import write_trend_hotspot_outputs
+from WA.comparison.trend_contract import (
+    trend_agreement_summary_output_path,
+    trend_agreement_surface_output_path,
+)
+from WA.comparison.trend_hotspots import (
+    build_participant_set_key,
+    normalize_participant_ids,
+    write_trend_hotspot_outputs,
+)
 from WA.visualization.phase4 import (
     load_phase4_contract_classification_hotspot_table,
     load_phase4_contract_classification_summary,
+    load_phase4_contract_percentage_summary,
+    load_phase4_contract_percentage_surface,
+    load_phase4_contract_trend_agreement_summary,
+    load_phase4_contract_trend_agreement_surface,
     load_phase4_contract_trend_hotspot_table,
     load_phase4_unified_hotspot_ledger,
     plot_phase4_climatology,
@@ -165,6 +183,164 @@ def _write_dummy_agreement_inputs(contract) -> tuple[Path, Path]:
     surface_path.write_text("agreement-surface", encoding="utf-8")
     summary_path.write_text("agreement,summary\n", encoding="utf-8")
     return (surface_path, summary_path)
+
+
+def _write_percentage_contract_inputs(contract) -> None:
+    dataset_ids = DEFAULT_PERCENTAGE_CONTRACT_DATASET_IDS
+    dataset_key = build_percentage_dataset_key(dataset_ids)
+    coords = {"lat": [1.0, 0.0], "lon": [100.0, 101.0]}
+    surfaces = {
+        dataset_id: xr.DataArray(
+            np.full((2, 2), 0.1 + (index * 0.05), dtype=np.float32),
+            dims=("lat", "lon"),
+            coords=coords,
+        )
+        for index, dataset_id in enumerate(dataset_ids)
+    }
+    actual_years = {
+        dataset_id: (None if dataset_id in {"g2017", "glwd_v2"} else 2016)
+        for dataset_id in dataset_ids
+    }
+    write_contract_percentage_surface(
+        contract=contract,
+        region_id="amazon",
+        region_label="Amazon",
+        dataset_key=dataset_key,
+        dataset_ids=dataset_ids,
+        bbox=(99.5, -0.5, 101.5, 1.5),
+        surface_year=2016,
+        resolution_deg=0.25,
+        actual_years=actual_years,
+        surfaces=surfaces,
+    )
+
+    rows: list[dict[str, Any]] = []
+    for index, dataset_id in enumerate(dataset_ids):
+        rows.append(
+            {
+                "dataset_id": dataset_id,
+                "region_id": "amazon",
+                "series_type": "annual",
+                "time": pd.Timestamp("2016-01-01"),
+                "year": 2016,
+                "month": None,
+                "wetland_area_km2": 100.0 + index,
+                "valid_area_km2": 200.0,
+                "wetland_percentage": 50.0 + index,
+                "observation_count": 12,
+                "is_auxiliary_dataset": dataset_id == "berkeley_rwawc",
+            }
+        )
+    write_contract_percentage_summary(
+        contract=contract,
+        region_id="amazon",
+        region_label="Amazon",
+        dataset_key=dataset_key,
+        dataset_ids=dataset_ids,
+        table=pd.DataFrame(rows),
+        time_range=("2016-01-01", "2016-12-31"),
+    )
+
+
+def _write_contract_trend_agreement_pair(contract) -> None:
+    participant_ids = normalize_participant_ids(["wad2m", "gwd30"])
+    participant_set_key = build_participant_set_key(participant_ids)
+    surface_path = trend_agreement_surface_output_path(
+        contract,
+        region_id="amazon",
+        participant_ids=participant_ids,
+    )
+    summary_path = trend_agreement_summary_output_path(
+        contract,
+        region_id="amazon",
+        participant_ids=participant_ids,
+    )
+    contract_metadata_json = metadata_json(
+        {
+            "artifact_kind": "trend_agreement_surface",
+            "region_id": "amazon",
+            "participant_ids": list(participant_ids),
+            "participant_set_key": participant_set_key,
+            "surface_relpath": str(surface_path.relative_to(contract.output_root)),
+            "summary_relpath": str(summary_path.relative_to(contract.output_root)),
+        }
+    )
+    coords = {"lat": [1.0, 0.0], "lon": [100.0, 101.0]}
+    dataset = xr.Dataset(
+        {
+            "agreement_ratio": xr.DataArray(
+                np.array([[0.5, 0.75], [1.0, 1.0]], dtype=np.float32),
+                dims=("lat", "lon"),
+                coords=coords,
+            ),
+            "mean_slope": xr.DataArray(
+                np.array([[0.01, 0.02], [0.03, 0.04]], dtype=np.float32),
+                dims=("lat", "lon"),
+                coords=coords,
+            ),
+            "slope_std": xr.DataArray(
+                np.array([[0.2, 0.4], [0.1, 0.1]], dtype=np.float32),
+                dims=("lat", "lon"),
+                coords=coords,
+            ),
+            "robust_increase": xr.DataArray(
+                np.array([[False, False], [True, True]], dtype=bool),
+                dims=("lat", "lon"),
+                coords=coords,
+            ),
+            "robust_decrease": xr.DataArray(
+                np.array([[False, False], [False, False]], dtype=bool),
+                dims=("lat", "lon"),
+                coords=coords,
+            ),
+            "robust_stable": xr.DataArray(
+                np.array([[False, False], [False, False]], dtype=bool),
+                dims=("lat", "lon"),
+                coords=coords,
+            ),
+            "disputed": xr.DataArray(
+                np.array([[True, True], [False, False]], dtype=bool),
+                dims=("lat", "lon"),
+                coords=coords,
+            ),
+        }
+    )
+    dataset.attrs.update(
+        {
+            "region_id": "amazon",
+            "participant_ids_json": json.dumps(list(participant_ids), separators=(",", ":")),
+            "participant_set_key": participant_set_key,
+            "overlap_window_start": "2001-01-01",
+            "overlap_window_end": "2010-12-31",
+            "status": "computed",
+            "contract_metadata_json": contract_metadata_json,
+        }
+    )
+    summary = pd.DataFrame(
+        {
+            "region": ["amazon", "global"],
+            "total_valid_pixels": [2, 2],
+            "mean_agreement_ratio": [0.625, 0.625],
+            "fraction_robust_increase": [0.5, 0.5],
+            "fraction_robust_decrease": [0.0, 0.0],
+            "fraction_robust_stable": [0.0, 0.0],
+            "fraction_disputed": [0.5, 0.5],
+            "mean_slope_across_datasets": [0.02, 0.02],
+            "region_id": ["amazon", "amazon"],
+            "participant_set_key": [participant_set_key, participant_set_key],
+            "participant_ids_json": [
+                json.dumps(list(participant_ids), separators=(",", ":")),
+                json.dumps(list(participant_ids), separators=(",", ":")),
+            ],
+            "overlap_window_start": ["2001-01-01", "2001-01-01"],
+            "overlap_window_end": ["2010-12-31", "2010-12-31"],
+            "contract_metadata_json": [contract_metadata_json, contract_metadata_json],
+        }
+    )
+    surface_path.parent.mkdir(parents=True, exist_ok=True)
+    summary_path.parent.mkdir(parents=True, exist_ok=True)
+    dataset.to_netcdf(surface_path)
+    summary.to_csv(summary_path, index=False)
 
 
 def _sample_phase36_metrics() -> xr.Dataset:
@@ -505,6 +681,101 @@ def test_plot_phase4_climatology_writes_png(tmp_path: Path) -> None:
     assert result == output_path
     assert output_path.is_file()
     assert output_path.stat().st_size > 0
+
+
+def test_load_phase4_contract_percentage_summary_and_surface_reloads_semantically(
+    tmp_path: Path,
+) -> None:
+    contract = load_phase4_evidence_contract(output_root=tmp_path)
+    _write_percentage_contract_inputs(contract)
+
+    summary_bundle = load_phase4_contract_percentage_summary(
+        region_id="amazon",
+        dataset_key="canonical",
+        output_root=tmp_path,
+    )
+    surface_bundle = load_phase4_contract_percentage_surface(
+        region_id="amazon",
+        dataset_key="canonical",
+        output_root=tmp_path,
+    )
+
+    assert summary_bundle.dataset_key == "canonical"
+    assert summary_bundle.dataset_ids == DEFAULT_PERCENTAGE_CONTRACT_DATASET_IDS
+    assert surface_bundle.dataset_key == "canonical"
+    assert surface_bundle.dataset_ids == DEFAULT_PERCENTAGE_CONTRACT_DATASET_IDS
+    assert set(surface_bundle.dataset.data_vars) == {
+        "wetland_fraction",
+        "mean_wetland_percentage",
+        "std_wetland_percentage",
+        "valid_dataset_count",
+    }
+
+
+def test_load_phase4_contract_percentage_summary_wraps_reload_errors(
+    tmp_path: Path,
+) -> None:
+    with pytest.raises(
+        ValueError,
+        match=(
+            "Phase4 semantic reload failed for percentage summary: "
+            "region_id=amazon dataset_key=canonical"
+        ),
+    ):
+        load_phase4_contract_percentage_summary(
+            region_id="amazon",
+            dataset_key="canonical",
+            output_root=tmp_path,
+        )
+
+
+def test_load_phase4_contract_trend_agreement_summary_and_surface_reloads_semantically(
+    tmp_path: Path,
+) -> None:
+    contract = load_phase4_evidence_contract(output_root=tmp_path)
+    _write_contract_trend_agreement_pair(contract)
+
+    summary_bundle = load_phase4_contract_trend_agreement_summary(
+        region_id="amazon",
+        participant_ids=["wad2m", "gwd30"],
+        output_root=tmp_path,
+    )
+    surface_bundle = load_phase4_contract_trend_agreement_surface(
+        region_id="amazon",
+        participant_ids=["wad2m", "gwd30"],
+        output_root=tmp_path,
+    )
+
+    assert summary_bundle.participant_set_key == "gwd30+wad2m"
+    assert summary_bundle.overlap_window == ("2001-01-01", "2010-12-31")
+    assert surface_bundle.participant_set_key == "gwd30+wad2m"
+    assert surface_bundle.overlap_window == ("2001-01-01", "2010-12-31")
+    assert set(surface_bundle.dataset.data_vars) == {
+        "agreement_ratio",
+        "mean_slope",
+        "slope_std",
+        "robust_increase",
+        "robust_decrease",
+        "robust_stable",
+        "disputed",
+    }
+
+
+def test_load_phase4_contract_trend_agreement_summary_wraps_reload_errors(
+    tmp_path: Path,
+) -> None:
+    with pytest.raises(
+        ValueError,
+        match=(
+            "Phase4 semantic reload failed for trend agreement summary: "
+            "region_id=amazon participant_ids=\\['wad2m', 'gwd30'\\]"
+        ),
+    ):
+        load_phase4_contract_trend_agreement_summary(
+            region_id="amazon",
+            participant_ids=["wad2m", "gwd30"],
+            output_root=tmp_path,
+        )
 
 
 def test_load_phase4_contract_trend_hotspot_table_reloads_semantically(
