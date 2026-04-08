@@ -22,6 +22,10 @@ from WA.comparison.hotspot_ledger import (
     unified_hotspot_ledger_output_path,
     write_unified_hotspot_ledger,
 )
+from WA.comparison.scaleout_readiness import (
+    scaleout_readiness_csv_output_path,
+    scaleout_readiness_json_output_path,
+)
 from WA.comparison.trend_agreement import TrendAgreementResult
 from WA.comparison.trend_hotspots import write_trend_hotspot_outputs
 
@@ -494,7 +498,7 @@ def test_build_unified_hotspot_ledger_rejects_duplicate_analysis_object_candidat
         )
 
 
-def test_run_phase4_hotspot_ledger_help_mentions_skip_and_ledger() -> None:
+def test_run_phase4_hotspot_ledger_help_mentions_skip_ledger_and_readiness() -> None:
     repo_root = Path(__file__).resolve().parents[2]
     completed = subprocess.run(
         [sys.executable, "scripts/run_phase4_hotspot_ledger.py", "--help"],
@@ -506,6 +510,7 @@ def test_run_phase4_hotspot_ledger_help_mentions_skip_and_ledger() -> None:
 
     assert completed.returncode == 0
     assert "unified hotspot ledger" in completed.stdout
+    assert "run_phase4_scaleout_readiness.py" in completed.stdout
     assert "--ledger-key" in completed.stdout
     assert "--skip" in completed.stdout
     assert "--no-skip" in completed.stdout
@@ -557,10 +562,31 @@ def test_run_phase4_hotspot_ledger_fails_closed_on_missing_family(tmp_path: Path
     )
 
     assert completed.returncode != 0
-    assert "classification_hotspot_manifest" in (completed.stderr + completed.stdout)
+    combined_output = completed.stderr + completed.stdout
+    assert "classification_hotspot_manifest" in combined_output
+    assert "metric_family=classification" in combined_output
+    assert "status=missing" in combined_output
+    assert "run_phase4_scaleout_readiness.py" in combined_output
     ledger_path = unified_hotspot_ledger_output_path(
         contract,
         ledger_key="canonical",
         region_id="amazon",
     )
     assert not ledger_path.exists()
+
+    readiness_csv = scaleout_readiness_csv_output_path(
+        tmp_path,
+        requested_region_ids=["amazon"],
+        percentage_key="canonical",
+        classification_key="canonical",
+        trend_participant_ids=TREND_PARTICIPANT_IDS,
+    )
+    readiness_json = scaleout_readiness_json_output_path(
+        tmp_path,
+        requested_region_ids=["amazon"],
+        percentage_key="canonical",
+        classification_key="canonical",
+        trend_participant_ids=TREND_PARTICIPANT_IDS,
+    )
+    assert readiness_csv.is_file()
+    assert readiness_json.is_file()

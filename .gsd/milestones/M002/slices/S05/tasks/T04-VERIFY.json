@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "taskId": "T04",
+  "unitId": "M002/S05/T04",
+  "timestamp": 1775677448966,
+  "passed": true,
+  "discoverySource": "task-plan",
+  "checks": [
+    {
+      "command": "ruff check src/WA/comparison/trend_contract.py src/WA/comparison/trends.py scripts/run_phase4_trend_contract.py tests/test_comparison/test_trend_contract.py tests/test_comparison/test_trends.py tests/test_submit_phase4_trend_contract.py\nbash -n scripts/submit_phase4_trend_contract.sh\npython scripts/run_phase4_trend_contract.py --help\npython -m pytest tests/test_comparison/test_trend_contract.py tests/test_comparison/test_trends.py tests/test_comparison/test_trend_agreement.py tests/test_submit_phase4_trend_contract.py -q",
+      "exitCode": 0,
+      "durationMs": 5262,
+      "verdict": "pass"
+    }
+  ]
+}

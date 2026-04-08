@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "exported_at": "2026-04-08T19:43:44.759Z",
+  "exported_at": "2026-04-08T20:11:07.311Z",
   "milestones": [
     {
       "id": "M001",
@@ -1735,19 +1735,31 @@
       "milestone_id": "M002",
       "slice_id": "S05",
       "id": "T05",
-      "title": "Add ten-region readiness reporting and keep the ledger fail-closed",
-      "status": "pending",
-      "one_liner": "",
-      "narrative": "",
-      "verification_result": "",
+      "title": "Added ten-region readiness reporting and kept the ledger fail-closed with family-specific diagnostics.",
+      "status": "complete",
+      "one_liner": "Added ten-region readiness reporting and kept the ledger fail-closed with family-specific diagnostics.",
+      "narrative": "Added src/WA/comparison/scaleout_readiness.py plus scripts/run_phase4_scaleout_readiness.py so Phase 4 operators can scan one region, the canonical subset, or the ordered ten-region subset and get deterministic CSV/JSON readiness rows for percentage, classification, and trend hotspot families. The readiness layer reuses the real semantic reload paths, distinguishes ready vs missing vs partial with explicit reasons and artifact paths, and writes stable report stems under results/phase4/scaleout_readiness/. Updated scripts/run_phase4_hotspot_ledger.py to keep the unified ledger fail-closed while pointing operators at the readiness CLI, auto-writing a single-region readiness diagnostic report on failure, and logging one family-context line per metric family before re-raising. Expanded src/WA/test_selection.py and tests/test_test_selection.py so the newer Phase 4 classification/trend contract files and the new readiness gate route back to the focused Phase 4 pytest bundle, added tests/test_comparison/test_scaleout_readiness.py, extended tests/test_comparison/test_hotspot_ledger.py, updated CHANGELOG.md, recorded D047, and wrote docs/stashes/2026-04-09-009-m002-s05-t05-scaleout-readiness.md with quick-reference notes plus HPC commands.",
+      "verification_result": "Passed the task-plan verification commands exactly as written: ruff check on the touched readiness/ledger/routing files, python scripts/run_phase4_scaleout_readiness.py --help, python scripts/run_phase4_hotspot_ledger.py --help, python -m pytest tests/test_comparison/test_scaleout_readiness.py tests/test_comparison/test_hotspot_ledger.py tests/test_visualization/test_phase4.py -q (23 passed), and python scripts/run_related_tests.py src/WA/comparison/scaleout_readiness.py scripts/run_phase4_scaleout_readiness.py scripts/run_phase4_hotspot_ledger.py src/WA/test_selection.py. I also ran python -m pytest tests/test_test_selection.py -q (5 passed) because src/WA/test_selection.py changed. Per the project contract, I ran python -m pytest tests/ as a broader suite check; it still reproduces the pre-existing unrelated tests/test_mgrs_tiling.py::test_tile_to_extent_matches_reference_case failure and the broad run is later killed with exit 137. I reran python -m pytest tests/test_mgrs_tiling.py -q to confirm that repo-wide red bar in isolation.",
       "duration": "",
-      "completed_at": null,
+      "completed_at": "2026-04-08T20:11:07.284Z",
       "blocker_discovered": false,
-      "deviations": "",
-      "known_issues": "",
-      "key_files": [],
-      "key_decisions": [],
-      "full_summary_md": "",
+      "deviations": "Beyond the task plan’s expected output files, I also updated tests/test_test_selection.py, recorded decision D047, and wrote docs/stashes/2026-04-09-009-m002-s05-t05-scaleout-readiness.md because the project contract requires durable routing coverage, persistent architectural/observability breadcrumbs, and a quick-reference stash with concrete HPC commands after operator-facing workflow changes. I also chose deterministic readiness report stems under results/phase4/scaleout_readiness/ so ledger failures can point at stable CSV/JSON paths instead of ephemeral temp files.",
+      "known_issues": "python -m pytest tests/ still reproduces the pre-existing unrelated failure at tests/test_mgrs_tiling.py::test_tile_to_extent_matches_reference_case and the broader run is later killed with exit 137 before the suite completes. No real HPC rerun against external standardized inputs was executed from this worktree.",
+      "key_files": [
+        "src/WA/comparison/scaleout_readiness.py",
+        "scripts/run_phase4_scaleout_readiness.py",
+        "scripts/run_phase4_hotspot_ledger.py",
+        "src/WA/test_selection.py",
+        "tests/test_comparison/test_scaleout_readiness.py",
+        "tests/test_comparison/test_hotspot_ledger.py",
+        "tests/test_test_selection.py",
+        "CHANGELOG.md",
+        "docs/stashes/2026-04-09-009-m002-s05-t05-scaleout-readiness.md"
+      ],
+      "key_decisions": [
+        "D047 — treat a hotspot family as missing only when both the manifest and CSV are absent; classify partial pairs or semantic/provenance reload failures as partial, and auto-write a single-region readiness report whenever the ledger CLI fails."
+      ],
+      "full_summary_md": "---\nid: T05\nparent: S05\nmilestone: M002\nkey_files:\n  - src/WA/comparison/scaleout_readiness.py\n  - scripts/run_phase4_scaleout_readiness.py\n  - scripts/run_phase4_hotspot_ledger.py\n  - src/WA/test_selection.py\n  - tests/test_comparison/test_scaleout_readiness.py\n  - tests/test_comparison/test_hotspot_ledger.py\n  - tests/test_test_selection.py\n  - CHANGELOG.md\n  - docs/stashes/2026-04-09-009-m002-s05-t05-scaleout-readiness.md\nkey_decisions:\n  - D047 — treat a hotspot family as missing only when both the manifest and CSV are absent; classify partial pairs or semantic/provenance reload failures as partial, and auto-write a single-region readiness report whenever the ledger CLI fails.\nduration: \nverification_result: mixed\ncompleted_at: 2026-04-08T20:11:07.282Z\nblocker_discovered: false\n---\n\n# T05: Added ten-region readiness reporting and kept the ledger fail-closed with family-specific diagnostics.\n\n**Added ten-region readiness reporting and kept the ledger fail-closed with family-specific diagnostics.**\n\n## What Happened\n\nAdded src/WA/comparison/scaleout_readiness.py plus scripts/run_phase4_scaleout_readiness.py so Phase 4 operators can scan one region, the canonical subset, or the ordered ten-region subset and get deterministic CSV/JSON readiness rows for percentage, classification, and trend hotspot families. The readiness layer reuses the real semantic reload paths, distinguishes ready vs missing vs partial with explicit reasons and artifact paths, and writes stable report stems under results/phase4/scaleout_readiness/. Updated scripts/run_phase4_hotspot_ledger.py to keep the unified ledger fail-closed while pointing operators at the readiness CLI, auto-writing a single-region readiness diagnostic report on failure, and logging one family-context line per metric family before re-raising. Expanded src/WA/test_selection.py and tests/test_test_selection.py so the newer Phase 4 classification/trend contract files and the new readiness gate route back to the focused Phase 4 pytest bundle, added tests/test_comparison/test_scaleout_readiness.py, extended tests/test_comparison/test_hotspot_ledger.py, updated CHANGELOG.md, recorded D047, and wrote docs/stashes/2026-04-09-009-m002-s05-t05-scaleout-readiness.md with quick-reference notes plus HPC commands.\n\n## Verification\n\nPassed the task-plan verification commands exactly as written: ruff check on the touched readiness/ledger/routing files, python scripts/run_phase4_scaleout_readiness.py --help, python scripts/run_phase4_hotspot_ledger.py --help, python -m pytest tests/test_comparison/test_scaleout_readiness.py tests/test_comparison/test_hotspot_ledger.py tests/test_visualization/test_phase4.py -q (23 passed), and python scripts/run_related_tests.py src/WA/comparison/scaleout_readiness.py scripts/run_phase4_scaleout_readiness.py scripts/run_phase4_hotspot_ledger.py src/WA/test_selection.py. I also ran python -m pytest tests/test_test_selection.py -q (5 passed) because src/WA/test_selection.py changed. Per the project contract, I ran python -m pytest tests/ as a broader suite check; it still reproduces the pre-existing unrelated tests/test_mgrs_tiling.py::test_tile_to_extent_matches_reference_case failure and the broad run is later killed with exit 137. I reran python -m pytest tests/test_mgrs_tiling.py -q to confirm that repo-wide red bar in isolation.\n\n## Verification Evidence\n\n| # | Command | Exit Code | Verdict | Duration |\n|---|---------|-----------|---------|----------|\n| 1 | `ruff check src/WA/comparison/scaleout_readiness.py scripts/run_phase4_scaleout_readiness.py scripts/run_phase4_hotspot_ledger.py src/WA/test_selection.py tests/test_comparison/test_scaleout_readiness.py tests/test_comparison/test_hotspot_ledger.py CHANGELOG.md` | 0 | ✅ pass | 50ms |\n| 2 | `python scripts/run_phase4_scaleout_readiness.py --help` | 0 | ✅ pass | 1295ms |\n| 3 | `python scripts/run_phase4_hotspot_ledger.py --help` | 0 | ✅ pass | 1280ms |\n| 4 | `python -m pytest tests/test_comparison/test_scaleout_readiness.py tests/test_comparison/test_hotspot_ledger.py tests/test_visualization/test_phase4.py -q` | 0 | ✅ pass | 9010ms |\n| 5 | `python scripts/run_related_tests.py src/WA/comparison/scaleout_readiness.py scripts/run_phase4_scaleout_readiness.py scripts/run_phase4_hotspot_ledger.py src/WA/test_selection.py` | 0 | ✅ pass | 247ms |\n| 6 | `python -m pytest tests/test_test_selection.py -q` | 0 | ✅ pass | 372ms |\n| 7 | `python -m pytest tests/` | 137 | ❌ fail | 43141ms |\n| 8 | `python -m pytest tests/test_mgrs_tiling.py -q` | 1 | ❌ fail | 864ms |\n\n## Deviations\n\nBeyond the task plan’s expected output files, I also updated tests/test_test_selection.py, recorded decision D047, and wrote docs/stashes/2026-04-09-009-m002-s05-t05-scaleout-readiness.md because the project contract requires durable routing coverage, persistent architectural/observability breadcrumbs, and a quick-reference stash with concrete HPC commands after operator-facing workflow changes. I also chose deterministic readiness report stems under results/phase4/scaleout_readiness/ so ledger failures can point at stable CSV/JSON paths instead of ephemeral temp files.\n\n## Known Issues\n\npython -m pytest tests/ still reproduces the pre-existing unrelated failure at tests/test_mgrs_tiling.py::test_tile_to_extent_matches_reference_case and the broader run is later killed with exit 137 before the suite completes. No real HPC rerun against external standardized inputs was executed from this worktree.\n\n## Files Created/Modified\n\n- `src/WA/comparison/scaleout_readiness.py`\n- `scripts/run_phase4_scaleout_readiness.py`\n- `scripts/run_phase4_hotspot_ledger.py`\n- `src/WA/test_selection.py`\n- `tests/test_comparison/test_scaleout_readiness.py`\n- `tests/test_comparison/test_hotspot_ledger.py`\n- `tests/test_test_selection.py`\n- `CHANGELOG.md`\n- `docs/stashes/2026-04-09-009-m002-s05-t05-scaleout-readiness.md`\n",
       "description": "Once real percentage, classification, and trend producers exist again, close the slice with one operator-facing readiness surface that scans `--subset ten`, reports which regions have complete three-line families, and leaves `scripts/run_phase4_hotspot_ledger.py` as the fail-closed final gate.\n\n## Failure Modes\n\n| Dependency | On error | On timeout | On malformed response |\n|------------|----------|-----------|----------------------|\n| Contract hotspot families under `results/phase4`, `src/WA/comparison/hotspot_ledger.py`, and the new readiness CLI | Fail with `region_id`, `metric_family`, and manifest/table path context; never report an incomplete region as ready. | Scans remain region-scoped so one bad region still yields a full ten-region readiness report instead of aborting silently. | Reject partial JSON/CSV pairs, mixed-region rows, malformed metadata JSON, or missing provenance paths instead of coercing them into a fake ready state. |\n\n## Load Profile\n\n- **Shared resources**: three hotspot families plus the shared contract tree across ten regions.\n- **Per-operation cost**: one semantic reload/status check per family × region plus one optional ledger build for already-ready regions.\n- **10x breakpoint**: repeated manifest/table validation across all regions is still cheap relative to science compute; the main scaling risk is diagnostic clarity, not wall time.\n\n## Negative Tests\n\n- **Malformed inputs**: missing one family, partial manifest/table pairs, mixed-region hotspot rows, and malformed metadata JSON.\n- **Error paths**: incomplete regions must stay incomplete in the readiness report, and the ledger runner must still fail closed rather than writing a partial cross-line artifact.\n- **Boundary conditions**: ready vs missing vs partial states, canonical vs ten subset scans, and a fully ready region that can still build a ledger all stay deterministic.\n\n## Steps\n\n1. Add `src/WA/comparison/scaleout_readiness.py` that semantically inspects percentage / classification / trend families per region, records ready / missing / partial reasons, and emits machine-readable rows without pretending incomplete regions are fine.\n2. Add `scripts/run_phase4_scaleout_readiness.py` as a thin CLI for `--region`, `--subset canonical`, and `--subset ten`, writing a readiness CSV/JSON report that operators can inspect before attempting a wide ledger run.\n3. Keep `scripts/run_phase4_hotspot_ledger.py` fail-closed but extend its logs/help to point at the readiness surface and to emit per-region family context rather than a naked first exception.\n4. Update `src/WA/test_selection.py`, `tests/test_comparison/test_scaleout_readiness.py`, `tests/test_comparison/test_hotspot_ledger.py`, and `CHANGELOG.md` so related-test routing and release notes both cover the new scale-out gate.\n\n## Must-Haves\n\n- [ ] The readiness report distinguishes `ready`, `missing`, and `partial` per family × region with explicit reasons and artifact paths.\n- [ ] The unified ledger remains fail-closed and never writes a region ledger unless all three hotspot families are complete and semantically valid.\n- [ ] Related-test routing and changelog notes make the new ten-region gate discoverable for future operators.\n\n## Done when\n\n- One CLI can report ten-region readiness before a wide rerun, and a ready region can still build a ledger while incomplete regions fail closed with explicit family-specific diagnostics.",
       "estimate": "2h",
       "files": [
@@ -2331,6 +2343,18 @@
       "decision": "How Phase 4 trend reruns separate downstream contract artifacts from resumable compute checkpoints",
       "choice": "Keep contract trend_surface/trend_regional_summary artifacts keyed by dataset_id + region_id, and store resumable trend checkpoints as separate region/dataset/aggregation/requested-window cache files consumed before agreement.",
       "rationale": "Downstream consumers need stable semantic artifact paths that do not change with every rerun, while HPC reruns need explicit window-scoped checkpoints that can resume safely without colliding with different time ranges or silently reusing stale compute state. Separating the two lets the runner validate checkpoint metadata strictly, reuse dataset-scoped compute before agreement, and still publish stable contract outputs for later ledger/readiness work.",
+      "revisable": "Yes",
+      "made_by": "agent",
+      "superseded_by": null
+    },
+    {
+      "seq": 49,
+      "id": "D047",
+      "when_context": "M002/S05/T05",
+      "scope": "observability",
+      "decision": "How the Phase 4 scale-out readiness gate classifies incomplete hotspot families and supports ledger failures",
+      "choice": "Treat a hotspot family as 'missing' only when both the manifest and CSV are absent; treat partial pairs or semantic/provenance reload failures as 'partial', and auto-write a single-region readiness report when the ledger CLI fails.",
+      "rationale": "Operators need deterministic ready/missing/partial states that do not over-report incompleteness as readiness. Distinguishing absent families from corrupt or half-written families makes ten-region reruns diagnosable, while automatic per-region readiness reports preserve fail-closed ledger behavior without forcing operators to reconstruct the failing family context by hand.",
       "revisable": "Yes",
       "made_by": "agent",
       "superseded_by": null
@@ -4096,6 +4120,94 @@
       "verdict": "❌ fail",
       "duration_ms": 400,
       "created_at": "2026-04-08T19:43:44.730Z"
+    },
+    {
+      "id": 161,
+      "task_id": "T05",
+      "slice_id": "S05",
+      "milestone_id": "M002",
+      "command": "ruff check src/WA/comparison/scaleout_readiness.py scripts/run_phase4_scaleout_readiness.py scripts/run_phase4_hotspot_ledger.py src/WA/test_selection.py tests/test_comparison/test_scaleout_readiness.py tests/test_comparison/test_hotspot_ledger.py CHANGELOG.md",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 50,
+      "created_at": "2026-04-08T20:11:07.285Z"
+    },
+    {
+      "id": 162,
+      "task_id": "T05",
+      "slice_id": "S05",
+      "milestone_id": "M002",
+      "command": "python scripts/run_phase4_scaleout_readiness.py --help",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 1295,
+      "created_at": "2026-04-08T20:11:07.286Z"
+    },
+    {
+      "id": 163,
+      "task_id": "T05",
+      "slice_id": "S05",
+      "milestone_id": "M002",
+      "command": "python scripts/run_phase4_hotspot_ledger.py --help",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 1280,
+      "created_at": "2026-04-08T20:11:07.286Z"
+    },
+    {
+      "id": 164,
+      "task_id": "T05",
+      "slice_id": "S05",
+      "milestone_id": "M002",
+      "command": "python -m pytest tests/test_comparison/test_scaleout_readiness.py tests/test_comparison/test_hotspot_ledger.py tests/test_visualization/test_phase4.py -q",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 9010,
+      "created_at": "2026-04-08T20:11:07.286Z"
+    },
+    {
+      "id": 165,
+      "task_id": "T05",
+      "slice_id": "S05",
+      "milestone_id": "M002",
+      "command": "python scripts/run_related_tests.py src/WA/comparison/scaleout_readiness.py scripts/run_phase4_scaleout_readiness.py scripts/run_phase4_hotspot_ledger.py src/WA/test_selection.py",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 247,
+      "created_at": "2026-04-08T20:11:07.286Z"
+    },
+    {
+      "id": 166,
+      "task_id": "T05",
+      "slice_id": "S05",
+      "milestone_id": "M002",
+      "command": "python -m pytest tests/test_test_selection.py -q",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 372,
+      "created_at": "2026-04-08T20:11:07.286Z"
+    },
+    {
+      "id": 167,
+      "task_id": "T05",
+      "slice_id": "S05",
+      "milestone_id": "M002",
+      "command": "python -m pytest tests/",
+      "exit_code": 137,
+      "verdict": "❌ fail",
+      "duration_ms": 43141,
+      "created_at": "2026-04-08T20:11:07.286Z"
+    },
+    {
+      "id": 168,
+      "task_id": "T05",
+      "slice_id": "S05",
+      "milestone_id": "M002",
+      "command": "python -m pytest tests/test_mgrs_tiling.py -q",
+      "exit_code": 1,
+      "verdict": "❌ fail",
+      "duration_ms": 864,
+      "created_at": "2026-04-08T20:11:07.286Z"
     }
   ]
 }

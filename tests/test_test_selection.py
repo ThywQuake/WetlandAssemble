@@ -37,6 +37,14 @@ def test_categories_for_paths_include_standardization_and_loaders() -> None:
     assert "loaders" in keys
 
 
+def test_infer_related_tests_for_scaleout_readiness_paths() -> None:
+    inferred = infer_related_tests(["src/WA/comparison/scaleout_readiness.py"])
+
+    assert "tests/test_comparison/test_scaleout_readiness.py" in inferred
+    assert "tests/test_comparison/test_hotspot_ledger.py" in inferred
+    assert "tests/test_visualization/test_phase4.py" in inferred
+
+
 def test_category_keys_for_path_matches_phase3_7_script() -> None:
     keys = category_keys_for_path("scripts/plot_phase3_7_hotspot_panels.py")
 

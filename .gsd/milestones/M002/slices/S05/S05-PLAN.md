@@ -170,7 +170,7 @@ python -m pytest tests/test_comparison/test_classification_contract.py tests/tes
 bash -n scripts/submit_phase4_trend_contract.sh
 python scripts/run_phase4_trend_contract.py --help
 python -m pytest tests/test_comparison/test_trend_contract.py tests/test_comparison/test_trends.py tests/test_comparison/test_trend_agreement.py tests/test_submit_phase4_trend_contract.py -q
-- [ ] **T05: Add ten-region readiness reporting and keep the ledger fail-closed** — Once real percentage, classification, and trend producers exist again, close the slice with one operator-facing readiness surface that scans `--subset ten`, reports which regions have complete three-line families, and leaves `scripts/run_phase4_hotspot_ledger.py` as the fail-closed final gate.
+- [x] **T05: Added ten-region readiness reporting and kept the ledger fail-closed with family-specific diagnostics.** — Once real percentage, classification, and trend producers exist again, close the slice with one operator-facing readiness surface that scans `--subset ten`, reports which regions have complete three-line families, and leaves `scripts/run_phase4_hotspot_ledger.py` as the fail-closed final gate.
 
 ## Failure Modes
 
