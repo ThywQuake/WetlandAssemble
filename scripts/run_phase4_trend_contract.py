@@ -22,6 +22,7 @@ if str(SRC) not in sys.path:
 from WA.comparison.evidence_contract import (  # noqa: E402
     DEFAULT_PHASE4_CONTRACT_OUTPUT_ROOT,
     DEFAULT_PHASE4_REGIONS_FILE,
+    SUPPORTED_PHASE4_REGION_SUBSETS,
     load_phase4_evidence_contract,
     metadata_json,
 )
@@ -78,7 +79,7 @@ REQUIRED_AGREEMENT_SUMMARY_COLUMNS = (
 )
 
 
-def parse_args() -> argparse.Namespace:
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
             "Generate Phase 4 trend agreement artifacts and the contract-backed "
@@ -89,14 +90,20 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--regions-file", default=str(DEFAULT_PHASE4_REGIONS_FILE))
     parser.add_argument(
         "--subset",
-        default="canonical",
-        help="Region subset from the evidence contract (default: canonical).",
+        choices=SUPPORTED_PHASE4_REGION_SUBSETS,
+        default=None,
+        help=(
+            "Evidence-contract priority-region subset. Use 'canonical' for the "
+            "four-region hydro-diverse subset or 'ten' for the full ordered contract "
+            "list. Omit --subset to keep the canonical default unless --region is "
+            "passed explicitly."
+        ),
     )
     parser.add_argument(
         "--region",
         action="append",
         default=[],
-        help="Explicit region id override; may be repeated.",
+        help="Explicit region id override; may be repeated. Cannot be combined with --subset.",
     )
     parser.add_argument(
         "--dataset-id",
@@ -171,11 +178,11 @@ def parse_args() -> argparse.Namespace:
         default="INFO",
         choices=("DEBUG", "INFO", "WARNING", "ERROR"),
     )
-    return parser.parse_args()
+    return parser.parse_args(argv)
 
 
-def main() -> int:
-    args = parse_args()
+def main(argv: list[str] | None = None) -> int:
+    args = parse_args(argv)
     logging.basicConfig(
         level=getattr(logging, args.log_level),
         format="[%(levelname)s] %(message)s",
@@ -192,13 +199,32 @@ def main() -> int:
     participant_set_key = build_participant_set_key(participant_ids)
     time_range = (f"{args.start_year}-01-01", f"{args.end_year}-12-31")
 
-    regions = contract.resolve_regions(
-        subset=None if args.region else args.subset,
-        requested_region_ids=args.region or None,
+    try:
+        regions = contract.resolve_regions(
+            subset=args.subset,
+            requested_region_ids=args.region or None,
+        )
+    except Exception as exc:
+        logger.error(
+            "stage=region-selector subset=%s requested_regions=%s participant_set_key=%s error=%s",
+            args.subset or "<none>",
+            args.region,
+            participant_set_key,
+            exc,
+        )
+        raise
+
+    selector_subset = args.subset or ("explicit-region-list" if args.region else "canonical")
+    logger.info(
+        "stage=region-selector subset=%s participant_set_key=%s region_ids=%s",
+        selector_subset,
+        participant_set_key,
+        [region.region_id for region in regions],
     )
     logger.info(
-        "Phase4 trend contract start: regions=%s participant_set_key=%s "
+        "Phase4 trend contract start: subset=%s regions=%s participant_set_key=%s "
         "time_range=%s aggregation=%s",
+        selector_subset,
         [region.region_id for region in regions],
         participant_set_key,
         time_range,

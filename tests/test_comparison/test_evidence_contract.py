@@ -10,6 +10,19 @@ from WA.comparison.evidence_contract import (
     load_phase4_evidence_contract,
 )
 
+EXPECTED_TEN_REGION_IDS = [
+    "amazon",
+    "orinoco",
+    "pantanal",
+    "indogangetic",
+    "mekong",
+    "sudd",
+    "congo",
+    "okavango",
+    "borneo",
+    "northernaus",
+]
+
 
 def test_default_artifact_semantics_include_trend_hotspot_and_unified_ledger() -> None:
     semantics = default_artifact_semantics()
@@ -59,3 +72,34 @@ def test_artifact_relpath_locks_new_family_stems() -> None:
     assert ledger_relpath == Path(
         "unified_hotspot_ledgers/amazon/canonical__amazon__unified_hotspot_ledger.csv"
     )
+
+
+def test_resolve_regions_pins_canonical_and_ten_ordering() -> None:
+    contract = load_phase4_evidence_contract(output_root=Path("results/phase4"))
+
+    assert contract.resolve_region_ids(subset="canonical") == [
+        "amazon",
+        "pantanal",
+        "sudd",
+        "borneo",
+    ]
+    assert contract.resolve_region_ids(subset="ten") == EXPECTED_TEN_REGION_IDS
+    assert contract.resolve_regions(subset="ten")[0].region_id == "amazon"
+    assert contract.resolve_regions(subset="ten")[-1].region_id == "northernaus"
+
+
+def test_resolve_regions_rejects_unknown_subset() -> None:
+    contract = load_phase4_evidence_contract(output_root=Path("results/phase4"))
+
+    with pytest.raises(ValueError, match="supported subsets"):
+        contract.resolve_regions(subset="macro")
+
+
+def test_resolve_regions_rejects_ambiguous_and_duplicate_requests() -> None:
+    contract = load_phase4_evidence_contract(output_root=Path("results/phase4"))
+
+    with pytest.raises(ValueError, match="Ambiguous region selector"):
+        contract.resolve_regions(subset="ten", requested_region_ids=["amazon"])
+
+    with pytest.raises(ValueError, match="Duplicate region ids requested"):
+        contract.resolve_regions(requested_region_ids=["amazon", "amazon"])

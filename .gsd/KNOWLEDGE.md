@@ -66,3 +66,15 @@
 - For M002/S04 work in this repo snapshot, the planner references `src/WA/comparison/percentage_hotspots.py` and `src/WA/comparison/classification_contract.py`, but those modules do **not** exist locally.
 - The safe source of truth is the evidence-contract artifact semantics in `src/WA/comparison/evidence_contract.py` plus the on-disk family manifests/CSVs (`hotspot_manifest`, `classification_hotspot_manifest`, `trend_hotspot_manifest`), not the stale planner module paths.
 - When extending the unified hotspot ledger, add semantic reloaders around those contract artifact families instead of inventing new imports just to match an outdated plan snapshot.
+
+## 2026-04-09 — `run_related_tests.py` is advisory, not executable verification
+
+- In this repo, `python scripts/run_related_tests.py <changed-paths...>` only prints the matched categories and the recommended pytest command; it does **not** run the tests for you.
+- When a task or slice says to use related tests for verification, treat `run_related_tests.py` as the selector and then execute the suggested `python -m pytest ...` subset separately if you still owe a real test run.
+- This matters for closeout work like M002/S04 where the combined Phase 4 related subset is broader than the focused task-level tests and is the practical replacement for a full-suite rerun.
+
+## 2026-04-09 — `resolve_phase4_region_ids(..., [])` is not a neutral no-op
+
+- In this repo, `src/WA/comparison/phase4_regional.py::resolve_phase4_region_ids(...)` treats an empty requested list as "all macro + priority regions", not as "no explicit selection".
+- When a CLI needs to distinguish `--subset ten` from `--region ...`, inspect the raw `--region` args before calling that helper; otherwise a subset-only call can be misclassified as an ambiguous mixed selector.
+- This matters for `scripts/run_phase4_regional.py`, which must preserve legacy no-arg behavior while still letting the contract-backed `ten` subset route stay explicit and reproducible.

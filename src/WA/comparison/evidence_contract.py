@@ -45,6 +45,7 @@ DEFAULT_CANONICAL_REGION_IDS = (
     "sudd",
     "borneo",
 )
+SUPPORTED_PHASE4_REGION_SUBSETS = ("canonical", "ten")
 
 _REQUIRED_REGION_FIELDS = {"label", "label_zh", "kind", "priority", "bbox"}
 _ALLOWED_REGION_FIELDS = {
@@ -177,6 +178,23 @@ class EvidenceContract:
     def regions_by_id(self) -> dict[str, ContractRegion]:
         return {region.region_id: region for region in self.regions}
 
+    @property
+    def ordered_ten_region_ids(self) -> tuple[str, ...]:
+        """Return the fixed ordered ten-region contract subset."""
+
+        return tuple(region.region_id for region in self.regions)
+
+    def resolve_subset_region_ids(self, subset: str) -> list[str]:
+        """Resolve one named evidence-contract subset to ordered region ids."""
+
+        normalized = subset.strip().lower()
+        if normalized == "canonical":
+            return list(self.canonical_region_ids)
+        if normalized == "ten":
+            return list(self.ordered_ten_region_ids)
+        supported = ", ".join(repr(name) for name in SUPPORTED_PHASE4_REGION_SUBSETS)
+        raise ValueError(f"Unknown subset {subset!r}; supported subsets: {supported}")
+
     def resolve_regions(
         self,
         *,
@@ -186,17 +204,14 @@ class EvidenceContract:
         """Resolve selected regions from ``--subset`` or explicit ids."""
 
         if subset is not None and requested_region_ids is not None:
-            raise ValueError("Pass either subset or requested_region_ids, not both")
+            raise ValueError(
+                "Ambiguous region selector: pass either subset or requested_region_ids, not both"
+            )
 
         if subset is None and requested_region_ids is None:
             region_ids = list(self.canonical_region_ids)
         elif subset is not None:
-            normalized = subset.strip().lower()
-            if normalized != "canonical":
-                raise ValueError(
-                    f"Unknown subset {subset!r}; only 'canonical' is supported"
-                )
-            region_ids = list(self.canonical_region_ids)
+            region_ids = self.resolve_subset_region_ids(subset)
         else:
             flattened: list[str] = []
             assert requested_region_ids is not None
@@ -207,6 +222,13 @@ class EvidenceContract:
             if not flattened:
                 raise ValueError(
                     "At least one region id is required when subset is omitted"
+                )
+            duplicates = sorted(
+                {region_id for region_id in flattened if flattened.count(region_id) > 1}
+            )
+            if duplicates:
+                raise ValueError(
+                    "Duplicate region ids requested: " + ", ".join(duplicates)
                 )
             known = set(self.regions_by_id.keys())
             unknown = sorted(set(flattened) - known)

@@ -5,10 +5,15 @@ from __future__ import annotations
 
 import argparse
 import logging
+from collections.abc import Iterable
 from pathlib import Path
 
 import pandas as pd
 
+from WA.comparison.evidence_contract import (
+    SUPPORTED_PHASE4_REGION_SUBSETS,
+    load_phase4_evidence_contract,
+)
 from WA.comparison.phase4_regional import (
     DEFAULT_PHASE4_OUTPUT_ROOT,
     DEFAULT_PHASE4_REGIONS_FILE,
@@ -21,15 +26,33 @@ from WA.comparison.phase4_regional import (
     resolve_phase4_region_ids,
 )
 
+logger = logging.getLogger(__name__)
 
-def parse_args() -> argparse.Namespace:
+
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
             "Generate Phase 4 regional area-weighted wetland-percentage caches and tables."
         )
     )
     parser.add_argument("--regions-file", default=str(DEFAULT_PHASE4_REGIONS_FILE))
-    parser.add_argument("--region", action="append", default=[])
+    parser.add_argument(
+        "--subset",
+        choices=SUPPORTED_PHASE4_REGION_SUBSETS,
+        default=None,
+        help=(
+            "Evidence-contract priority-region subset. Use 'canonical' for the "
+            "four-region hydro-diverse subset or 'ten' for the full ordered contract "
+            "list. Omit both --subset and --region to keep the legacy macro+priority "
+            "all-region run."
+        ),
+    )
+    parser.add_argument(
+        "--region",
+        action="append",
+        default=[],
+        help="Explicit region id override; may be repeated. Cannot be combined with --subset.",
+    )
     parser.add_argument("--dataset-id", action="append", default=[])
     parser.add_argument(
         "--output-root",
@@ -89,11 +112,53 @@ def parse_args() -> argparse.Namespace:
         default="INFO",
         choices=("DEBUG", "INFO", "WARNING", "ERROR"),
     )
-    return parser.parse_args()
+    return parser.parse_args(argv)
 
 
-def main() -> None:
-    args = parse_args()
+def _find_duplicate_region_ids(region_ids: Iterable[str]) -> list[str]:
+    flattened = list(region_ids)
+    return sorted({region_id for region_id in flattened if flattened.count(region_id) > 1})
+
+
+def resolve_cli_region_ids(
+    *,
+    regions_file: str | Path,
+    requested_subset: str | None,
+    requested_region_ids: Iterable[str],
+) -> tuple[list[str], str]:
+    """Resolve CLI region selection while preserving legacy no-arg behavior."""
+
+    regions = load_phase4_regions(regions_file)
+    requested_region_list = list(requested_region_ids)
+    explicit_region_ids = (
+        resolve_phase4_region_ids(regions, requested_region_list)
+        if requested_region_list
+        else []
+    )
+
+    if requested_subset is None and not explicit_region_ids:
+        return ([region.region_id for region in regions], "legacy-all-regions")
+
+    if requested_subset is not None and explicit_region_ids:
+        raise ValueError("Ambiguous region selector: pass either --subset or --region, not both")
+
+    if requested_subset is not None:
+        contract = load_phase4_evidence_contract(regions_file=regions_file)
+        contract_region_ids = contract.resolve_region_ids(subset=requested_subset)
+        return (
+            resolve_phase4_region_ids(regions, contract_region_ids),
+            f"contract-subset:{requested_subset.strip().lower()}",
+        )
+
+    duplicates = _find_duplicate_region_ids(explicit_region_ids)
+    if duplicates:
+        raise ValueError("Duplicate region ids requested: " + ", ".join(duplicates))
+
+    return (explicit_region_ids, "explicit-region-list")
+
+
+def main(argv: list[str] | None = None) -> None:
+    args = parse_args(argv)
     logging.basicConfig(
         level=getattr(logging, args.log_level),
         format="[%(levelname)s] %(message)s",
@@ -107,8 +172,32 @@ def main() -> None:
         time_range,
     )
 
+    try:
+        region_ids, selector_mode = resolve_cli_region_ids(
+            regions_file=args.regions_file,
+            requested_subset=args.subset,
+            requested_region_ids=args.region,
+        )
+    except Exception as exc:
+        logger.error(
+            "stage=region-selector subset=%s requested_regions=%s error=%s",
+            args.subset or "<none>",
+            args.region,
+            exc,
+        )
+        raise
+
+    selector_subset = args.subset or (
+        "explicit-region-list" if args.region else "legacy-all-regions"
+    )
+    logger.info(
+        "stage=region-selector subset=%s selector_mode=%s region_ids=%s",
+        selector_subset,
+        selector_mode,
+        region_ids,
+    )
+
     regions = load_phase4_regions(args.regions_file)
-    region_ids = resolve_phase4_region_ids(regions, args.region)
     dataset_ids = resolve_phase4_dataset_ids(args.dataset_id)
     region_lookup = {region.region_id: region for region in regions}
 

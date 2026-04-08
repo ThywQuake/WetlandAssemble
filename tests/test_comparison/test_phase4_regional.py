@@ -1,9 +1,14 @@
 from __future__ import annotations
 
+import importlib.util
+import logging
+import subprocess
+import sys
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import pytest
 import xarray as xr
 
 import WA.comparison.phase4_regional as phase4_regional_module
@@ -30,6 +35,19 @@ from WA.comparison.phase4_regional import (
     phase4_gwd30_tropical_tile_cache_path,
     resolve_phase4_dataset_config,
 )
+
+EXPECTED_TEN_REGION_IDS = [
+    "amazon",
+    "orinoco",
+    "pantanal",
+    "indogangetic",
+    "mekong",
+    "sudd",
+    "congo",
+    "okavango",
+    "borneo",
+    "northernaus",
+]
 
 
 def test_load_phase4_regions_includes_macro_and_priority_regions(tmp_path: Path) -> None:
@@ -1155,3 +1173,160 @@ def test_compute_phase4_region_dataset_table_gwd30_merges_existing_year_caches(
         [50.0, 50.0, 50.0, 50.0],
     )
     assert (output_root / "cache" / "gwd30" / "demo_region" / "regional_series.csv").is_file()
+
+
+
+def _load_script_module(script_name: str):
+    repo_root = Path(__file__).resolve().parents[2]
+    script_path = repo_root / "scripts" / script_name
+    spec = importlib.util.spec_from_file_location(
+        f"test_{script_name.replace('.', '_')}",
+        script_path,
+    )
+    assert spec is not None
+    assert spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_run_phase4_regional_help_mentions_contract_subset_and_legacy_default() -> None:
+    repo_root = Path(__file__).resolve().parents[2]
+    completed = subprocess.run(
+        [sys.executable, "scripts/run_phase4_regional.py", "--help"],
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert completed.returncode == 0
+    assert "--subset" in completed.stdout
+    assert "canonical" in completed.stdout
+    assert "ten" in completed.stdout
+    assert "macro+priority" in completed.stdout
+    assert "all-region run" in completed.stdout
+
+
+def test_run_phase4_regional_resolve_cli_region_ids_preserves_legacy_default_and_ten_subset(
+) -> None:
+    module = _load_script_module("run_phase4_regional.py")
+
+    legacy_region_ids, legacy_mode = module.resolve_cli_region_ids(
+        regions_file=Path("config/priority_regions.yaml"),
+        requested_subset=None,
+        requested_region_ids=[],
+    )
+    ten_region_ids, ten_mode = module.resolve_cli_region_ids(
+        regions_file=Path("config/priority_regions.yaml"),
+        requested_subset="ten",
+        requested_region_ids=[],
+    )
+
+    assert legacy_mode == "legacy-all-regions"
+    assert legacy_region_ids[0] == "pan_trop_subtrop"
+    assert len(legacy_region_ids) == 16
+    assert ten_mode == "contract-subset:ten"
+    assert ten_region_ids == EXPECTED_TEN_REGION_IDS
+
+
+@pytest.mark.parametrize(
+    ("script_name", "extra_args"),
+    [
+        ("run_phase4_trend_contract.py", []),
+        ("run_phase4_hotspot_ledger.py", []),
+    ],
+)
+def test_contract_cli_rejects_subset_and_region_together(
+    tmp_path: Path,
+    script_name: str,
+    extra_args: list[str],
+) -> None:
+    repo_root = Path(__file__).resolve().parents[2]
+    completed = subprocess.run(
+        [
+            sys.executable,
+            f"scripts/{script_name}",
+            "--output-root",
+            str(tmp_path),
+            "--subset",
+            "ten",
+            "--region",
+            "amazon",
+            *extra_args,
+        ],
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert completed.returncode != 0
+    assert "Ambiguous region selector" in (completed.stderr + completed.stdout)
+
+
+@pytest.mark.parametrize(
+    "script_name",
+    ["run_phase4_trend_contract.py", "run_phase4_hotspot_ledger.py"],
+)
+def test_contract_cli_help_mentions_ten_subset(script_name: str) -> None:
+    repo_root = Path(__file__).resolve().parents[2]
+    completed = subprocess.run(
+        [sys.executable, f"scripts/{script_name}", "--help"],
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert completed.returncode == 0
+    assert "--subset" in completed.stdout
+    assert "canonical" in completed.stdout
+    assert "ten" in completed.stdout
+
+
+def test_run_phase4_regional_main_logs_resolved_ten_subset(
+    tmp_path: Path,
+    monkeypatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    module = _load_script_module("run_phase4_regional.py")
+
+    monkeypatch.setattr(
+        module,
+        "build_or_load_phase4_berkeley_valid_mask",
+        lambda **kwargs: "mask",
+    )
+    monkeypatch.setattr(
+        module,
+        "compute_phase4_region_dataset_table",
+        lambda dataset_id, **kwargs: pd.DataFrame({"dataset_id": [dataset_id]}),
+    )
+    monkeypatch.setattr(
+        module,
+        "build_phase4_region_table",
+        lambda *, region, dataset_tables, output_root: output_root / f"{region.region_id}.csv",
+    )
+
+    with caplog.at_level(logging.INFO):
+        module.main(
+            [
+                "--subset",
+                "ten",
+                "--dataset-id",
+                "wad2m",
+                "--output-root",
+                str(tmp_path),
+                "--standardized-dir",
+                str(tmp_path),
+                "--start-year",
+                "2016",
+                "--end-year",
+                "2016",
+                "--no-progress",
+            ]
+        )
+
+    assert "stage=region-selector subset=ten selector_mode=contract-subset:ten" in caplog.text
+    assert "amazon" in caplog.text
+    assert "northernaus" in caplog.text
