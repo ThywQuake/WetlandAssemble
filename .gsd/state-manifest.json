@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "exported_at": "2026-04-08T17:57:57.870Z",
+  "exported_at": "2026-04-08T18:41:30.180Z",
   "milestones": [
     {
       "id": "M001",
@@ -1551,19 +1551,35 @@
       "milestone_id": "M002",
       "slice_id": "S05",
       "id": "T02",
-      "title": "Restore the percentage contract backbone, hotspots, and runner",
-      "status": "pending",
-      "one_liner": "",
-      "narrative": "",
-      "verification_result": "",
+      "title": "Restored the real percentage producer chain with a shared backbone, GWD30 Stage-1 surface recovery, atomic hotspot pairs, and a contract-aware runner for one region, `canonical`, or `ten`.",
+      "status": "complete",
+      "one_liner": "Restored the real percentage producer chain with a shared backbone, GWD30 Stage-1 surface recovery, atomic hotspot pairs, and a contract-aware runner for one region, `canonical`, or `ten`.",
+      "narrative": "Implemented `src/WA/comparison/percentage_backbone.py` as the shared owner of the Phase 4 percentage surface path, keeping the existing 0.25° non-GWD30 loader/aggregation logic while adding a real GWD30 Stage-1 pixel-statistics restore path plus contract-backed `surface` and `regional_summary` write/reload helpers. Added `src/WA/comparison/percentage_hotspots.py` to rank bundle-level percentage hotspots, write atomic manifest/CSV pairs, and fail closed on malformed or partial reloads. Added `scripts/run_phase4_percentage_contract.py` to compose live Phase 4 regional summaries, the restored multi-dataset coarse-surface bundle, and hotspot writes across one region, `--subset canonical`, or `--subset ten`, while making dataset selection and skip behavior explicit in logs. Refactored `scripts/plot_tropical_wetland_025deg.py` into a thin wrapper over the backbone, extended focused tests for the new backbone/hotspot/smoke surfaces, updated related-test routing plus docs, recorded decision D044, added a NetCDF string-coordinate gotcha to `.gsd/KNOWLEDGE.md`, updated `CHANGELOG.md`, and wrote the operator stash note at `docs/stashes/2026-04-09-006-m002-s05-t02-percentage-backbone.md`.",
+      "verification_result": "Passed the task-plan verification commands exactly as written: `ruff check src/WA/comparison/percentage_backbone.py src/WA/comparison/percentage_hotspots.py scripts/run_phase4_percentage_contract.py scripts/plot_tropical_wetland_025deg.py tests/test_comparison/test_percentage_backbone.py tests/test_comparison/test_percentage_hotspots.py tests/test_plot_tropical_wetland_025deg.py`; `python scripts/run_phase4_percentage_contract.py --help`; `python -m pytest tests/test_comparison/test_percentage_backbone.py tests/test_comparison/test_percentage_hotspots.py tests/test_plot_tropical_wetland_025deg.py -q`; and `python scripts/run_related_tests.py src/WA/comparison/percentage_backbone.py src/WA/comparison/percentage_hotspots.py scripts/run_phase4_percentage_contract.py scripts/plot_tropical_wetland_025deg.py`. Additional verification passed for the routing update with `ruff check src/WA/test_selection.py tests/test_test_selection.py` and `python -m pytest tests/test_test_selection.py -q`. Project-wide verification was also run with `python -m pytest tests/`, which still reproduces the pre-existing unrelated `tests/test_mgrs_tiling.py::test_tile_to_extent_matches_reference_case` failure and later exits 137 before the suite completes.",
       "duration": "",
-      "completed_at": null,
+      "completed_at": "2026-04-08T18:41:30.146Z",
       "blocker_discovered": false,
-      "deviations": "",
-      "known_issues": "",
-      "key_files": [],
-      "key_decisions": [],
-      "full_summary_md": "",
+      "deviations": "Beyond the task plan’s expected output files, I also updated `src/WA/test_selection.py`, `docs/testing/test-categories.md`, `CHANGELOG.md`, `.gsd/KNOWLEDGE.md`, and recorded D044 so the restored percentage line is discoverable and durable for downstream S05 tasks. I also made `scripts/plot_tropical_wetland_025deg.py` a pure wrapper instead of leaving a second copy of the backbone logic behind.",
+      "known_issues": "`python -m pytest tests/` still reproduces the pre-existing unrelated red bar at `tests/test_mgrs_tiling.py::test_tile_to_extent_matches_reference_case` and later exits 137 before the full suite completes. No real HPC execution against external standardized inputs was run from this worktree.",
+      "key_files": [
+        "src/WA/comparison/percentage_backbone.py",
+        "src/WA/comparison/percentage_hotspots.py",
+        "scripts/run_phase4_percentage_contract.py",
+        "scripts/plot_tropical_wetland_025deg.py",
+        "tests/test_comparison/test_percentage_backbone.py",
+        "tests/test_comparison/test_percentage_hotspots.py",
+        "tests/test_plot_tropical_wetland_025deg.py",
+        "src/WA/test_selection.py",
+        "docs/testing/test-categories.md",
+        "CHANGELOG.md",
+        ".gsd/KNOWLEDGE.md",
+        "docs/stashes/2026-04-09-006-m002-s05-t02-percentage-backbone.md"
+      ],
+      "key_decisions": [
+        "D044 — treat `dataset_key=canonical` as one ordered six-dataset percentage bundle, write one stacked contract surface artifact with derived mean/std/count metrics, and rank percentage hotspots by bundle-level `mean_wetland_percentage` instead of by per-dataset files.",
+        "Keep the percentage line as one multi-dataset contract family per region: live Phase 4 regional tables remain the summary source, the backbone writes one shared coarse-surface bundle keyed by `dataset_key + region_id`, and hotspot JSON/CSV pairs are only trusted after semantic reload validation."
+      ],
+      "full_summary_md": "---\nid: T02\nparent: S05\nmilestone: M002\nkey_files:\n  - src/WA/comparison/percentage_backbone.py\n  - src/WA/comparison/percentage_hotspots.py\n  - scripts/run_phase4_percentage_contract.py\n  - scripts/plot_tropical_wetland_025deg.py\n  - tests/test_comparison/test_percentage_backbone.py\n  - tests/test_comparison/test_percentage_hotspots.py\n  - tests/test_plot_tropical_wetland_025deg.py\n  - src/WA/test_selection.py\n  - docs/testing/test-categories.md\n  - CHANGELOG.md\n  - .gsd/KNOWLEDGE.md\n  - docs/stashes/2026-04-09-006-m002-s05-t02-percentage-backbone.md\nkey_decisions:\n  - D044 — treat `dataset_key=canonical` as one ordered six-dataset percentage bundle, write one stacked contract surface artifact with derived mean/std/count metrics, and rank percentage hotspots by bundle-level `mean_wetland_percentage` instead of by per-dataset files.\n  - Keep the percentage line as one multi-dataset contract family per region: live Phase 4 regional tables remain the summary source, the backbone writes one shared coarse-surface bundle keyed by `dataset_key + region_id`, and hotspot JSON/CSV pairs are only trusted after semantic reload validation.\nduration: \nverification_result: mixed\ncompleted_at: 2026-04-08T18:41:30.142Z\nblocker_discovered: false\n---\n\n# T02: Restored the real percentage producer chain with a shared backbone, GWD30 Stage-1 surface recovery, atomic hotspot pairs, and a contract-aware runner for one region, `canonical`, or `ten`.\n\n**Restored the real percentage producer chain with a shared backbone, GWD30 Stage-1 surface recovery, atomic hotspot pairs, and a contract-aware runner for one region, `canonical`, or `ten`.**\n\n## What Happened\n\nImplemented `src/WA/comparison/percentage_backbone.py` as the shared owner of the Phase 4 percentage surface path, keeping the existing 0.25° non-GWD30 loader/aggregation logic while adding a real GWD30 Stage-1 pixel-statistics restore path plus contract-backed `surface` and `regional_summary` write/reload helpers. Added `src/WA/comparison/percentage_hotspots.py` to rank bundle-level percentage hotspots, write atomic manifest/CSV pairs, and fail closed on malformed or partial reloads. Added `scripts/run_phase4_percentage_contract.py` to compose live Phase 4 regional summaries, the restored multi-dataset coarse-surface bundle, and hotspot writes across one region, `--subset canonical`, or `--subset ten`, while making dataset selection and skip behavior explicit in logs. Refactored `scripts/plot_tropical_wetland_025deg.py` into a thin wrapper over the backbone, extended focused tests for the new backbone/hotspot/smoke surfaces, updated related-test routing plus docs, recorded decision D044, added a NetCDF string-coordinate gotcha to `.gsd/KNOWLEDGE.md`, updated `CHANGELOG.md`, and wrote the operator stash note at `docs/stashes/2026-04-09-006-m002-s05-t02-percentage-backbone.md`.\n\n## Verification\n\nPassed the task-plan verification commands exactly as written: `ruff check src/WA/comparison/percentage_backbone.py src/WA/comparison/percentage_hotspots.py scripts/run_phase4_percentage_contract.py scripts/plot_tropical_wetland_025deg.py tests/test_comparison/test_percentage_backbone.py tests/test_comparison/test_percentage_hotspots.py tests/test_plot_tropical_wetland_025deg.py`; `python scripts/run_phase4_percentage_contract.py --help`; `python -m pytest tests/test_comparison/test_percentage_backbone.py tests/test_comparison/test_percentage_hotspots.py tests/test_plot_tropical_wetland_025deg.py -q`; and `python scripts/run_related_tests.py src/WA/comparison/percentage_backbone.py src/WA/comparison/percentage_hotspots.py scripts/run_phase4_percentage_contract.py scripts/plot_tropical_wetland_025deg.py`. Additional verification passed for the routing update with `ruff check src/WA/test_selection.py tests/test_test_selection.py` and `python -m pytest tests/test_test_selection.py -q`. Project-wide verification was also run with `python -m pytest tests/`, which still reproduces the pre-existing unrelated `tests/test_mgrs_tiling.py::test_tile_to_extent_matches_reference_case` failure and later exits 137 before the suite completes.\n\n## Verification Evidence\n\n| # | Command | Exit Code | Verdict | Duration |\n|---|---------|-----------|---------|----------|\n| 1 | `ruff check src/WA/comparison/percentage_backbone.py src/WA/comparison/percentage_hotspots.py scripts/run_phase4_percentage_contract.py scripts/plot_tropical_wetland_025deg.py tests/test_comparison/test_percentage_backbone.py tests/test_comparison/test_percentage_hotspots.py tests/test_plot_tropical_wetland_025deg.py` | 0 | ✅ pass | 40ms |\n| 2 | `python scripts/run_phase4_percentage_contract.py --help` | 0 | ✅ pass | 1860ms |\n| 3 | `python -m pytest tests/test_comparison/test_percentage_backbone.py tests/test_comparison/test_percentage_hotspots.py tests/test_plot_tropical_wetland_025deg.py -q` | 0 | ✅ pass | 6810ms |\n| 4 | `python scripts/run_related_tests.py src/WA/comparison/percentage_backbone.py src/WA/comparison/percentage_hotspots.py scripts/run_phase4_percentage_contract.py scripts/plot_tropical_wetland_025deg.py` | 0 | ✅ pass | 240ms |\n| 5 | `ruff check src/WA/test_selection.py tests/test_test_selection.py` | 0 | ✅ pass | 0ms |\n| 6 | `python -m pytest tests/test_test_selection.py -q` | 0 | ✅ pass | 370ms |\n| 7 | `python -m pytest tests/` | 137 | ❌ fail | 35060ms |\n| 8 | `python -m pytest tests/test_mgrs_tiling.py -q` | 1 | ❌ fail | 780ms |\n\n## Deviations\n\nBeyond the task plan’s expected output files, I also updated `src/WA/test_selection.py`, `docs/testing/test-categories.md`, `CHANGELOG.md`, `.gsd/KNOWLEDGE.md`, and recorded D044 so the restored percentage line is discoverable and durable for downstream S05 tasks. I also made `scripts/plot_tropical_wetland_025deg.py` a pure wrapper instead of leaving a second copy of the backbone logic behind.\n\n## Known Issues\n\n`python -m pytest tests/` still reproduces the pre-existing unrelated red bar at `tests/test_mgrs_tiling.py::test_tile_to_extent_matches_reference_case` and later exits 137 before the full suite completes. No real HPC execution against external standardized inputs was run from this worktree.\n\n## Files Created/Modified\n\n- `src/WA/comparison/percentage_backbone.py`\n- `src/WA/comparison/percentage_hotspots.py`\n- `scripts/run_phase4_percentage_contract.py`\n- `scripts/plot_tropical_wetland_025deg.py`\n- `tests/test_comparison/test_percentage_backbone.py`\n- `tests/test_comparison/test_percentage_hotspots.py`\n- `tests/test_plot_tropical_wetland_025deg.py`\n- `src/WA/test_selection.py`\n- `docs/testing/test-categories.md`\n- `CHANGELOG.md`\n- `.gsd/KNOWLEDGE.md`\n- `docs/stashes/2026-04-09-006-m002-s05-t02-percentage-backbone.md`\n",
       "description": "The current snapshot is missing `src/WA/comparison/percentage_backbone.py`, `src/WA/comparison/percentage_hotspots.py`, and `scripts/run_phase4_percentage_contract.py` even though older slice text claims they already exist. Restore that percentage producer chain intentionally on top of the real `phase4_regional.py` and `0.25°` surface backbones so the unified ledger can consume real percentage families instead of synthetic fixtures.\n\n## Failure Modes\n\n| Dependency | On error | On timeout | On malformed response |\n|------------|----------|-----------|----------------------|\n| `src/WA/comparison/phase4_regional.py`, `scripts/plot_tropical_wetland_025deg.py`, and Stage-1 GWD30 pixel-statistics tiles under `results/phase4/pixel_stats/...` | Fail with `dataset_id`, `region_id`, and stage context; never emit a hotspot pair or contract surface from incomplete upstream data. | Preserve visible cache reuse and per-region progress so long reruns can resume without recomputing all ten regions. | Reject empty coarse surfaces, missing Stage-1 manifests, malformed hotspot metadata, or partial JSON/CSV pairs instead of backfilling guesses. |\n\n## Load Profile\n\n- **Shared resources**: staged coarse-surface caches under `results/cache/tropical_025deg`, Stage-1 GWD30 pixel-statistics tiles, per-region summaries from `results/phase4`, and contract hotspot JSON/CSV outputs.\n- **Per-operation cost**: one dataset surface load or many tile reads plus coarse aggregation, then per-region hotspot ranking and manifest serialization.\n- **10x breakpoint**: disk I/O and surface materialization dominate first when the canonical subset widens to all ten regions without disciplined cache reuse.\n\n## Negative Tests\n\n- **Malformed inputs**: unknown region ids, missing Stage-1 manifests, stale coarse-cache metadata, malformed hotspot bbox payloads, and duplicate hotspot ids.\n- **Error paths**: loader failure, unreadable cache files, or zero-cell hotspot candidates surface explicit stage-tagged exceptions.\n- **Boundary conditions**: Berkeley year handling, GWD30 inclusion, canonical vs ten subset selection, and partial manifest/table corruption all stay deterministic.\n\n## Steps\n\n1. Add `src/WA/comparison/percentage_backbone.py` as the reusable contract-aware `0.25°` surface/cache adapter: keep non-GWD30 surface generation on the live plot-route logic, add the missing GWD30 Stage-1-backed surface path, and resolve regions through the T01 contract selector instead of direct catalog assumptions.\n2. Refactor `scripts/plot_tropical_wetland_025deg.py` into a thin CLI over the new backbone without losing its visible cache-stage logging, and add `src/WA/comparison/percentage_hotspots.py` to rank/write contract-backed percentage hotspot JSON/CSV pairs with atomic writes and semantic reload validation.\n3. Add `scripts/run_phase4_percentage_contract.py` as a thin orchestration CLI that composes `phase4_regional.py` summaries, the new backbone surfaces, and hotspot writes for one region, `--subset canonical`, or `--subset ten`, always keeping dataset selection and `--no-skip` decisions visible.\n4. Add `tests/test_comparison/test_percentage_backbone.py`, `tests/test_comparison/test_percentage_hotspots.py`, and extend `tests/test_plot_tropical_wetland_025deg.py` to pin cache reuse, GWD30 adapter behavior, contract metadata, hotspot ranking, and help/smoke expectations.\n\n## Must-Haves\n\n- [ ] The percentage line is restored as a real contract-backed producer chain, not a stale doc reference or synthetic test-only family.\n- [ ] GWD30 can participate in the shared-grid percentage contract path through resumable Stage-1-backed logic instead of being permanently excluded from the restored producer surface.\n- [ ] Percentage hotspot JSON/CSV pairs are atomic and semantically reloadable before any ledger step trusts them.\n\n## Done when\n\n- One contract-aware CLI can write percentage surfaces, regional summaries, and hotspot manifests for a single region and for `--subset ten`, and focused tests prove cache/reload behavior on both the backbone and hotspot layers.",
       "estimate": "3h",
       "files": [
@@ -2255,6 +2271,18 @@
       "decision": "How Phase 4 CLIs should expose the shared ten-region selector without breaking existing regional defaults",
       "choice": "Make EvidenceContract the single owner of the ordered `ten` subset, require contract-aware CLIs to use explicit `--subset {canonical,ten}` or `--region` selection with ambiguity rejection, and keep `run_phase4_regional.py`'s no-arg macro+priority run as an explicit legacy path instead of silently redefining it to ten regions.",
       "rationale": "Downstream scale-out work needs one reproducible ten-region source that is not hand-written per script, but the existing regional runner already has operational macro-region behavior that other routes may still rely on. Preserving the legacy no-arg path while forcing explicit contract subsets for wide runs makes the migration visible, keeps selector failures fail-closed, and exposes the resolved ordered region list in logs before fanout.",
+      "revisable": "Yes",
+      "made_by": "agent",
+      "superseded_by": null
+    },
+    {
+      "seq": 46,
+      "id": "D044",
+      "when_context": "M002/S05/T02",
+      "scope": "architecture",
+      "decision": "How the restored percentage contract family should encode multi-dataset surfaces and hotspot scoring after GWD30 is brought back into the shared 0.25° path",
+      "choice": "Treat `dataset_key=canonical` as the ordered six-dataset percentage bundle (`gwd30`, `giems_mc`, `topmodel`, `swamps`, `wad2m`, `berkeley_rwawc`), write one contract `surface` artifact that stacks the per-dataset coarse surfaces plus derived mean/std/count metrics, and rank percentage hotspots by the bundle’s `mean_wetland_percentage` rather than by per-dataset files.",
+      "rationale": "S05 needs one semantically reloadable percentage family per region that the ledger and readiness steps can trust. A stacked contract surface keeps the live per-dataset producers visible, restores GWD30 without inventing a parallel format, and lets hotspot rows keep `wetland_percentage` as a real family-local score while still carrying enough provenance for downstream comparison.",
       "revisable": "Yes",
       "made_by": "agent",
       "superseded_by": null
@@ -3811,6 +3839,94 @@
       "verdict": "✅ pass",
       "duration_ms": 234,
       "created_at": "2026-04-08T17:57:57.855Z"
+    },
+    {
+      "id": 142,
+      "task_id": "T02",
+      "slice_id": "S05",
+      "milestone_id": "M002",
+      "command": "ruff check src/WA/comparison/percentage_backbone.py src/WA/comparison/percentage_hotspots.py scripts/run_phase4_percentage_contract.py scripts/plot_tropical_wetland_025deg.py tests/test_comparison/test_percentage_backbone.py tests/test_comparison/test_percentage_hotspots.py tests/test_plot_tropical_wetland_025deg.py",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 40,
+      "created_at": "2026-04-08T18:41:30.147Z"
+    },
+    {
+      "id": 143,
+      "task_id": "T02",
+      "slice_id": "S05",
+      "milestone_id": "M002",
+      "command": "python scripts/run_phase4_percentage_contract.py --help",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 1860,
+      "created_at": "2026-04-08T18:41:30.147Z"
+    },
+    {
+      "id": 144,
+      "task_id": "T02",
+      "slice_id": "S05",
+      "milestone_id": "M002",
+      "command": "python -m pytest tests/test_comparison/test_percentage_backbone.py tests/test_comparison/test_percentage_hotspots.py tests/test_plot_tropical_wetland_025deg.py -q",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 6810,
+      "created_at": "2026-04-08T18:41:30.147Z"
+    },
+    {
+      "id": 145,
+      "task_id": "T02",
+      "slice_id": "S05",
+      "milestone_id": "M002",
+      "command": "python scripts/run_related_tests.py src/WA/comparison/percentage_backbone.py src/WA/comparison/percentage_hotspots.py scripts/run_phase4_percentage_contract.py scripts/plot_tropical_wetland_025deg.py",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 240,
+      "created_at": "2026-04-08T18:41:30.147Z"
+    },
+    {
+      "id": 146,
+      "task_id": "T02",
+      "slice_id": "S05",
+      "milestone_id": "M002",
+      "command": "ruff check src/WA/test_selection.py tests/test_test_selection.py",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 0,
+      "created_at": "2026-04-08T18:41:30.147Z"
+    },
+    {
+      "id": 147,
+      "task_id": "T02",
+      "slice_id": "S05",
+      "milestone_id": "M002",
+      "command": "python -m pytest tests/test_test_selection.py -q",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 370,
+      "created_at": "2026-04-08T18:41:30.147Z"
+    },
+    {
+      "id": 148,
+      "task_id": "T02",
+      "slice_id": "S05",
+      "milestone_id": "M002",
+      "command": "python -m pytest tests/",
+      "exit_code": 137,
+      "verdict": "❌ fail",
+      "duration_ms": 35060,
+      "created_at": "2026-04-08T18:41:30.147Z"
+    },
+    {
+      "id": 149,
+      "task_id": "T02",
+      "slice_id": "S05",
+      "milestone_id": "M002",
+      "command": "python -m pytest tests/test_mgrs_tiling.py -q",
+      "exit_code": 1,
+      "verdict": "❌ fail",
+      "duration_ms": 780,
+      "created_at": "2026-04-08T18:41:30.147Z"
     }
   ]
 }

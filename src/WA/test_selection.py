@@ -211,6 +211,8 @@ TEST_CATEGORIES: tuple[TestCategory, ...] = (
         ),
         triggers=(
             "src/WA/comparison/evidence_contract.py",
+            "src/WA/comparison/percentage_backbone.py",
+            "src/WA/comparison/percentage_hotspots.py",
             "src/WA/comparison/hotspot_ledger.py",
             "src/WA/comparison/phase4_regional.py",
             "src/WA/comparison/trend_hotspots.py",
@@ -222,6 +224,7 @@ TEST_CATEGORIES: tuple[TestCategory, ...] = (
             "scripts/hpc_probe_trends.py",
             "scripts/reduce_phase4_gwd30_tropical_shards.py",
             "scripts/run_phase4_gwd30_tropical_shard.py",
+            "scripts/run_phase4_percentage_contract.py",
             "scripts/run_phase4_hotspot_ledger.py",
             "scripts/run_phase4_regional.py",
             "scripts/run_phase4_trend_contract.py",

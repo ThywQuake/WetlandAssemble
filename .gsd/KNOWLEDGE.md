@@ -78,3 +78,9 @@
 - In this repo, `src/WA/comparison/phase4_regional.py::resolve_phase4_region_ids(...)` treats an empty requested list as "all macro + priority regions", not as "no explicit selection".
 - When a CLI needs to distinguish `--subset ten` from `--region ...`, inspect the raw `--region` args before calling that helper; otherwise a subset-only call can be misclassified as an ambiguous mixed selector.
 - This matters for `scripts/run_phase4_regional.py`, which must preserve legacy no-arg behavior while still letting the contract-backed `ten` subset route stay explicit and reproducible.
+
+## 2026-04-09 — NetCDF-safe string coords for contract percentage surfaces
+
+- In this repo’s current NumPy/xarray/netCDF4 stack, building a `dataset_id` coordinate from a pandas index can produce NumPy `StringDType`, which `to_netcdf()` rejects with `unsupported dtype for netCDF4 variable`.
+- For contract-backed multi-dataset percentage surfaces, force string-like coordinates such as `dataset_id` and `dataset_year_label` onto fixed-width unicode arrays before writing the NetCDF.
+- This matters for `src/WA/comparison/percentage_backbone.py`, where the restored percentage contract surface stores a dataset stack and would otherwise fail at write time even though the xarray object looks valid in memory.

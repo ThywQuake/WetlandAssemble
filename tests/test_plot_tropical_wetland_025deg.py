@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import importlib
 import importlib.util
+import subprocess
+import sys
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -21,6 +24,10 @@ def _load_script_module():
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+def _load_backbone_module():
+    return importlib.import_module("WA.comparison.percentage_backbone")
 
 
 class _DummyLoader:
@@ -59,11 +66,50 @@ def _sample_dataset() -> xr.Dataset:
     return dataset
 
 
+def _write_gwd30_stage1_fixture(output_root: Path, *, year: int = 2016) -> Path:
+    tiles_dir = output_root / "pixel_stats" / "gwd30" / f"gwd30_{year}" / "monthly" / "tiles"
+    tiles_dir.mkdir(parents=True)
+    tile_path = tiles_dir / "tile_demo.nc"
+    xr.Dataset(
+        {
+            "wetland_fraction": xr.DataArray(
+                np.full((12, 1, 1), 0.5, dtype=np.float32),
+                dims=("time", "lat", "lon"),
+                coords={
+                    "time": np.array(
+                        [f"{year}-{month:02d}-01" for month in range(1, 13)], dtype="datetime64[ns]"
+                    ),
+                    "lat": [0.5],
+                    "lon": [100.5],
+                },
+            )
+        }
+    ).to_netcdf(tile_path)
+    manifest_path = (
+        output_root / "pixel_stats" / "gwd30" / f"gwd30_{year}" / "monthly" / "tile_manifest.json"
+    )
+    manifest_path.write_text(
+        (
+            "{\n"
+            f'  "year": {year},\n'
+            '  "aggregation": "monthly",\n'
+            '  "tile_count": 1,\n'
+            f'  "output_dir": "{tiles_dir}",\n'
+            '  "tiles": [\n'
+            f'    {{"path": "{tile_path}", "bbox": [100.0, 0.0, 101.0, 1.0]}}\n'
+            "  ]\n"
+            "}\n"
+        ),
+        encoding="utf-8",
+    )
+    return tile_path
+
+
 def test_load_tropical_surface_writes_all_stage_caches_and_reuses_final_cache(
     tmp_path: Path,
     monkeypatch,
 ) -> None:
-    module = _load_script_module()
+    module = _load_backbone_module()
     loader = _DummyLoader(_sample_dataset())
     bbox = (-180.0, -35.0, 180.0, 35.0)
     region_id = "global_tropical_subtropical_35"
@@ -130,7 +176,7 @@ def test_load_tropical_surface_can_bypass_existing_cache(
     tmp_path: Path,
     monkeypatch,
 ) -> None:
-    module = _load_script_module()
+    module = _load_backbone_module()
     loader = _DummyLoader(_sample_dataset())
     bbox = (-180.0, -35.0, 180.0, 35.0)
     region_id = "global_tropical_subtropical_35"
@@ -172,7 +218,7 @@ def test_load_tropical_surface_ignores_stale_coarse_cache(
     tmp_path: Path,
     monkeypatch,
 ) -> None:
-    module = _load_script_module()
+    module = _load_backbone_module()
     loader = _DummyLoader(_sample_dataset())
     bbox = (-180.0, -35.0, 180.0, 35.0)
     region_id = "global_tropical_subtropical_35"
@@ -214,11 +260,34 @@ def test_load_tropical_surface_ignores_stale_coarse_cache(
     assert loader.calls == 1
 
 
+def test_load_tropical_surface_supports_gwd30_stage1_tiles(tmp_path: Path) -> None:
+    module = _load_backbone_module()
+    output_root = tmp_path / "results"
+    _write_gwd30_stage1_fixture(output_root)
+
+    actual_year, coarse = module.load_tropical_surface(
+        "gwd30",
+        region_id="amazon",
+        bbox=(100.0, 0.0, 101.0, 1.0),
+        target_year=2016,
+        resolution_deg=1.0,
+        cache_dir=tmp_path / "cache",
+        output_root=output_root,
+        prefer_cache=True,
+        write_cache=True,
+        show_progress=False,
+    )
+
+    assert actual_year == 2016
+    assert coarse.shape == (1, 1)
+    assert coarse.values[0, 0] == pytest.approx(0.5)
+
+
 def test_save_surface_plot_writes_netcdf_before_png(
     tmp_path: Path,
     monkeypatch,
 ) -> None:
-    module = _load_script_module()
+    module = _load_backbone_module()
     surface = _sample_dataset()["wetland_fraction"]
     bbox = (-180.0, -35.0, 180.0, 35.0)
     region_id = "global_tropical_subtropical_35"
@@ -247,7 +316,7 @@ def test_save_surface_plot_uses_simple_dataset_title(
     tmp_path: Path,
     monkeypatch,
 ) -> None:
-    module = _load_script_module()
+    module = _load_backbone_module()
     surface = _sample_dataset()["wetland_fraction"]
     bbox = (-180.0, -35.0, 180.0, 35.0)
     region_id = "global_tropical_subtropical_35"
@@ -274,7 +343,7 @@ def test_save_surface_plot_uses_simple_dataset_title(
 
 
 def test_save_overview_plot_creates_stacked_png(tmp_path: Path) -> None:
-    module = _load_script_module()
+    module = _load_backbone_module()
     surface_a = _sample_dataset()["wetland_fraction"]
     surface_b = surface_a * 0.5
 
@@ -292,7 +361,7 @@ def test_save_overview_plot_creates_stacked_png(tmp_path: Path) -> None:
 
 
 def test_bbox_to_cartopy_extent_reorders_bbox_axes() -> None:
-    module = _load_script_module()
+    module = _load_backbone_module()
 
     assert module._bbox_to_cartopy_extent((-180.0, -23.5, 180.0, 23.5)) == (
         -180.0,
@@ -303,7 +372,7 @@ def test_bbox_to_cartopy_extent_reorders_bbox_axes() -> None:
 
 
 def test_resolve_plot_region_reads_bbox_from_catalog(tmp_path: Path) -> None:
-    module = _load_script_module()
+    module = _load_backbone_module()
     regions_path = tmp_path / "regions.yaml"
     regions_path.write_text(
         """
@@ -322,3 +391,19 @@ regions:
 
     assert label == "Global Tropical and Subtropical Belt (35°S to 35°N)"
     assert bbox == (-180.0, -35.0, 180.0, 35.0)
+
+
+def test_plot_script_help_mentions_gwd30_and_output_root() -> None:
+    repo_root = Path(__file__).resolve().parents[1]
+    completed = subprocess.run(
+        [sys.executable, "scripts/plot_tropical_wetland_025deg.py", "--help"],
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert completed.returncode == 0
+    assert "gwd30" in completed.stdout.lower()
+    assert "--output-root" in completed.stdout
+    assert "--progress" in completed.stdout

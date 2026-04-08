@@ -132,13 +132,18 @@ python -m pytest \
 ```
 
 ### phase4
-Phase 4 regional analysis, trend, agreement, and submit-script tests.
+Phase 4 contract, percentage/regional analysis, trend, agreement, hotspot ledger, and submit-script tests.
 
 ```bash
 python -m pytest \
+  tests/test_comparison/test_evidence_contract.py \
+  tests/test_comparison/test_percentage_backbone.py \
+  tests/test_comparison/test_percentage_hotspots.py \
   tests/test_comparison/test_phase4_regional.py \
+  tests/test_comparison/test_trend_hotspots.py \
   tests/test_comparison/test_trends.py \
   tests/test_comparison/test_trend_agreement.py \
+  tests/test_comparison/test_hotspot_ledger.py \
   tests/test_visualization/test_phase4.py \
   tests/test_submit_phase4_gwd30_pixel_stats.py \
   tests/test_submit_phase4_gwd30_regional_year_split.py \

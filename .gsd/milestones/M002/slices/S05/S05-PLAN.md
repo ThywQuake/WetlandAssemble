@@ -45,7 +45,7 @@ python scripts/run_phase4_regional.py --help
 python scripts/run_phase4_trend_contract.py --help
 python scripts/run_phase4_hotspot_ledger.py --help
 python -m pytest tests/test_comparison/test_evidence_contract.py tests/test_comparison/test_phase4_regional.py -q
-- [ ] **T02: Restore the percentage contract backbone, hotspots, and runner** — The current snapshot is missing `src/WA/comparison/percentage_backbone.py`, `src/WA/comparison/percentage_hotspots.py`, and `scripts/run_phase4_percentage_contract.py` even though older slice text claims they already exist. Restore that percentage producer chain intentionally on top of the real `phase4_regional.py` and `0.25°` surface backbones so the unified ledger can consume real percentage families instead of synthetic fixtures.
+- [x] **T02: Restored the real percentage producer chain with a shared backbone, GWD30 Stage-1 surface recovery, atomic hotspot pairs, and a contract-aware runner for one region, `canonical`, or `ten`.** — The current snapshot is missing `src/WA/comparison/percentage_backbone.py`, `src/WA/comparison/percentage_hotspots.py`, and `scripts/run_phase4_percentage_contract.py` even though older slice text claims they already exist. Restore that percentage producer chain intentionally on top of the real `phase4_regional.py` and `0.25°` surface backbones so the unified ledger can consume real percentage families instead of synthetic fixtures.
 
 ## Failure Modes
 
