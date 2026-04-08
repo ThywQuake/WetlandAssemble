@@ -27,7 +27,7 @@
   - Verify: ruff check src/WA/comparison/evidence_contract.py src/WA/comparison/trend_hotspots.py scripts/run_phase4_trend_contract.py src/WA/visualization/phase4.py tests/test_comparison/test_evidence_contract.py tests/test_comparison/test_trend_hotspots.py tests/test_visualization/test_phase4.py
 python scripts/run_phase4_trend_contract.py --help
 python -m pytest tests/test_comparison/test_evidence_contract.py tests/test_comparison/test_trend_hotspots.py tests/test_visualization/test_phase4.py -q
-- [ ] **T02: Build the unified hotspot ledger and ledger CLI** — Once all three lines have hotspot objects, normalize them into one ledger and expose a thin runner/reload surface so later slices can compare hotspots by region and metric family without reverse-engineering three separate schemas.
+- [x] **T02: Added a contract-backed unified hotspot ledger, semantic Phase 4 ledger reloads, and a fail-closed ledger CLI for percentage/classification/trend hotspot families.** — Once all three lines have hotspot objects, normalize them into one ledger and expose a thin runner/reload surface so later slices can compare hotspots by region and metric family without reverse-engineering three separate schemas.
 
 ## Steps
 

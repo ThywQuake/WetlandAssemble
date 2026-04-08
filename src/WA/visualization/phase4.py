@@ -14,6 +14,10 @@ from WA.comparison.evidence_contract import (
     DEFAULT_PHASE4_REGIONS_FILE,
     load_phase4_evidence_contract,
 )
+from WA.comparison.hotspot_ledger import (
+    UnifiedHotspotLedgerReload,
+    load_contract_unified_hotspot_ledger,
+)
 from WA.comparison.trend_hotspots import (
     TrendHotspotReload,
     load_contract_trend_hotspot_table,
@@ -83,6 +87,32 @@ def phase4_climatology_figure_path(
     """Return the climatology figure path for one region."""
 
     return Path(figures_root) / "climatology" / f"{region_id}.png"
+
+
+def load_phase4_unified_hotspot_ledger(
+    *,
+    region_id: str,
+    ledger_key: str = "canonical",
+    output_root: str | Path = DEFAULT_PHASE4_CONTRACT_OUTPUT_ROOT,
+    regions_file: str | Path = DEFAULT_PHASE4_REGIONS_FILE,
+) -> UnifiedHotspotLedgerReload:
+    """Reload one contract-backed unified hotspot ledger by semantics."""
+
+    contract = load_phase4_evidence_contract(
+        output_root=output_root,
+        regions_file=regions_file,
+    )
+    try:
+        return load_contract_unified_hotspot_ledger(
+            contract=contract,
+            region_id=region_id,
+            ledger_key=ledger_key,
+        )
+    except Exception as exc:  # pragma: no cover - exercised by tests via message
+        raise ValueError(
+            "Phase4 semantic reload failed for unified hotspot ledger: "
+            f"region_id={region_id} ledger_key={ledger_key} error={exc}"
+        ) from exc
 
 
 def load_phase4_contract_trend_hotspot_table(

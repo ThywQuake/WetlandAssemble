@@ -4,7 +4,9 @@
 
 - Added a contract-backed Phase 4 trend hotspot family under `results/phase4/trend_hotspot_manifests/`, with JSON manifests plus CSV companions keyed by sorted participant-set ids, disagreement-first ranking (`1 - agreement_ratio`), and semantic reload helpers in `src/WA/visualization/phase4.py`.
 - Added `scripts/run_phase4_trend_contract.py`, which writes/reloads contract-stable trend agreement artifacts and then runs a dedicated `trend-hotspots` stage that fails closed on partial or malformed JSON/CSV pairs instead of reusing them.
-- Added focused regression coverage for the Phase 4 evidence contract, trend hotspot ranking/validation, the semantic reload wrapper, and the new runner help surface; also updated `src/WA/test_selection.py` so related-test inference includes the new Phase 4 contract files.
+- Added a contract-backed unified Phase 4 hotspot ledger under `results/phase4/unified_hotspot_ledgers/`, with semantic reload helpers for percentage, classification, and trend hotspot families, long-form `analysis_object_id` rows that keep family-local score names/percentiles instead of faking cross-family raw-score comparability, and provenance columns for downstream figure work.
+- Added `scripts/run_phase4_hotspot_ledger.py`, which logs a dedicated `stage=ledger` flow, validates all three hotspot families before any ledger write, and makes region-scoped skip/rebuild decisions explicit in logs.
+- Added focused regression coverage for the Phase 4 evidence contract, trend hotspot ranking/validation, the semantic reload wrappers, the new runners' help surfaces, unified ledger normalization/fail-closed reload behavior, and related-test routing updates for the new Phase 4 comparison surfaces.
 
 ## 2026-04-07
 

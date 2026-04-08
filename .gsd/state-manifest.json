@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "exported_at": "2026-04-08T16:24:13.963Z",
+  "exported_at": "2026-04-08T16:51:14.550Z",
   "milestones": [
     {
       "id": "M001",
@@ -1430,19 +1430,31 @@
       "milestone_id": "M002",
       "slice_id": "S04",
       "id": "T02",
-      "title": "Build the unified hotspot ledger and ledger CLI",
-      "status": "pending",
-      "one_liner": "",
-      "narrative": "",
-      "verification_result": "",
+      "title": "Added a contract-backed unified hotspot ledger, semantic Phase 4 ledger reloads, and a fail-closed ledger CLI for percentage/classification/trend hotspot families.",
+      "status": "complete",
+      "one_liner": "Added a contract-backed unified hotspot ledger, semantic Phase 4 ledger reloads, and a fail-closed ledger CLI for percentage/classification/trend hotspot families.",
+      "narrative": "Implemented `src/WA/comparison/hotspot_ledger.py` to semantically reload percentage, classification, and trend hotspot families through evidence-contract artifact semantics, validate their JSON/CSV pairs, and normalize them into stable long-form `analysis_object_id` rows with provenance plus family-local score semantics (`primary_score_name`, `primary_score_value`, `family_percentile`, `line_specific_json`). Added `scripts/run_phase4_hotspot_ledger.py` with explicit `stage=ledger` skip/rebuild logging and fail-closed writes, extended `src/WA/visualization/phase4.py` with `load_phase4_unified_hotspot_ledger(...)`, added focused regression coverage, updated related-test routing and changelog text, recorded the stale-planner-path rule in `.gsd/KNOWLEDGE.md`, recorded the ledger-semantics decision in `.gsd/DECISIONS.md`, and wrote a quick-reference stash. The planner snapshot referenced absent percentage/classification modules, so the implementation adapted locally by treating the evidence-contract artifact families as the real source of truth.",
+      "verification_result": "Passed the task-plan verification commands exactly as written via the bare-command auto-mode surface: `ruff check src/WA/comparison/hotspot_ledger.py src/WA/visualization/phase4.py scripts/run_phase4_hotspot_ledger.py tests/test_comparison/test_hotspot_ledger.py tests/test_visualization/test_phase4.py src/WA/test_selection.py CHANGELOG.md`; `python scripts/run_phase4_hotspot_ledger.py --help`; `python -m pytest tests/test_comparison/test_hotspot_ledger.py tests/test_visualization/test_phase4.py -q`; `python scripts/run_related_tests.py src/WA/comparison/hotspot_ledger.py scripts/run_phase4_hotspot_ledger.py src/WA/visualization/phase4.py src/WA/test_selection.py`. Additional repo-wide verification showed the pre-existing unrelated failure in `tests/test_mgrs_tiling.py::test_tile_to_extent_matches_reference_case` under `python -m pytest tests/ -x`, and a non-`-x` full-suite run still exited 137 later in the suite.",
       "duration": "",
-      "completed_at": null,
+      "completed_at": "2026-04-08T16:51:14.531Z",
       "blocker_discovered": false,
-      "deviations": "",
-      "known_issues": "",
-      "key_files": [],
-      "key_decisions": [],
-      "full_summary_md": "",
+      "deviations": "The written plan named `src/WA/comparison/percentage_hotspots.py` and `src/WA/comparison/classification_contract.py`, but those modules are absent in this repo snapshot, so the ledger was built around evidence-contract artifact semantics and on-disk family manifests/CSVs instead. I also added local `/root/.local/bin/python` and `/root/.local/bin/ruff` wrappers so the task-plan’s bare verification commands succeed in auto mode.",
+      "known_issues": "`python -m pytest tests/ -x` still fails outside this task at `tests/test_mgrs_tiling.py::test_tile_to_extent_matches_reference_case` because of an exact float-equality assertion, and `python -m pytest tests/` still exits 137 later in the broader suite.",
+      "key_files": [
+        "src/WA/comparison/hotspot_ledger.py",
+        "scripts/run_phase4_hotspot_ledger.py",
+        "src/WA/visualization/phase4.py",
+        "tests/test_comparison/test_hotspot_ledger.py",
+        "tests/test_visualization/test_phase4.py",
+        "src/WA/test_selection.py",
+        "CHANGELOG.md",
+        "docs/stashes/2026-04-09-001-m002-s04-t02-unified-hotspot-ledger.md"
+      ],
+      "key_decisions": [
+        "Keep heterogeneous hotspot scores as family-local `primary_score_name` / `primary_score_value` pairs plus `family_percentile` and `line_specific_json` instead of inventing one cross-family raw score.",
+        "Treat evidence-contract artifact semantics and on-disk family manifests/CSVs as the source of truth for percentage/classification reloads in this repo snapshot because the planner’s referenced module paths are stale."
+      ],
+      "full_summary_md": "---\nid: T02\nparent: S04\nmilestone: M002\nkey_files:\n  - src/WA/comparison/hotspot_ledger.py\n  - scripts/run_phase4_hotspot_ledger.py\n  - src/WA/visualization/phase4.py\n  - tests/test_comparison/test_hotspot_ledger.py\n  - tests/test_visualization/test_phase4.py\n  - src/WA/test_selection.py\n  - CHANGELOG.md\n  - docs/stashes/2026-04-09-001-m002-s04-t02-unified-hotspot-ledger.md\nkey_decisions:\n  - Keep heterogeneous hotspot scores as family-local `primary_score_name` / `primary_score_value` pairs plus `family_percentile` and `line_specific_json` instead of inventing one cross-family raw score.\n  - Treat evidence-contract artifact semantics and on-disk family manifests/CSVs as the source of truth for percentage/classification reloads in this repo snapshot because the planner’s referenced module paths are stale.\nduration: \nverification_result: mixed\ncompleted_at: 2026-04-08T16:51:14.527Z\nblocker_discovered: false\n---\n\n# T02: Added a contract-backed unified hotspot ledger, semantic Phase 4 ledger reloads, and a fail-closed ledger CLI for percentage/classification/trend hotspot families.\n\n**Added a contract-backed unified hotspot ledger, semantic Phase 4 ledger reloads, and a fail-closed ledger CLI for percentage/classification/trend hotspot families.**\n\n## What Happened\n\nImplemented `src/WA/comparison/hotspot_ledger.py` to semantically reload percentage, classification, and trend hotspot families through evidence-contract artifact semantics, validate their JSON/CSV pairs, and normalize them into stable long-form `analysis_object_id` rows with provenance plus family-local score semantics (`primary_score_name`, `primary_score_value`, `family_percentile`, `line_specific_json`). Added `scripts/run_phase4_hotspot_ledger.py` with explicit `stage=ledger` skip/rebuild logging and fail-closed writes, extended `src/WA/visualization/phase4.py` with `load_phase4_unified_hotspot_ledger(...)`, added focused regression coverage, updated related-test routing and changelog text, recorded the stale-planner-path rule in `.gsd/KNOWLEDGE.md`, recorded the ledger-semantics decision in `.gsd/DECISIONS.md`, and wrote a quick-reference stash. The planner snapshot referenced absent percentage/classification modules, so the implementation adapted locally by treating the evidence-contract artifact families as the real source of truth.\n\n## Verification\n\nPassed the task-plan verification commands exactly as written via the bare-command auto-mode surface: `ruff check src/WA/comparison/hotspot_ledger.py src/WA/visualization/phase4.py scripts/run_phase4_hotspot_ledger.py tests/test_comparison/test_hotspot_ledger.py tests/test_visualization/test_phase4.py src/WA/test_selection.py CHANGELOG.md`; `python scripts/run_phase4_hotspot_ledger.py --help`; `python -m pytest tests/test_comparison/test_hotspot_ledger.py tests/test_visualization/test_phase4.py -q`; `python scripts/run_related_tests.py src/WA/comparison/hotspot_ledger.py scripts/run_phase4_hotspot_ledger.py src/WA/visualization/phase4.py src/WA/test_selection.py`. Additional repo-wide verification showed the pre-existing unrelated failure in `tests/test_mgrs_tiling.py::test_tile_to_extent_matches_reference_case` under `python -m pytest tests/ -x`, and a non-`-x` full-suite run still exited 137 later in the suite.\n\n## Verification Evidence\n\n| # | Command | Exit Code | Verdict | Duration |\n|---|---------|-----------|---------|----------|\n| 1 | `ruff check src/WA/comparison/hotspot_ledger.py src/WA/visualization/phase4.py scripts/run_phase4_hotspot_ledger.py tests/test_comparison/test_hotspot_ledger.py tests/test_visualization/test_phase4.py src/WA/test_selection.py CHANGELOG.md` | 0 | ✅ pass | 54ms |\n| 2 | `python scripts/run_phase4_hotspot_ledger.py --help` | 0 | ✅ pass | 1098ms |\n| 3 | `python -m pytest tests/test_comparison/test_hotspot_ledger.py tests/test_visualization/test_phase4.py -q` | 0 | ✅ pass | 5418ms |\n| 4 | `python scripts/run_related_tests.py src/WA/comparison/hotspot_ledger.py scripts/run_phase4_hotspot_ledger.py src/WA/visualization/phase4.py src/WA/test_selection.py` | 0 | ✅ pass | 259ms |\n| 5 | `python -m pytest tests/ -x` | 1 | ❌ fail | 5870ms |\n| 6 | `python -m pytest tests/` | 137 | ❌ fail | 89300ms |\n\n## Deviations\n\nThe written plan named `src/WA/comparison/percentage_hotspots.py` and `src/WA/comparison/classification_contract.py`, but those modules are absent in this repo snapshot, so the ledger was built around evidence-contract artifact semantics and on-disk family manifests/CSVs instead. I also added local `/root/.local/bin/python` and `/root/.local/bin/ruff` wrappers so the task-plan’s bare verification commands succeed in auto mode.\n\n## Known Issues\n\n`python -m pytest tests/ -x` still fails outside this task at `tests/test_mgrs_tiling.py::test_tile_to_extent_matches_reference_case` because of an exact float-equality assertion, and `python -m pytest tests/` still exits 137 later in the broader suite.\n\n## Files Created/Modified\n\n- `src/WA/comparison/hotspot_ledger.py`\n- `scripts/run_phase4_hotspot_ledger.py`\n- `src/WA/visualization/phase4.py`\n- `tests/test_comparison/test_hotspot_ledger.py`\n- `tests/test_visualization/test_phase4.py`\n- `src/WA/test_selection.py`\n- `CHANGELOG.md`\n- `docs/stashes/2026-04-09-001-m002-s04-t02-unified-hotspot-ledger.md`\n",
       "description": "Once all three lines have hotspot objects, normalize them into one ledger and expose a thin runner/reload surface so later slices can compare hotspots by region and metric family without reverse-engineering three separate schemas.\n\n## Steps\n\n1. Add `src/WA/comparison/hotspot_ledger.py` that reloads percentage, classification, and trend hotspot tables semantically, validates required families, and normalizes them into one long-form ledger keyed by `analysis_object_id` with shared provenance fields plus family-local JSON payloads.\n2. Extend `src/WA/visualization/phase4.py` with `load_phase4_unified_hotspot_ledger(...)` (and any small derived comparison helper it needs), keeping path construction inside contract helpers and failing closed on missing families, mixed regions, malformed metadata JSON, or duplicate analysis-object ids.\n3. Add `scripts/run_phase4_hotspot_ledger.py` as a thin CLI that resolves region/subset selection, reuses the semantic reload helpers, writes the ledger only when all three hotspot families are present and valid, and logs a dedicated `ledger` stage plus explicit skip/rebuild decisions.\n4. Add focused tests in `tests/test_comparison/test_hotspot_ledger.py` and `tests/test_visualization/test_phase4.py`, then wire the new module/runner into `src/WA/test_selection.py` and `CHANGELOG.md` so related-test routing and user-facing release notes cover the new contract surface and HPC ladder.\n\n## Must-Haves\n\n- [ ] Ledger rows form one long-form shared analysis object while preserving family-local score semantics instead of pretending percentage, entropy, and disagreement are raw-score comparable.\n- [ ] The ledger runner writes nothing for a region unless percentage, classification, and trend hotspot families are all present and semantically valid.\n- [ ] Downstream loaders can reopen the unified ledger by semantics and expose enough provenance (`surface_output_path`, `summary_output_path`, metadata JSON) for later comparison and figure work.\n\n## Done when\n\n- A single CLI and loader can reopen or rebuild one region's unified hotspot ledger from the three contract hotspot families, and focused tests prove fail-closed behavior for missing/malformed families plus stable long-form row normalization.",
       "estimate": "2h",
       "files": [
@@ -1942,6 +1954,18 @@
       "decision": "How cross-line hotspot comparison should be represented on disk and in downstream reload helpers",
       "choice": "Add one long-form `unified_hotspot_ledger` artifact family keyed by a stable `analysis_object_id`, preserve family-local score fields/units plus provenance paths in each row, and make the ledger runner fail closed unless percentage, classification, and trend hotspot families are all present and semantically valid for the region.",
       "rationale": "One ledger artifact gives S04/S05/S06 a deterministic cross-line analysis object without inventing fake score comparability or proliferating multiple derived artifact families. Fail-closed completeness checks prevent downstream comparison surfaces from silently mixing partial hotspot coverage across the three evidence lines.",
+      "revisable": "Yes",
+      "made_by": "agent",
+      "superseded_by": null
+    },
+    {
+      "seq": 42,
+      "id": "D040",
+      "when_context": "M002/S04/T02",
+      "scope": "architecture",
+      "decision": "How the unified hotspot ledger represents heterogeneous hotspot scores",
+      "choice": "Store one row per analysis object with metric_family, primary_score_name, primary_score_value, family_percentile, and line_specific_json instead of collapsing percentage, entropy, and disagreement into a fake shared raw score.",
+      "rationale": "Percentage coverage, classification entropy, and trend disagreement are not numerically comparable across families. Keeping the family-local score name/value plus a within-family percentile preserves ranking semantics while still giving downstream slices one stable analysis_object_id ledger surface with provenance.",
       "revisable": "Yes",
       "made_by": "agent",
       "superseded_by": null
@@ -3322,6 +3346,72 @@
       "verdict": "❌ fail",
       "duration_ms": 62500,
       "created_at": "2026-04-08T16:24:13.936Z"
+    },
+    {
+      "id": 126,
+      "task_id": "T02",
+      "slice_id": "S04",
+      "milestone_id": "M002",
+      "command": "ruff check src/WA/comparison/hotspot_ledger.py src/WA/visualization/phase4.py scripts/run_phase4_hotspot_ledger.py tests/test_comparison/test_hotspot_ledger.py tests/test_visualization/test_phase4.py src/WA/test_selection.py CHANGELOG.md",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 54,
+      "created_at": "2026-04-08T16:51:14.531Z"
+    },
+    {
+      "id": 127,
+      "task_id": "T02",
+      "slice_id": "S04",
+      "milestone_id": "M002",
+      "command": "python scripts/run_phase4_hotspot_ledger.py --help",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 1098,
+      "created_at": "2026-04-08T16:51:14.531Z"
+    },
+    {
+      "id": 128,
+      "task_id": "T02",
+      "slice_id": "S04",
+      "milestone_id": "M002",
+      "command": "python -m pytest tests/test_comparison/test_hotspot_ledger.py tests/test_visualization/test_phase4.py -q",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 5418,
+      "created_at": "2026-04-08T16:51:14.531Z"
+    },
+    {
+      "id": 129,
+      "task_id": "T02",
+      "slice_id": "S04",
+      "milestone_id": "M002",
+      "command": "python scripts/run_related_tests.py src/WA/comparison/hotspot_ledger.py scripts/run_phase4_hotspot_ledger.py src/WA/visualization/phase4.py src/WA/test_selection.py",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 259,
+      "created_at": "2026-04-08T16:51:14.531Z"
+    },
+    {
+      "id": 130,
+      "task_id": "T02",
+      "slice_id": "S04",
+      "milestone_id": "M002",
+      "command": "python -m pytest tests/ -x",
+      "exit_code": 1,
+      "verdict": "❌ fail",
+      "duration_ms": 5870,
+      "created_at": "2026-04-08T16:51:14.531Z"
+    },
+    {
+      "id": 131,
+      "task_id": "T02",
+      "slice_id": "S04",
+      "milestone_id": "M002",
+      "command": "python -m pytest tests/",
+      "exit_code": 137,
+      "verdict": "❌ fail",
+      "duration_ms": 89300,
+      "created_at": "2026-04-08T16:51:14.531Z"
     }
   ]
 }

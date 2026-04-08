@@ -60,3 +60,9 @@
 - User override: do **not** default to `python -m pytest tests/` for routine code changes in this repo; prefer the smallest related pytest subset that matches the touched files.
 - Use `docs/testing/test-categories.md` plus `python scripts/run_related_tests.py <changed-paths...>` to infer the default subset.
 - Broaden beyond the related subset only when a patch crosses multiple test families, touches shared infrastructure, or the user explicitly asks for a broader run.
+
+## 2026-04-09 — Phase 4 hotspot-family source of truth in this snapshot
+
+- For M002/S04 work in this repo snapshot, the planner references `src/WA/comparison/percentage_hotspots.py` and `src/WA/comparison/classification_contract.py`, but those modules do **not** exist locally.
+- The safe source of truth is the evidence-contract artifact semantics in `src/WA/comparison/evidence_contract.py` plus the on-disk family manifests/CSVs (`hotspot_manifest`, `classification_hotspot_manifest`, `trend_hotspot_manifest`), not the stale planner module paths.
+- When extending the unified hotspot ledger, add semantic reloaders around those contract artifact families instead of inventing new imports just to match an outdated plan snapshot.
