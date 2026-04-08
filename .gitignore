@@ -15,8 +15,8 @@ __pycache__
 .vscode
 
 # Agent files
-.claude/
-CLAUDE.md
+# .claude/
+# CLAUDE.md
 .bg-shell/
 
 # PDFs
@@ -28,7 +28,7 @@ results/
 temp/
 
 # ── GSD baseline (auto-generated) ──
-.gsd
+# .gsd
 .gsd-id
 Thumbs.db
 *.swp
