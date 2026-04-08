@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "taskId": "T01",
+  "unitId": "M002/S07/T01",
+  "timestamp": 1775689362281,
+  "passed": true,
+  "discoverySource": "task-plan",
+  "checks": [
+    {
+      "command": "bash -n scripts/submit_phase4_trend_contract.sh\npython scripts/run_phase4_percentage_contract.py --help\npython scripts/run_phase4_classification_contract.py --help\npython scripts/run_phase4_trend_contract.py --help\npython scripts/run_phase4_scaleout_readiness.py --help\npython scripts/run_phase4_hotspot_ledger.py --help\nbash scripts/submit_phase4_trend_contract.sh \\\n  --dry-run \\\n  --repo \"$PWD\" \\\n  --python-bin \"$PWD/.venv/bin/python\" \\\n  --standardized-dir /lustre/home/2200013429/Wetland_Assemble/data/standardized \\\n  --output-root results/phase4 \\\n  --subset ten \\\n  --dataset-id gwd30 \\\n  --dataset-id giems_mc \\\n  --dataset-id topmodel \\\n  --dataset-id swamps \\\n  --dataset-id wad2m \\\n  --aggregation annual \\\n  --start-year 1990 \\\n  --end-year 2020 \\\n  --min-observations 5 \\\n  --min-overlap-years 5 \\\n  --top-hotspots 10 \\\n  --cpus 2 \\\n  --time 480 \\\n  --partition C064M0256G \\\n  --jobs-base temp/slurm-jobs-s07 \\\n  --tmp-root temp/slurm-tmp-s07 \\\n  --no-progress\ntest -s results/phase4/proof/phase4-trend-contract-dry-run.tsv",
+      "exitCode": 0,
+      "durationMs": 6920,
+      "verdict": "pass"
+    }
+  ]
+}

@@ -126,3 +126,9 @@
 - In this repo, trend-agreement semantic reopen is now owned by `src/WA/comparison/trend_contract.py`; downstream pack code should use the public comparison helpers or the thin wrappers in `src/WA/visualization/phase4.py`, not script-private helpers from `scripts/run_phase4_trend_contract.py`.
 - Keep pair validation (surface + summary presence, `participant_set_key`, overlap window, and `region_id` checks) in the comparison layer so every caller gets the same fail-closed diagnostics.
 - This matters for future paper-pack or proof code: guessing agreement filenames or duplicating reload logic will drift faster than the science contract and hides the exact `region_id` / participant context when a pair is malformed.
+
+## 2026-04-09 — Auto-mode cannot satisfy the project HPC sync route without interactive OTP
+
+- The project `sync-hpc` route resolves to `rsync`/`ssh` against `2200013429@wm2-data.pku.edu.cn:/lustre/home/2200013429/repos/WA2/`, with a Mac-local wrapper under `/Users/mac/.ssh/script/with_pkuhpc_auth.sh` in the normal user workflow.
+- Inside this non-interactive container, the host is reachable, but both raw `ssh` and `rsync` fail at `OTP Verification Fail!` / `Permission denied (keyboard-interactive)` because there is no interactive terminal or `ssh-askpass` path to satisfy the challenge.
+- For HPC-only tasks, treat that as an external execution boundary and preserve exact rerun commands/proof notes rather than misdiagnosing the stop state as a producer-code failure.

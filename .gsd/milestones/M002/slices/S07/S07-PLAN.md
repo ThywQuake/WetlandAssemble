@@ -52,7 +52,7 @@ bash scripts/submit_phase4_trend_contract.sh \
   --tmp-root temp/slurm-tmp-s07 \
   --no-progress
 test -s results/phase4/proof/phase4-trend-contract-dry-run.tsv
-- [ ] **T02: Materialize the ten-region percentage and classification contract families** — Why: readiness and ledger cannot prove anything until the percentage and classification families exist materially for the full ordered ten-region set.
+- [x] **T02: Documented the blocked T02 producer-materialization boundary, proved the percentage/classification fail-closed surfaces locally, and captured the exact authenticated HPC rerun commands.** — Why: readiness and ledger cannot prove anything until the percentage and classification families exist materially for the full ordered ten-region set.
 
 ## Steps
 1. Use the project `sync-hpc` route to rsync the repo, then run `scripts/run_phase4_percentage_contract.py` on HPC with `--subset ten`, `/lustre/home/2200013429/Wetland_Assemble/data/standardized`, `--surface-year 2016`, `--start-year 1990`, `--end-year 2020`, and `--no-skip`.
@@ -91,6 +91,7 @@ test -f results/phase4/hotspot_manifests/amazon/canonical__amazon__hotspot_manif
 test -f results/phase4/hotspot_manifests/northernaus/canonical__northernaus__hotspot_manifest.json
 test -f results/phase4/classification_hotspot_manifests/amazon/canonical__amazon__classification_hotspot_manifest.json
 test -f results/phase4/classification_hotspot_manifests/northernaus/canonical__northernaus__classification_hotspot_manifest.json
+  - Blocker: Real ten-region percentage/classification outputs are still missing locally; T03 and T04 must not be treated as runnable proof work until the authenticated HPC rerun succeeds. This container also lacks one working pytest path for the scientific test surface (`python -m pytest` lacks `pytest`, while bare `pytest` / `uv run pytest` lack `numpy`), so verification used direct `python`-level checks for the fail-closed producer behaviors instead.
 - [ ] **T03: Submit and monitor the ten-region trend fanout to completion** — Why: the trend line is the only leg with one-region-per-job fanout and checkpointed rerun semantics, so it needs its own monitored operational boundary.
 
 ## Steps
