@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-04-08
+
+- Added a contract-backed Phase 4 trend hotspot family under `results/phase4/trend_hotspot_manifests/`, with JSON manifests plus CSV companions keyed by sorted participant-set ids, disagreement-first ranking (`1 - agreement_ratio`), and semantic reload helpers in `src/WA/visualization/phase4.py`.
+- Added `scripts/run_phase4_trend_contract.py`, which writes/reloads contract-stable trend agreement artifacts and then runs a dedicated `trend-hotspots` stage that fails closed on partial or malformed JSON/CSV pairs instead of reusing them.
+- Added focused regression coverage for the Phase 4 evidence contract, trend hotspot ranking/validation, the semantic reload wrapper, and the new runner help surface; also updated `src/WA/test_selection.py` so related-test inference includes the new Phase 4 contract files.
+
 ## 2026-04-07
 
 - Phase 4 Berkeley valid-mask source-window resolution now falls back to the earliest available standardized Berkeley file when a year-split request (for example `2017`) does not overlap Berkeley coverage. The valid-mask path still uses one real Berkeley time slice, but it no longer aborts pre-coverage GWD30 yearly runs with `FileNotFoundError`.

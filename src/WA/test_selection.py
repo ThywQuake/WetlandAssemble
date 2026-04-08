@@ -193,9 +193,14 @@ TEST_CATEGORIES: tuple[TestCategory, ...] = (
     ),
     TestCategory(
         key="phase4",
-        description="Phase 4 regional analysis, trend, agreement, and submit-script tests.",
+        description=(
+            "Phase 4 contract, regional analysis, trend, agreement, and "
+            "submit-script tests."
+        ),
         tests=(
+            "tests/test_comparison/test_evidence_contract.py",
             "tests/test_comparison/test_phase4_regional.py",
+            "tests/test_comparison/test_trend_hotspots.py",
             "tests/test_comparison/test_trends.py",
             "tests/test_comparison/test_trend_agreement.py",
             "tests/test_visualization/test_phase4.py",
@@ -204,7 +209,9 @@ TEST_CATEGORIES: tuple[TestCategory, ...] = (
             "tests/test_submit_phase4_gwd30_tropical_shards.py",
         ),
         triggers=(
+            "src/WA/comparison/evidence_contract.py",
             "src/WA/comparison/phase4_regional.py",
+            "src/WA/comparison/trend_hotspots.py",
             "src/WA/comparison/trends.py",
             "src/WA/comparison/trend_agreement.py",
             "src/WA/visualization/phase4.py",
@@ -214,6 +221,7 @@ TEST_CATEGORIES: tuple[TestCategory, ...] = (
             "scripts/reduce_phase4_gwd30_tropical_shards.py",
             "scripts/run_phase4_gwd30_tropical_shard.py",
             "scripts/run_phase4_regional.py",
+            "scripts/run_phase4_trend_contract.py",
             "scripts/submit_phase4_gwd30_pixel_stats.sh",
             "scripts/submit_phase4_gwd30_regional_year_split.sh",
             "scripts/submit_phase4_gwd30_tropical_shards.sh",

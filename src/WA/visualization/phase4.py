@@ -9,6 +9,16 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+from WA.comparison.evidence_contract import (
+    DEFAULT_PHASE4_CONTRACT_OUTPUT_ROOT,
+    DEFAULT_PHASE4_REGIONS_FILE,
+    load_phase4_evidence_contract,
+)
+from WA.comparison.trend_hotspots import (
+    TrendHotspotReload,
+    load_contract_trend_hotspot_table,
+)
+
 PHASE4_DATASET_ORDER = (
     "gwd30",
     "giems_mc",
@@ -73,6 +83,32 @@ def phase4_climatology_figure_path(
     """Return the climatology figure path for one region."""
 
     return Path(figures_root) / "climatology" / f"{region_id}.png"
+
+
+def load_phase4_contract_trend_hotspot_table(
+    *,
+    region_id: str,
+    participant_ids: list[str] | tuple[str, ...],
+    output_root: str | Path = DEFAULT_PHASE4_CONTRACT_OUTPUT_ROOT,
+    regions_file: str | Path = DEFAULT_PHASE4_REGIONS_FILE,
+) -> TrendHotspotReload:
+    """Reload one contract-backed trend hotspot JSON/CSV pair by semantics."""
+
+    contract = load_phase4_evidence_contract(
+        output_root=output_root,
+        regions_file=regions_file,
+    )
+    try:
+        return load_contract_trend_hotspot_table(
+            contract=contract,
+            region_id=region_id,
+            participant_ids=participant_ids,
+        )
+    except Exception as exc:  # pragma: no cover - exercised by tests via message
+        raise ValueError(
+            "Phase4 semantic reload failed for trend hotspot table: "
+            f"region_id={region_id} participant_ids={list(participant_ids)} error={exc}"
+        ) from exc
 
 
 def plot_phase4_interannual(

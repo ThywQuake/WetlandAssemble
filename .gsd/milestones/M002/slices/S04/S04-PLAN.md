@@ -3,47 +3,8 @@
 **Goal:** 先补齐 trend hotspot contract，再把 percentage / trend / classification 三条线归一到一个共享的 hotspot ledger 与 cross-line reload surface，让 canonical subset 上层可以按 region / metric family / hotspot_id 稳定引用同一种 analysis object。
 **Demo:** After this: After this: 三条主线的热点都能落到同一种 analysis object，上层可以按 region / metric family / hotspot_id 统一引用、排序、和交叉比较。
 
-## Must-Haves
-
-- Trend line emits contract-stable hotspot manifests keyed by the sorted participant set and re-openable through `src/WA/visualization/phase4.py`.
-- Percentage, classification, and trend hotspot families normalize into one `unified_hotspot_ledger` artifact family with stable `analysis_object_id` rows and family-local score semantics.
-- `scripts/run_phase4_hotspot_ledger.py` can rebuild or reload one region / canonical subset and refuses to write incomplete ledgers when any hotspot family is missing or invalid.
-- Focused Phase 4 contract tests plus `python -m pytest tests/` prove the new artifact families, loaders, runner help text, and fail-closed behavior.
-
-## Threat Surface
-
-- **Abuse**: This slice has no auth or public input surface, but it reopens JSON/CSV/NetCDF metadata written by earlier stages. Treat mixed-region rows, spoofed participant-set keys, malformed `bbox` JSON, and stale or missing artifact paths as the trust-boundary abuse cases; fail closed instead of reconstructing filenames or silently dropping rows.
-- **Data exposure**: No PII or secrets should flow through the ledger. Persist only dataset ids, region metadata, hotspot geometry, score fields, and contract/source paths already present in phase outputs.
-- **Input trust**: Untrusted inputs are CLI `--region/--subset` selectors plus on-disk contract artifacts reopened from `results/phase4`; every loader must validate region, participant set, row counts, and metadata JSON before a ledger write.
-
-## Requirement Impact
-
-- **Requirements touched**: `R105` (owned) and `R101` (supported) because S04 must expose one shared hotspot analysis object while preserving the three-line evidence contract established in S01-S03.
-- **Re-verify**: Re-run percentage/classification/trend hotspot reload tests, the new ledger loader/CLI tests, `scripts/run_related_tests.py ...`, and full `python -m pytest tests/` to prove downstream consumers still reopen artifacts semantically and fail closed on malformed or incomplete families.
-- **Decisions revisited**: `D031`, `D034`, `D035`, and `D036` because the new trend-hotspot and unified-ledger stems must keep participant-set naming deterministic and continue reserving `__` for the outer evidence-contract separator.
-
-## Proof Level
-
-- This slice proves: contract + integration (real runtime required: yes for post-merge HPC smoke; human/UAT required: no)
-
-## Verification
-
-- `ruff check src/WA/comparison/evidence_contract.py src/WA/comparison/trend_hotspots.py src/WA/comparison/hotspot_ledger.py src/WA/visualization/phase4.py scripts/run_phase4_trend_contract.py scripts/run_phase4_hotspot_ledger.py tests/test_comparison/test_evidence_contract.py tests/test_comparison/test_trend_hotspots.py tests/test_comparison/test_hotspot_ledger.py tests/test_visualization/test_phase4.py src/WA/test_selection.py CHANGELOG.md`
-- `python scripts/run_phase4_trend_contract.py --help`
-- `python scripts/run_phase4_hotspot_ledger.py --help`
-- `python -m pytest tests/test_comparison/test_evidence_contract.py tests/test_comparison/test_trend_hotspots.py tests/test_comparison/test_hotspot_ledger.py tests/test_visualization/test_phase4.py -q`
-- `python scripts/run_related_tests.py src/WA/comparison/trend_hotspots.py src/WA/comparison/hotspot_ledger.py scripts/run_phase4_trend_contract.py scripts/run_phase4_hotspot_ledger.py src/WA/visualization/phase4.py src/WA/test_selection.py`
-- `python -m pytest tests/`
-- Inspect stage-tagged logs `agreement`, `trend-hotspots`, and `ledger`, plus semantic reload failures in `src/WA/visualization/phase4.py`, to confirm incomplete or malformed families fail closed before a ledger write.
-
-## Integration Closure
-
-- Upstream surfaces consumed: `src/WA/comparison/percentage_hotspots.py`, `src/WA/comparison/classification_contract.py`, and the trend agreement artifacts from `src/WA/comparison/trend_contract.py`, all reopened semantically through `src/WA/visualization/phase4.py`.
-- New wiring introduced in this slice: `src/WA/comparison/trend_hotspots.py`, `src/WA/comparison/hotspot_ledger.py`, `scripts/run_phase4_hotspot_ledger.py`, and phase4 reload helpers for trend hotspots / unified ledgers.
-- What remains before the milestone is truly usable end-to-end: run the narrow-first HPC ladder (`--region amazon --no-skip` on percentage, trend, classification, then ledger; then `--subset canonical --no-skip`) and feed the ledger into S05 scale-out.
-
 ## Tasks
-- [ ] **T01: Add contract-backed trend hotspot manifests and semantic reloads** — Close the main scientific gap first: trend outputs currently stop at agreement surfaces and summaries, so this task creates the missing contract-stable hotspot family before any cross-line ledger work starts.
+- [x] **T01: Added contract-backed trend hotspot manifests, a real trend contract runner, and semantic reloads for Phase 4 trend outputs** — Close the main scientific gap first: trend outputs currently stop at agreement surfaces and summaries, so this task creates the missing contract-stable hotspot family before any cross-line ledger work starts.
 
 ## Steps
 
