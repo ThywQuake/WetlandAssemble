@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "exported_at": "2026-04-08T18:41:30.180Z",
+  "exported_at": "2026-04-08T19:13:28.236Z",
   "milestones": [
     {
       "id": "M001",
@@ -1617,19 +1617,30 @@
       "milestone_id": "M002",
       "slice_id": "S05",
       "id": "T03",
-      "title": "Restore the classification contract adapter and thin Phase 4 runner",
-      "status": "pending",
-      "one_liner": "",
-      "narrative": "",
-      "verification_result": "",
+      "title": "Restored the real Phase 4 classification contract adapter, runner, and semantic reload helpers over the existing Phase 3.6/3.7 producers.",
+      "status": "complete",
+      "one_liner": "Restored the real Phase 4 classification contract adapter, runner, and semantic reload helpers over the existing Phase 3.6/3.7 producers.",
+      "narrative": "Added `src/WA/comparison/classification_contract.py` as the real Phase 4 classification adapter over Phase 3.6 and Phase 3.7, writing region-scoped classification surfaces, summaries, and fail-closed hotspot manifest/CSV pairs while preserving the full entropy/agreement/dominant-class diagnostic payload and fixed participant provenance (`g2017+glwd_v2+gwd30`). Added `scripts/run_phase4_classification_contract.py` as the thin orchestration CLI for one region, `canonical`, or `ten`, keeping the project default year at 2016 and delegating all science back to the existing Phase 3.6/3.7 producers. Extended `src/WA/visualization/phase4.py` with classification semantic reload wrappers, added focused regressions for relpaths, malformed Phase 3.6/3.7 inputs, descending-lat slicing, and CLI help behavior, and recorded the downstream decision/knowledge/stash breadcrumbs required by the project contract.",
+      "verification_result": "Passed the task-plan verification commands exactly as written: targeted `ruff check`, `python scripts/run_phase4_classification_contract.py --help`, and `python -m pytest tests/test_comparison/test_classification_contract.py tests/test_visualization/test_phase4.py -q` (`15 passed`). I also ran the project-required broader suite check `python -m pytest tests/`; it still reproduces the existing unrelated `tests/test_mgrs_tiling.py::test_tile_to_extent_matches_reference_case` failure and then the full run is killed later with exit `137`, matching the same repository-wide boundary already seen in earlier S05 task work rather than a new classification regression. I reran `python -m pytest tests/test_mgrs_tiling.py -q` separately to confirm that red bar in isolation.",
       "duration": "",
-      "completed_at": null,
+      "completed_at": "2026-04-08T19:13:28.209Z",
       "blocker_discovered": false,
-      "deviations": "",
-      "known_issues": "",
-      "key_files": [],
-      "key_decisions": [],
-      "full_summary_md": "",
+      "deviations": "Beyond the task plan’s expected output files, I also updated CHANGELOG.md, .gsd/KNOWLEDGE.md, recorded D045, and wrote docs/stashes/2026-04-09-007-m002-s05-t03-classification-contract.md because the project contract requires changelog maintenance, durable architectural breadcrumbs, and a quick-reference stash with specific HPC commands after user-visible CLI changes.",
+      "known_issues": "`python -m pytest tests/` still reproduces the pre-existing unrelated failure at `tests/test_mgrs_tiling.py::test_tile_to_extent_matches_reference_case` and the broad run is later killed with exit 137 before the suite completes. No real HPC execution against external standardized inputs was run from this worktree.",
+      "key_files": [
+        "src/WA/comparison/classification_contract.py",
+        "scripts/run_phase4_classification_contract.py",
+        "src/WA/visualization/phase4.py",
+        "tests/test_comparison/test_classification_contract.py",
+        "tests/test_visualization/test_phase4.py",
+        "CHANGELOG.md",
+        ".gsd/KNOWLEDGE.md",
+        "docs/stashes/2026-04-09-007-m002-s05-t03-classification-contract.md"
+      ],
+      "key_decisions": [
+        "D045 — keep `classification_key=canonical` as the contract family key for the fixed `g2017+glwd_v2+gwd30` participant set, and rewrite region hotspot artifacts from the Phase 3.7 source trio instead of recomputing hotspot selection inside the Phase 4 adapter."
+      ],
+      "full_summary_md": "---\nid: T03\nparent: S05\nmilestone: M002\nkey_files:\n  - src/WA/comparison/classification_contract.py\n  - scripts/run_phase4_classification_contract.py\n  - src/WA/visualization/phase4.py\n  - tests/test_comparison/test_classification_contract.py\n  - tests/test_visualization/test_phase4.py\n  - CHANGELOG.md\n  - .gsd/KNOWLEDGE.md\n  - docs/stashes/2026-04-09-007-m002-s05-t03-classification-contract.md\nkey_decisions:\n  - D045 — keep `classification_key=canonical` as the contract family key for the fixed `g2017+glwd_v2+gwd30` participant set, and rewrite region hotspot artifacts from the Phase 3.7 source trio instead of recomputing hotspot selection inside the Phase 4 adapter.\nduration: \nverification_result: mixed\ncompleted_at: 2026-04-08T19:13:28.206Z\nblocker_discovered: false\n---\n\n# T03: Restored the real Phase 4 classification contract adapter, runner, and semantic reload helpers over the existing Phase 3.6/3.7 producers.\n\n**Restored the real Phase 4 classification contract adapter, runner, and semantic reload helpers over the existing Phase 3.6/3.7 producers.**\n\n## What Happened\n\nAdded `src/WA/comparison/classification_contract.py` as the real Phase 4 classification adapter over Phase 3.6 and Phase 3.7, writing region-scoped classification surfaces, summaries, and fail-closed hotspot manifest/CSV pairs while preserving the full entropy/agreement/dominant-class diagnostic payload and fixed participant provenance (`g2017+glwd_v2+gwd30`). Added `scripts/run_phase4_classification_contract.py` as the thin orchestration CLI for one region, `canonical`, or `ten`, keeping the project default year at 2016 and delegating all science back to the existing Phase 3.6/3.7 producers. Extended `src/WA/visualization/phase4.py` with classification semantic reload wrappers, added focused regressions for relpaths, malformed Phase 3.6/3.7 inputs, descending-lat slicing, and CLI help behavior, and recorded the downstream decision/knowledge/stash breadcrumbs required by the project contract.\n\n## Verification\n\nPassed the task-plan verification commands exactly as written: targeted `ruff check`, `python scripts/run_phase4_classification_contract.py --help`, and `python -m pytest tests/test_comparison/test_classification_contract.py tests/test_visualization/test_phase4.py -q` (`15 passed`). I also ran the project-required broader suite check `python -m pytest tests/`; it still reproduces the existing unrelated `tests/test_mgrs_tiling.py::test_tile_to_extent_matches_reference_case` failure and then the full run is killed later with exit `137`, matching the same repository-wide boundary already seen in earlier S05 task work rather than a new classification regression. I reran `python -m pytest tests/test_mgrs_tiling.py -q` separately to confirm that red bar in isolation.\n\n## Verification Evidence\n\n| # | Command | Exit Code | Verdict | Duration |\n|---|---------|-----------|---------|----------|\n| 1 | `ruff check src/WA/comparison/classification_contract.py scripts/run_phase4_classification_contract.py src/WA/visualization/phase4.py tests/test_comparison/test_classification_contract.py tests/test_visualization/test_phase4.py` | 0 | ✅ pass | 111ms |\n| 2 | `python scripts/run_phase4_classification_contract.py --help` | 0 | ✅ pass | 1918ms |\n| 3 | `python -m pytest tests/test_comparison/test_classification_contract.py tests/test_visualization/test_phase4.py -q` | 0 | ✅ pass | 6300ms |\n| 4 | `python -m pytest tests/` | 137 | ❌ fail | 63400ms |\n| 5 | `python -m pytest tests/test_mgrs_tiling.py -q` | 1 | ❌ fail | 400ms |\n\n## Deviations\n\nBeyond the task plan’s expected output files, I also updated CHANGELOG.md, .gsd/KNOWLEDGE.md, recorded D045, and wrote docs/stashes/2026-04-09-007-m002-s05-t03-classification-contract.md because the project contract requires changelog maintenance, durable architectural breadcrumbs, and a quick-reference stash with specific HPC commands after user-visible CLI changes.\n\n## Known Issues\n\n`python -m pytest tests/` still reproduces the pre-existing unrelated failure at `tests/test_mgrs_tiling.py::test_tile_to_extent_matches_reference_case` and the broad run is later killed with exit 137 before the suite completes. No real HPC execution against external standardized inputs was run from this worktree.\n\n## Files Created/Modified\n\n- `src/WA/comparison/classification_contract.py`\n- `scripts/run_phase4_classification_contract.py`\n- `src/WA/visualization/phase4.py`\n- `tests/test_comparison/test_classification_contract.py`\n- `tests/test_visualization/test_phase4.py`\n- `CHANGELOG.md`\n- `.gsd/KNOWLEDGE.md`\n- `docs/stashes/2026-04-09-007-m002-s05-t03-classification-contract.md`\n",
       "description": "The current snapshot is also missing `src/WA/comparison/classification_contract.py` and `scripts/run_phase4_classification_contract.py` even though older slice artifacts say they landed already. Restore that adapter/runner path on top of `phase36.py` and `phase37_hotspots.py` so the ten-region proof has a real classification producer instead of stale planner text.\n\n## Failure Modes\n\n| Dependency | On error | On timeout | On malformed response |\n|------------|----------|-----------|----------------------|\n| `src/WA/comparison/phase36.py`, `src/WA/phase37_hotspots.py`, and `src/WA/visualization/phase4.py` | Fail before any contract artifact is trusted, with `region_id`, `participant_set_key`, and source artifact path in the exception/log context. | Keep region-scoped reruns restartable so one bad region does not force a full ten-region restart. | Reject malformed bbox payloads, mixed-region hotspot rows, missing `joint_valid_mask` / dominant-class variables, or participant-set mismatches instead of inferring silently. |\n\n## Load Profile\n\n- **Shared resources**: Phase 3.6 global disagreement outputs, Phase 3.7 hotspot manifest/CSV inputs, and the shared `results/phase4` contract tree.\n- **Per-operation cost**: reopen one global metrics surface plus hotspot-source trio, subset to one contract bbox, then rewrite one region-scoped surface/summary/hotspot family.\n- **10x breakpoint**: repeated NetCDF slicing/materialization and hotspot-manifest rewrites become the first I/O bottleneck when widening to all ten regions.\n\n## Negative Tests\n\n- **Malformed inputs**: missing source-dominant variables, malformed bbox JSON, wrong region ids, and participant-set mismatches.\n- **Error paths**: missing Phase 3.6 outputs, malformed Phase 3.7 source trios, or bad contract metadata must fail before any output pair looks complete.\n- **Boundary conditions**: descending-lat datasets, hotspot shortfall regions, and `amazon → canonical → ten` ordering must all preserve the same participant-set key and relpaths.\n\n## Steps\n\n1. Add `src/WA/comparison/classification_contract.py` as the thin contract adapter over `phase36.py` and `phase37_hotspots.py`, with stable relpaths, region-scoped surface/summary writers, and hotspot rewrite helpers for the fixed `g2017+glwd_v2+gwd30` participant set.\n2. Add `scripts/run_phase4_classification_contract.py` as the thin orchestration CLI that resolves one region, `--subset canonical`, or `--subset ten`, keeps the project default year at `2016`, and reuses existing producers instead of moving the science into the runner.\n3. Extend `src/WA/visualization/phase4.py` with classification semantic reload helpers so downstream checks can reopen summaries/hotspot tables by semantics instead of guessed filenames.\n4. Add `tests/test_comparison/test_classification_contract.py` and extend `tests/test_visualization/test_phase4.py` so relpaths, metadata, malformed-source failures, and runner help/reload behavior are pinned explicitly.\n\n## Must-Haves\n\n- [ ] The classification line is restored as a real contract adapter/runner over `phase36.py` and `phase37_hotspots.py`; no duplicate disagreement science is introduced.\n- [ ] Region-scoped classification outputs keep the full entropy / agreement / dominant-class diagnostic payload needed by the ledger and later paper surfaces.\n- [ ] Semantic reload helpers make malformed or mixed-region artifacts fail loudly before any ten-region readiness step trusts them.\n\n## Done when\n\n- A real classification contract CLI plus reload helpers can materialize and reopen one region's contract surface/summary/hotspot family, and the same path can widen to `--subset ten` without manual filename guessing.",
       "estimate": "150m",
       "files": [
@@ -2283,6 +2294,18 @@
       "decision": "How the restored percentage contract family should encode multi-dataset surfaces and hotspot scoring after GWD30 is brought back into the shared 0.25° path",
       "choice": "Treat `dataset_key=canonical` as the ordered six-dataset percentage bundle (`gwd30`, `giems_mc`, `topmodel`, `swamps`, `wad2m`, `berkeley_rwawc`), write one contract `surface` artifact that stacks the per-dataset coarse surfaces plus derived mean/std/count metrics, and rank percentage hotspots by the bundle’s `mean_wetland_percentage` rather than by per-dataset files.",
       "rationale": "S05 needs one semantically reloadable percentage family per region that the ledger and readiness steps can trust. A stacked contract surface keeps the live per-dataset producers visible, restores GWD30 without inventing a parallel format, and lets hotspot rows keep `wetland_percentage` as a real family-local score while still carrying enough provenance for downstream comparison.",
+      "revisable": "Yes",
+      "made_by": "agent",
+      "superseded_by": null
+    },
+    {
+      "seq": 47,
+      "id": "D045",
+      "when_context": "M002/S05/T03",
+      "scope": "architecture",
+      "decision": "Phase 4 classification contract family identity and hotspot provenance",
+      "choice": "Keep `classification_key=canonical` as the contract family key for the fixed `g2017+glwd_v2+gwd30` participant set, and rewrite region hotspot artifacts from the Phase 3.7 source trio instead of recomputing hotspot selection inside the Phase 4 adapter.",
+      "rationale": "This preserves compatibility with the existing hotspot-ledger contract (`classification_key=canonical`), avoids duplicating Phase 3.6/3.7 disagreement science in a second code path, and lets the adapter fail closed by cross-checking Phase 3.6 source paths plus Phase 3.7 manifest/CSV/region-summary consistency before any contract hotspot pair is trusted.",
       "revisable": "Yes",
       "made_by": "agent",
       "superseded_by": null
@@ -3927,6 +3950,61 @@
       "verdict": "❌ fail",
       "duration_ms": 780,
       "created_at": "2026-04-08T18:41:30.147Z"
+    },
+    {
+      "id": 150,
+      "task_id": "T03",
+      "slice_id": "S05",
+      "milestone_id": "M002",
+      "command": "ruff check src/WA/comparison/classification_contract.py scripts/run_phase4_classification_contract.py src/WA/visualization/phase4.py tests/test_comparison/test_classification_contract.py tests/test_visualization/test_phase4.py",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 111,
+      "created_at": "2026-04-08T19:13:28.210Z"
+    },
+    {
+      "id": 151,
+      "task_id": "T03",
+      "slice_id": "S05",
+      "milestone_id": "M002",
+      "command": "python scripts/run_phase4_classification_contract.py --help",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 1918,
+      "created_at": "2026-04-08T19:13:28.210Z"
+    },
+    {
+      "id": 152,
+      "task_id": "T03",
+      "slice_id": "S05",
+      "milestone_id": "M002",
+      "command": "python -m pytest tests/test_comparison/test_classification_contract.py tests/test_visualization/test_phase4.py -q",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 6300,
+      "created_at": "2026-04-08T19:13:28.210Z"
+    },
+    {
+      "id": 153,
+      "task_id": "T03",
+      "slice_id": "S05",
+      "milestone_id": "M002",
+      "command": "python -m pytest tests/",
+      "exit_code": 137,
+      "verdict": "❌ fail",
+      "duration_ms": 63400,
+      "created_at": "2026-04-08T19:13:28.210Z"
+    },
+    {
+      "id": 154,
+      "task_id": "T03",
+      "slice_id": "S05",
+      "milestone_id": "M002",
+      "command": "python -m pytest tests/test_mgrs_tiling.py -q",
+      "exit_code": 1,
+      "verdict": "❌ fail",
+      "duration_ms": 400,
+      "created_at": "2026-04-08T19:13:28.210Z"
     }
   ]
 }

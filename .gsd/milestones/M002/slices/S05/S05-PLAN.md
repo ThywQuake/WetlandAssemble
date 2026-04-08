@@ -87,7 +87,7 @@ python -m pytest tests/test_comparison/test_evidence_contract.py tests/test_comp
 python scripts/run_phase4_percentage_contract.py --help
 python -m pytest tests/test_comparison/test_percentage_backbone.py tests/test_comparison/test_percentage_hotspots.py tests/test_plot_tropical_wetland_025deg.py -q
 python scripts/run_related_tests.py src/WA/comparison/percentage_backbone.py src/WA/comparison/percentage_hotspots.py scripts/run_phase4_percentage_contract.py scripts/plot_tropical_wetland_025deg.py
-- [ ] **T03: Restore the classification contract adapter and thin Phase 4 runner** — The current snapshot is also missing `src/WA/comparison/classification_contract.py` and `scripts/run_phase4_classification_contract.py` even though older slice artifacts say they landed already. Restore that adapter/runner path on top of `phase36.py` and `phase37_hotspots.py` so the ten-region proof has a real classification producer instead of stale planner text.
+- [x] **T03: Restored the real Phase 4 classification contract adapter, runner, and semantic reload helpers over the existing Phase 3.6/3.7 producers.** — The current snapshot is also missing `src/WA/comparison/classification_contract.py` and `scripts/run_phase4_classification_contract.py` even though older slice artifacts say they landed already. Restore that adapter/runner path on top of `phase36.py` and `phase37_hotspots.py` so the ten-region proof has a real classification producer instead of stale planner text.
 
 ## Failure Modes
 

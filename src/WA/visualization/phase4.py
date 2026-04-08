@@ -9,6 +9,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+from WA.comparison.classification_contract import (
+    ClassificationHotspotReload,
+    ClassificationSummaryBundle,
+    load_contract_classification_hotspot_table,
+    load_contract_classification_summary,
+)
 from WA.comparison.evidence_contract import (
     DEFAULT_PHASE4_CONTRACT_OUTPUT_ROOT,
     DEFAULT_PHASE4_REGIONS_FILE,
@@ -87,6 +93,58 @@ def phase4_climatology_figure_path(
     """Return the climatology figure path for one region."""
 
     return Path(figures_root) / "climatology" / f"{region_id}.png"
+
+
+def load_phase4_contract_classification_summary(
+    *,
+    region_id: str,
+    dataset_key: str = "canonical",
+    output_root: str | Path = DEFAULT_PHASE4_CONTRACT_OUTPUT_ROOT,
+    regions_file: str | Path = DEFAULT_PHASE4_REGIONS_FILE,
+) -> ClassificationSummaryBundle:
+    """Reload one contract-backed classification summary by semantics."""
+
+    contract = load_phase4_evidence_contract(
+        output_root=output_root,
+        regions_file=regions_file,
+    )
+    try:
+        return load_contract_classification_summary(
+            contract=contract,
+            region_id=region_id,
+            dataset_key=dataset_key,
+        )
+    except Exception as exc:  # pragma: no cover - exercised by tests via message
+        raise ValueError(
+            "Phase4 semantic reload failed for classification summary: "
+            f"region_id={region_id} dataset_key={dataset_key} error={exc}"
+        ) from exc
+
+
+def load_phase4_contract_classification_hotspot_table(
+    *,
+    region_id: str,
+    dataset_key: str = "canonical",
+    output_root: str | Path = DEFAULT_PHASE4_CONTRACT_OUTPUT_ROOT,
+    regions_file: str | Path = DEFAULT_PHASE4_REGIONS_FILE,
+) -> ClassificationHotspotReload:
+    """Reload one contract-backed classification hotspot JSON/CSV pair."""
+
+    contract = load_phase4_evidence_contract(
+        output_root=output_root,
+        regions_file=regions_file,
+    )
+    try:
+        return load_contract_classification_hotspot_table(
+            contract=contract,
+            region_id=region_id,
+            dataset_key=dataset_key,
+        )
+    except Exception as exc:  # pragma: no cover - exercised by tests via message
+        raise ValueError(
+            "Phase4 semantic reload failed for classification hotspot table: "
+            f"region_id={region_id} dataset_key={dataset_key} error={exc}"
+        ) from exc
 
 
 def load_phase4_unified_hotspot_ledger(

@@ -13,6 +13,12 @@ import pandas as pd
 import pytest
 import xarray as xr
 
+from WA.comparison.classification_contract import (
+    CLASSIFICATION_CONTRACT_DATASET_KEY,
+    write_contract_classification_hotspot_outputs,
+    write_contract_classification_summary,
+    write_contract_classification_surface,
+)
 from WA.comparison.evidence_contract import load_phase4_evidence_contract, metadata_json
 from WA.comparison.hotspot_ledger import (
     hotspot_family_manifest_output_path,
@@ -22,6 +28,8 @@ from WA.comparison.hotspot_ledger import (
 from WA.comparison.trend_agreement import TrendAgreementResult
 from WA.comparison.trend_hotspots import write_trend_hotspot_outputs
 from WA.visualization.phase4 import (
+    load_phase4_contract_classification_hotspot_table,
+    load_phase4_contract_classification_summary,
     load_phase4_contract_trend_hotspot_table,
     load_phase4_unified_hotspot_ledger,
     plot_phase4_climatology,
@@ -157,6 +165,182 @@ def _write_dummy_agreement_inputs(contract) -> tuple[Path, Path]:
     surface_path.write_text("agreement-surface", encoding="utf-8")
     summary_path.write_text("agreement,summary\n", encoding="utf-8")
     return (surface_path, summary_path)
+
+
+def _sample_phase36_metrics() -> xr.Dataset:
+    coords = {"lat": [1.0, 0.0], "lon": [100.0, 101.0]}
+    return xr.Dataset(
+        {
+            "entropy": xr.DataArray(
+                np.array([[0.9, 0.7], [0.6, np.nan]], dtype=np.float32),
+                dims=("lat", "lon"),
+                coords=coords,
+            ),
+            "majority_class": xr.DataArray(
+                np.array([[1, 2], [3, -1]], dtype=np.int16),
+                dims=("lat", "lon"),
+                coords=coords,
+            ),
+            "agreement_count": xr.DataArray(
+                np.array([[1, 2], [3, -1]], dtype=np.int16),
+                dims=("lat", "lon"),
+                coords=coords,
+            ),
+            "joint_valid_mask": xr.DataArray(
+                np.array([[1, 1], [1, 0]], dtype=np.int8),
+                dims=("lat", "lon"),
+                coords=coords,
+            ),
+        }
+    )
+
+
+def _sample_phase36_dominant() -> xr.Dataset:
+    coords = {"lat": [1.0, 0.0], "lon": [100.0, 101.0]}
+    values = np.array([[1, 2], [3, -1]], dtype=np.int16)
+    return xr.Dataset(
+        {
+            name: xr.DataArray(values, dims=("lat", "lon"), coords=coords)
+            for name in (
+                "g2017_dominant_class",
+                "glwd_v2_dominant_class",
+                "gwd30_dominant_class",
+                "g2017_source_dominant_class",
+                "glwd_v2_source_dominant_class",
+                "gwd30_source_dominant_class",
+            )
+        }
+    )
+
+
+def _write_classification_contract_inputs(contract) -> None:
+    phase36_dir = contract.output_root / "phase36_sources"
+    phase36_dir.mkdir(parents=True, exist_ok=True)
+    metrics_path = phase36_dir / "phase3_6_entropy_global_500m_2016.nc"
+    dominant_path = phase36_dir / "phase3_6_unified_classes_global_500m_2016.nc"
+    _sample_phase36_metrics().to_netcdf(metrics_path)
+    _sample_phase36_dominant().to_netcdf(dominant_path)
+
+    phase37_dir = contract.output_root / "phase37_sources"
+    phase37_dir.mkdir(parents=True, exist_ok=True)
+    source_manifest_path = phase37_dir / "phase3_7_hotspots_2016.json"
+    source_hotspot_path = phase37_dir / "phase3_7_hotspots_2016.csv"
+    source_region_path = phase37_dir / "phase3_7_hotspot_regions_2016.csv"
+
+    hotspot_row = {
+        "hotspot_id": "entropy-amazon-001",
+        "region_id": "amazon",
+        "region_slug": "amazon",
+        "region_label": "Amazon",
+        "bbox": [99.75, 0.75, 100.25, 1.25],
+        "center_lon": 100.0,
+        "center_lat": 1.0,
+        "mean_entropy": 0.9,
+        "max_entropy": 0.9,
+        "cell_count": 1,
+        "region_rank": 1,
+        "threshold_percentile": 95.0,
+        "threshold_value": 0.8,
+        "selection_rules_version": "phase3.7-hotspots-v1",
+        "source": "entropy",
+    }
+    pd.DataFrame([hotspot_row]).to_csv(source_hotspot_path, index=False)
+    pd.DataFrame(
+        [
+            {
+                "region_id": "amazon",
+                "region_label": "Amazon",
+                "bbox": json.dumps([99.5, -0.5, 101.5, 1.5]),
+                "priority": 1,
+                "area_weight": 1.0,
+                "quota": 2,
+                "selected_count": 1,
+                "shortfall": 1,
+                "threshold_percentile": 95.0,
+                "threshold_value": 0.8,
+                "valid_wetland_cell_count": 3,
+                "candidate_window_count": 3,
+                "coarse_candidate_count": 2,
+                "refined_candidate_count": 1,
+                "status": "shortfall",
+                "debug_png_path": "debug/amazon.png",
+            }
+        ]
+    ).to_csv(source_region_path, index=False)
+    source_manifest_path.write_text(
+        json.dumps(
+            {
+                "phase": "phase3.7",
+                "year": 2016,
+                "selection_rules_version": "phase3.7-hotspots-v1",
+                "metrics_path": str(metrics_path.resolve()),
+                "classes_path": str(dominant_path.resolve()),
+                "candidate_cache_path": str((phase37_dir / "cache.nc").resolve()),
+                "regions_file": str((contract.output_root / "priority_regions.yaml").resolve()),
+                "total_hotspot_budget": 2,
+                "hotspot_count": 1,
+                "unfilled_budget": 1,
+                "threshold_percentile": 95.0,
+                "min_cluster_cells": 1,
+                "aoi_size_deg": 0.5,
+                "min_distance_deg": 0.5,
+                "candidate_sample_step": 4,
+                "status_counts": {"shortfall": 1},
+                "region_summaries": [
+                    {
+                        "region_id": "amazon",
+                        "region_label": "Amazon",
+                        "bbox": [99.5, -0.5, 101.5, 1.5],
+                        "priority": 1,
+                        "area_weight": 1.0,
+                        "quota": 2,
+                        "selected_count": 1,
+                        "shortfall": 1,
+                        "threshold_percentile": 95.0,
+                        "threshold_value": 0.8,
+                        "valid_wetland_cell_count": 3,
+                        "candidate_window_count": 3,
+                        "coarse_candidate_count": 2,
+                        "refined_candidate_count": 1,
+                        "status": "shortfall",
+                        "debug_png_path": "debug/amazon.png",
+                    }
+                ],
+                "hotspots": [hotspot_row],
+            },
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    write_contract_classification_surface(
+        contract=contract,
+        region_id="amazon",
+        region_label="Amazon",
+        dataset_key=CLASSIFICATION_CONTRACT_DATASET_KEY,
+        bbox=(99.5, -0.5, 101.5, 1.5),
+        target_year=2016,
+        metrics_path=metrics_path,
+        dominant_classes_path=dominant_path,
+    )
+    write_contract_classification_summary(
+        contract=contract,
+        region_id="amazon",
+        region_label="Amazon",
+        dataset_key=CLASSIFICATION_CONTRACT_DATASET_KEY,
+        target_year=2016,
+        source_region_summary_path=source_region_path,
+    )
+    write_contract_classification_hotspot_outputs(
+        contract=contract,
+        region_id="amazon",
+        dataset_key=CLASSIFICATION_CONTRACT_DATASET_KEY,
+        source_manifest_path=source_manifest_path,
+        source_hotspot_table_path=source_hotspot_path,
+        source_region_summary_path=source_region_path,
+    )
 
 
 def _write_generic_hotspot_family(
@@ -363,6 +547,53 @@ def test_load_phase4_contract_trend_hotspot_table_wraps_reload_errors(
         )
 
 
+def test_load_phase4_contract_classification_summary_reloads_semantically(
+    tmp_path: Path,
+) -> None:
+    contract = load_phase4_evidence_contract(output_root=tmp_path)
+    _write_classification_contract_inputs(contract)
+
+    bundle = load_phase4_contract_classification_summary(
+        region_id="amazon",
+        dataset_key="canonical",
+        output_root=tmp_path,
+    )
+
+    assert bundle.dataset_key == "canonical"
+    assert bundle.participant_set_key == "g2017+glwd_v2+gwd30"
+    assert bundle.table["hotspot_shortfall"].tolist() == [1]
+
+
+def test_load_phase4_contract_classification_hotspot_table_reloads_semantically(
+    tmp_path: Path,
+) -> None:
+    contract = load_phase4_evidence_contract(output_root=tmp_path)
+    _write_classification_contract_inputs(contract)
+
+    bundle = load_phase4_contract_classification_hotspot_table(
+        region_id="amazon",
+        dataset_key="canonical",
+        output_root=tmp_path,
+    )
+
+    assert bundle.manifest.participant_set_key == "g2017+glwd_v2+gwd30"
+    assert bundle.table["hotspot_rank"].tolist() == [1]
+    assert bundle.table["participant_ids"].tolist() == [
+        ("g2017", "glwd_v2", "gwd30")
+    ]
+
+
+def test_load_phase4_contract_classification_hotspot_table_wraps_reload_errors(
+    tmp_path: Path,
+) -> None:
+    with pytest.raises(ValueError, match="Phase4 semantic reload failed"):
+        load_phase4_contract_classification_hotspot_table(
+            region_id="amazon",
+            dataset_key="canonical",
+            output_root=tmp_path,
+        )
+
+
 def test_load_phase4_unified_hotspot_ledger_reloads_semantically(tmp_path: Path) -> None:
     contract = load_phase4_evidence_contract(output_root=tmp_path)
     _write_unified_ledger_sources(contract)
@@ -410,4 +641,21 @@ def test_run_phase4_trend_contract_help_mentions_trend_hotspots() -> None:
     assert "trend-hotspots" in completed.stdout
     assert "--top-hotspots" in completed.stdout
     assert "--skip" in completed.stdout
+    assert "--no-skip" in completed.stdout
+
+
+def test_run_phase4_classification_contract_help_mentions_subset_and_skip() -> None:
+    repo_root = Path(__file__).resolve().parents[2]
+    completed = subprocess.run(
+        [sys.executable, "scripts/run_phase4_classification_contract.py", "--help"],
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert completed.returncode == 0
+    assert "--subset" in completed.stdout
+    assert "canonical" in completed.stdout
+    assert "ten" in completed.stdout
     assert "--no-skip" in completed.stdout

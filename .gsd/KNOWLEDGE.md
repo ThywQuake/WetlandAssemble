@@ -84,3 +84,9 @@
 - In this repo’s current NumPy/xarray/netCDF4 stack, building a `dataset_id` coordinate from a pandas index can produce NumPy `StringDType`, which `to_netcdf()` rejects with `unsupported dtype for netCDF4 variable`.
 - For contract-backed multi-dataset percentage surfaces, force string-like coordinates such as `dataset_id` and `dataset_year_label` onto fixed-width unicode arrays before writing the NetCDF.
 - This matters for `src/WA/comparison/percentage_backbone.py`, where the restored percentage contract surface stores a dataset stack and would otherwise fail at write time even though the xarray object looks valid in memory.
+
+## 2026-04-09 — Classification contract must cross-check Phase 3.7 manifest ids, not just region filters
+
+- In this repo, a Phase 3.7 hotspot CSV can look superficially valid for a target region even when one row’s `region_id` was mutated or the CSV drifted away from the manifest.
+- For the restored Phase 4 classification contract, do not trust `phase3_7_hotspots_<year>.csv` by filtering `region_id` alone; first take the hotspot ids for that region from the Phase 3.7 manifest, then require the CSV rows for exactly those ids and reject any mixed-region mismatch.
+- This matters for `src/WA/comparison/classification_contract.py`, where the adapter rewrites region hotspot families from the Phase 3.7 source trio and must fail closed on stale or hand-edited source tables.
