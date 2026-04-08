@@ -11,4 +11,6 @@
 | S03 | Classification-disagreement backbone on the shared contract | medium | — | ✅ | After this: `G2017 / GLWD / GWD30` 能在 `500m` / unified-8-class 口径下产出 contract-aligned entropy / majority / agreement products 与 classification hotspot manifests。 |
 | S04 | Unified hotspot ledger and cross-line evidence surfaces | medium | — | ✅ | After this: 三条主线的热点都能落到同一种 analysis object，上层可以按 region / metric family / hotspot_id 统一引用、排序、和交叉比较。 |
 | S05 | Ten-region scale-out with reproducible HPC-safe execution | high | — | ✅ | After this: 从 canonical subset 扩到十个大区时，三条主线都能沿同一合同输出结果，并且关键宽范围运行仍然是 split/cache/merge 可复跑的。 |
-| S06 | Paper-ready evidence pack and milestone integration proof | low | — | ⬜ | After this: 至少一套可直接支撑论文结构的 figure/table/summary pack 已形成，且三条主线在十区上的核心产物都经过重新集成验证。 |
+| S06 | Paper-ready evidence pack and milestone integration proof | low | — | ✅ | After this: 至少一套可直接支撑论文结构的 figure/table/summary pack 已形成，且三条主线在十区上的核心产物都经过重新集成验证。 |
+| S07 | Ten-region HPC materialization and readiness/ledger proof | high | — | ⬜ | After this: the percentage/classification/trend producer ladder has been executed for the full ten-region set, readiness reports all required families as ready, and unified hotspot ledgers reopen cleanly on real outputs. |
+| S08 | Strict paper-pack proof and evidence-audit repair | medium | S07 | ⬜ | After this: a real strict phase4 evidence pack exists with manifest/proof artifacts, and the missing S01 closeout summary evidence has been repaired so milestone validation can be rerun against complete artifacts. |

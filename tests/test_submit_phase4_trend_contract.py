@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import stat
 import subprocess
+import sys
 from pathlib import Path
 
 
@@ -15,7 +16,10 @@ def _make_fake_repo(tmp_path: Path) -> tuple[Path, Path]:
     )
     fake_python = fake_repo / ".venv" / "bin" / "python"
     fake_python.parent.mkdir(parents=True)
-    fake_python.write_text("#!/bin/bash\nexit 0\n", encoding="utf-8")
+    fake_python.write_text(
+        f"#!/bin/bash\nexec \"{sys.executable}\" \"$@\"\n",
+        encoding="utf-8",
+    )
     fake_python.chmod(fake_python.stat().st_mode | stat.S_IXUSR)
     return fake_repo, fake_python
 
@@ -135,3 +139,55 @@ def test_phase4_trend_contract_submit_requires_repo_and_rejects_mixed_selector_f
     )
     assert mixed.returncode != 0
     assert "either --subset or --region" in mixed.stderr
+
+
+def test_phase4_trend_contract_submit_dry_run_uses_python_bin_for_region_resolution(
+    tmp_path: Path,
+) -> None:
+    repo_root = Path(__file__).resolve().parents[1]
+    script_path = repo_root / "scripts" / "submit_phase4_trend_contract.sh"
+
+    fake_home = tmp_path / "home"
+    fake_home.mkdir()
+    fake_repo, fake_python = _make_fake_repo(tmp_path)
+    jobs_base = tmp_path / "jobs"
+    tmp_root = tmp_path / "tmp"
+    fake_bin = tmp_path / "fake-bin"
+    fake_bin.mkdir()
+    fake_system_python = fake_bin / "python3"
+    fake_system_python.write_text(
+        "#!/bin/bash\necho 'stub python3 should not be used' >&2\nexit 41\n",
+        encoding="utf-8",
+    )
+    fake_system_python.chmod(fake_system_python.stat().st_mode | stat.S_IXUSR)
+
+    completed = subprocess.run(
+        [
+            "bash",
+            str(script_path),
+            "--dry-run",
+            "--repo",
+            str(fake_repo),
+            "--python-bin",
+            str(fake_python),
+            "--jobs-base",
+            str(jobs_base),
+            "--tmp-root",
+            str(tmp_root),
+            "--subset",
+            "canonical",
+            "--no-progress",
+        ],
+        cwd=repo_root,
+        env={
+            **os.environ,
+            "HOME": str(fake_home),
+            "PATH": f"{fake_bin}:{os.environ.get('PATH', '')}",
+        },
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+
+    assert "Subset:       canonical" in completed.stdout
+    assert "stub python3 should not be used" not in completed.stderr

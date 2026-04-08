@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-04-09
+
+- Fixed `scripts/submit_phase4_trend_contract.sh` so the pre-submit region-resolution dry-run now uses the explicit `--python-bin` / repo environment instead of hardwiring `python3`; this prevents local and HPC preflight failures when the system interpreter lacks the repo's scientific dependencies, and `tests/test_submit_phase4_trend_contract.py` now locks that regression.
+- Added `results/phase4/proof/phase4-ten-region-command-ladder.md` plus `results/phase4/proof/phase4-trend-contract-dry-run.tsv` so the S07 scale-out ladder has one frozen bilingual command note, copied dry-run summary, fixed ten-region order, and explicit `topmodel` / `--no-skip` proof surface before real HPC fanout.
+
 ## 2026-04-08
 
 - Added `src/WA/visualization/phase4_pack.py` plus `scripts/run_phase4_evidence_pack.py`, which reopen contract-backed percentage/classification/trend/ledger artifacts semantically, write percentage interannual + climatology figures, assemble one joined regional evidence table plus one unified hotspot table, emit a narrative `summary.md`, and only write a deterministic `manifest.json` after the full derived pack succeeds under a dedicated root outside `results/phase4`.

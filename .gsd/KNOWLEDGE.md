@@ -1,5 +1,11 @@
 # Knowledge
 
+## 2026-04-09 — Trend submit preflight must use the selected repo interpreter
+
+- `scripts/submit_phase4_trend_contract.sh` should resolve regions with the explicit `--python-bin` / repo environment, not bare `python3`.
+- The wrapper imports `WA.comparison.evidence_contract` during preflight region resolution, and that import path can transitively require the repo's scientific stack before any job scripts are generated.
+- If the wrapper fails before submission with `ModuleNotFoundError` followed by `No regions resolved for submission`, inspect the preflight interpreter first; the selector or regions file may be fine.
+
 ## 2026-04-07 — GSD worktree memory-path boundary
 
 - In the M001 GSD audit worktree, the project history path cited by older notes — `../../.claude/projects/-Users-mac-Code-WA/memory` — is **not** locally reachable and should be treated as `absent-local`.
@@ -114,3 +120,9 @@
 - In this repo’s Phase 4 paper-pack path, semantic reload of percentage/classification/trend summaries and the unified ledger is **not** sufficient for a strict complete-pack claim.
 - `build_phase4_evidence_pack_proof(...)` also depends on the three hotspot-family contract artifacts (`hotspot_manifest`, `classification_hotspot_manifest`, `trend_hotspot_manifest`) because scale-out readiness is the gate that authorizes a complete-pack claim.
 - This matters for local dry runs and fixture design: a paper pack can render figures/tables from pack inputs while strict proof still reports `incomplete` until the readiness hotspot families exist and reload cleanly.
+
+## 2026-04-09 — Pack consumers must reopen trend agreement through public contract helpers
+
+- In this repo, trend-agreement semantic reopen is now owned by `src/WA/comparison/trend_contract.py`; downstream pack code should use the public comparison helpers or the thin wrappers in `src/WA/visualization/phase4.py`, not script-private helpers from `scripts/run_phase4_trend_contract.py`.
+- Keep pair validation (surface + summary presence, `participant_set_key`, overlap window, and `region_id` checks) in the comparison layer so every caller gets the same fail-closed diagnostics.
+- This matters for future paper-pack or proof code: guessing agreement filenames or duplicating reload logic will drift faster than the science contract and hides the exact `region_id` / participant context when a pair is malformed.

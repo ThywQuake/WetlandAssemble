@@ -92,7 +92,7 @@ resolve_region_ids() {
         region_csv="$(IFS=,; printf '%s' "${REGION_FILTERS[*]}")"
     fi
 
-    python3 - <<'PY' "${repo_root}" "${REGIONS_FILE}" "${SUBSET}" "${region_csv}"
+    "${PYTHON_BIN}" - <<'PY' "${repo_root}" "${REGIONS_FILE}" "${SUBSET}" "${region_csv}"
 from pathlib import Path
 import sys
 
