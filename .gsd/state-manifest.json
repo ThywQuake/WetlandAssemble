@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "exported_at": "2026-04-08T21:32:22.050Z",
+  "exported_at": "2026-04-08T22:04:00.460Z",
   "milestones": [
     {
       "id": "M001",
@@ -1913,19 +1913,28 @@
       "milestone_id": "M002",
       "slice_id": "S06",
       "id": "T03",
-      "title": "Gate complete-pack claims behind strict readiness and ledger proof",
-      "status": "pending",
-      "one_liner": "",
-      "narrative": "",
-      "verification_result": "",
+      "title": "Gated Phase 4 complete-pack claims behind readiness/ledger proof with deterministic proof artifacts and strict CLI exit semantics.",
+      "status": "complete",
+      "one_liner": "Gated Phase 4 complete-pack claims behind readiness/ledger proof with deterministic proof artifacts and strict CLI exit semantics.",
+      "narrative": "Extended `src/WA/visualization/phase4_pack.py` with a proof wrapper that clears stale manifest/proof state, writes a fresh scale-out readiness report, validates readiness row coverage for the requested selector, reopens every requested unified ledger, checks trend participant-set alignment inside reopened ledger rows, and persists deterministic `complete_pack_proof.json` plus `complete_pack_proof.md` artifacts under the pack root before allowing a new manifest claim. Updated `scripts/run_phase4_evidence_pack.py` so `--strict` is the explicit complete-pack gate: incomplete proof now returns exit code `2` in strict mode, while non-strict runs still emit explicit incomplete-proof artifacts and never leave behind a fresh manifest claim. Expanded `tests/test_visualization/test_phase4_pack.py` with coverage for complete proof success, incomplete proof on missing readiness/ledger inputs, trend participant-set mismatch rejection, and CLI strict/non-strict proof behavior; also documented the operator-facing HPC rerun ladder in the stash/task summary and recorded the downstream proof/CLI choice in GSD decision D050 plus the readiness-gotcha in `.gsd/KNOWLEDGE.md`.",
+      "verification_result": "Passed the task verification bundle: `ruff check src/WA/visualization/phase4_pack.py scripts/run_phase4_evidence_pack.py tests/test_visualization/test_phase4_pack.py`, `python scripts/run_phase4_evidence_pack.py --help`, `python -m pytest tests/test_visualization/test_phase4_pack.py tests/test_comparison/test_hotspot_ledger.py tests/test_comparison/test_scaleout_readiness.py tests/test_comparison/test_trend_contract.py tests/test_comparison/test_percentage_backbone.py tests/test_comparison/test_classification_contract.py tests/test_comparison/test_trend_hotspots.py -q`, and `python scripts/run_related_tests.py src/WA/visualization/phase4_pack.py scripts/run_phase4_evidence_pack.py`. Broader repo context remains mixed because `python -m pytest tests/` still surfaced the unrelated baseline failure `tests/test_mgrs_tiling.py::test_tile_to_extent_matches_reference_case` and later exited `137`.",
       "duration": "",
-      "completed_at": null,
+      "completed_at": "2026-04-08T22:04:00.432Z",
       "blocker_discovered": false,
-      "deviations": "",
-      "known_issues": "",
-      "key_files": [],
-      "key_decisions": [],
-      "full_summary_md": "",
+      "deviations": "Added `CHANGELOG.md`, `.gsd/KNOWLEDGE.md`, `.gsd/DECISIONS.md`, and the stash quick-reference update in addition to the three planned implementation files so the user-facing CLI change, downstream proof semantics, and HPC handoff all stay documented under the project contract.",
+      "known_issues": "`python -m pytest tests/` still hits the unrelated repo baseline failure `tests/test_mgrs_tiling.py::test_tile_to_extent_matches_reference_case` and later exited `137`; this task does not change that surface.",
+      "key_files": [
+        "src/WA/visualization/phase4_pack.py",
+        "scripts/run_phase4_evidence_pack.py",
+        "tests/test_visualization/test_phase4_pack.py",
+        "CHANGELOG.md",
+        ".gsd/KNOWLEDGE.md",
+        "docs/stashes/2026-04-09-015-m002-s06-t03-strict-proof.md"
+      ],
+      "key_decisions": [
+        "Always write deterministic proof JSON/Markdown artifacts under the pack root; only `--strict` upgrades an incomplete proof into a non-zero exit, while non-strict runs still emit explicit incomplete-proof artifacts and never leave behind a fresh manifest claim."
+      ],
+      "full_summary_md": "---\nid: T03\nparent: S06\nmilestone: M002\nkey_files:\n  - src/WA/visualization/phase4_pack.py\n  - scripts/run_phase4_evidence_pack.py\n  - tests/test_visualization/test_phase4_pack.py\n  - CHANGELOG.md\n  - .gsd/KNOWLEDGE.md\n  - docs/stashes/2026-04-09-015-m002-s06-t03-strict-proof.md\nkey_decisions:\n  - Always write deterministic proof JSON/Markdown artifacts under the pack root; only `--strict` upgrades an incomplete proof into a non-zero exit, while non-strict runs still emit explicit incomplete-proof artifacts and never leave behind a fresh manifest claim.\nduration: \nverification_result: mixed\ncompleted_at: 2026-04-08T22:04:00.426Z\nblocker_discovered: false\n---\n\n# T03: Gated Phase 4 complete-pack claims behind readiness/ledger proof with deterministic proof artifacts and strict CLI exit semantics.\n\n**Gated Phase 4 complete-pack claims behind readiness/ledger proof with deterministic proof artifacts and strict CLI exit semantics.**\n\n## What Happened\n\nExtended `src/WA/visualization/phase4_pack.py` with a proof wrapper that clears stale manifest/proof state, writes a fresh scale-out readiness report, validates readiness row coverage for the requested selector, reopens every requested unified ledger, checks trend participant-set alignment inside reopened ledger rows, and persists deterministic `complete_pack_proof.json` plus `complete_pack_proof.md` artifacts under the pack root before allowing a new manifest claim. Updated `scripts/run_phase4_evidence_pack.py` so `--strict` is the explicit complete-pack gate: incomplete proof now returns exit code `2` in strict mode, while non-strict runs still emit explicit incomplete-proof artifacts and never leave behind a fresh manifest claim. Expanded `tests/test_visualization/test_phase4_pack.py` with coverage for complete proof success, incomplete proof on missing readiness/ledger inputs, trend participant-set mismatch rejection, and CLI strict/non-strict proof behavior; also documented the operator-facing HPC rerun ladder in the stash/task summary and recorded the downstream proof/CLI choice in GSD decision D050 plus the readiness-gotcha in `.gsd/KNOWLEDGE.md`.\n\n## Verification\n\nPassed the task verification bundle: `ruff check src/WA/visualization/phase4_pack.py scripts/run_phase4_evidence_pack.py tests/test_visualization/test_phase4_pack.py`, `python scripts/run_phase4_evidence_pack.py --help`, `python -m pytest tests/test_visualization/test_phase4_pack.py tests/test_comparison/test_hotspot_ledger.py tests/test_comparison/test_scaleout_readiness.py tests/test_comparison/test_trend_contract.py tests/test_comparison/test_percentage_backbone.py tests/test_comparison/test_classification_contract.py tests/test_comparison/test_trend_hotspots.py -q`, and `python scripts/run_related_tests.py src/WA/visualization/phase4_pack.py scripts/run_phase4_evidence_pack.py`. Broader repo context remains mixed because `python -m pytest tests/` still surfaced the unrelated baseline failure `tests/test_mgrs_tiling.py::test_tile_to_extent_matches_reference_case` and later exited `137`.\n\n## Verification Evidence\n\n| # | Command | Exit Code | Verdict | Duration |\n|---|---------|-----------|---------|----------|\n| 1 | `ruff check src/WA/visualization/phase4_pack.py scripts/run_phase4_evidence_pack.py tests/test_visualization/test_phase4_pack.py` | 0 | ✅ pass | 40ms |\n| 2 | `python scripts/run_phase4_evidence_pack.py --help` | 0 | ✅ pass | 1300ms |\n| 3 | `python -m pytest tests/test_visualization/test_phase4_pack.py tests/test_comparison/test_hotspot_ledger.py tests/test_comparison/test_scaleout_readiness.py tests/test_comparison/test_trend_contract.py tests/test_comparison/test_percentage_backbone.py tests/test_comparison/test_classification_contract.py tests/test_comparison/test_trend_hotspots.py -q` | 0 | ✅ pass | 17450ms |\n| 4 | `python scripts/run_related_tests.py src/WA/visualization/phase4_pack.py scripts/run_phase4_evidence_pack.py` | 0 | ✅ pass | 250ms |\n| 5 | `python -m pytest tests/` | 137 | ❌ fail | 39420ms |\n\n## Deviations\n\nAdded `CHANGELOG.md`, `.gsd/KNOWLEDGE.md`, `.gsd/DECISIONS.md`, and the stash quick-reference update in addition to the three planned implementation files so the user-facing CLI change, downstream proof semantics, and HPC handoff all stay documented under the project contract.\n\n## Known Issues\n\n`python -m pytest tests/` still hits the unrelated repo baseline failure `tests/test_mgrs_tiling.py::test_tile_to_extent_matches_reference_case` and later exited `137`; this task does not change that surface.\n\n## Files Created/Modified\n\n- `src/WA/visualization/phase4_pack.py`\n- `scripts/run_phase4_evidence_pack.py`\n- `tests/test_visualization/test_phase4_pack.py`\n- `CHANGELOG.md`\n- `.gsd/KNOWLEDGE.md`\n- `docs/stashes/2026-04-09-015-m002-s06-t03-strict-proof.md`\n",
       "description": "The slice is not done when files merely exist. This task makes the pack itself the milestone integration proof surface by requiring clean readiness plus unified-ledger reopen before a ten-region pack can claim completeness.\n\n## Failure Modes\n\n| Dependency | On error | On timeout | On malformed response |\n|------------|----------|-----------|----------------------|\n| `src/WA/comparison/scaleout_readiness.py`, `src/WA/comparison/hotspot_ledger.py`, and the new pack CLI/module | Exit non-zero with `region_id`, `metric_family`, and proof-stage context; never emit a “strict success” report from partial inputs. | Preflight remains region-scoped so one incomplete region yields explicit proof diagnostics instead of blocking discovery of other gaps. | Reject missing readiness rows, `partial` family states, absent ledgers, or ledger/selector mismatches instead of silently downgrading to a best-effort pack. |\n\n## Load Profile\n\n- **Shared resources**: readiness CSV/JSON reports, unified ledgers, and the final pack output tree.\n- **Per-operation cost**: one readiness inspection plus one ledger reopen per region; still cheap compared to the science reruns.\n- **10x breakpoint**: diagnostic clarity and proof-artifact size degrade before runtime cost matters.\n\n## Negative Tests\n\n- **Malformed inputs**: missing readiness reports, mixed-region readiness rows, absent ledger CSVs, and proof outputs pointed inside `results/phase4`.\n- **Error paths**: `--strict` must fail closed on `missing`/`partial`, while the non-strict path must still write an explicit incomplete-proof report instead of pretending the pack is complete.\n- **Boundary conditions**: one-region `--strict` proof, ordered ten-region proof, and mismatched participant ids all keep deterministic verdicts and logs.\n\n## Steps\n\n1. Extend `src/WA/visualization/phase4_pack.py` so pack assembly runs a readiness preflight, reopens unified ledgers for every requested region, and writes machine-readable plus Markdown proof artifacts summarizing readiness, ledger provenance, manifest path, and figure/table counts.\n2. Extend `scripts/run_phase4_evidence_pack.py` with `--strict` and explicit incomplete-proof behavior, keeping the exit code and logs aligned with the proof verdict.\n3. Expand `tests/test_visualization/test_phase4_pack.py` to cover strict failure on incomplete readiness, success when readiness/ledgers are clean, and proof-artifact contents; keep comparison-boundary tests in the verification command so the pack stays wired to the real contract surfaces.\n4. In the task summary and UAT, hand off the exact HPC rerun ladder for real proof: percentage (`--start-year 1990 --end-year 2020 --surface-year 2016 --no-skip`), classification (`--year 2016 --no-skip`), trend submit fanout, readiness, ledger, then `python scripts/run_phase4_evidence_pack.py --subset ten --strict ...`.\n\n## Must-Haves\n\n- [ ] `--strict` never reports success unless readiness and ledger reopen cleanly for every requested region.\n- [ ] Proof artifacts record the resolved regions, readiness verdicts, ledger paths, participant keys, manifest path, and pack output counts.\n- [ ] The handoff commands for HPC reruns stay explicit, use `--no-skip`, and match the current trend participant defaults that include `topmodel`.\n\n## Done when\n\n- `python scripts/run_phase4_evidence_pack.py --subset ten --strict ...` becomes the single complete-pack claim surface, and missing science inputs produce explicit proof diagnostics instead of a misleading paper pack.",
       "estimate": "2h",
       "files": [
@@ -2537,6 +2546,18 @@
       "decision": "Phase 4 paper-pack output shape",
       "choice": "Use one wide joined regional evidence CSV plus one long-form unified hotspot CSV, keep exact source artifact paths in both the joined table and manifest, and clear any stale manifest before a rebuild so only a fully successful pack can claim completeness.",
       "rationale": "The joined table gives paper-facing one-row-per-region evidence across percentage/classification/trend/ledger, while the hotspot table preserves the existing long-form ledger detail without inventing a second hotspot schema. Duplicating provenance into both the joined table and manifest keeps reruns replayable and inspectable, and removing stale manifests prevents partial reruns from leaving a misleading complete-pack claim behind.",
+      "revisable": "Yes",
+      "made_by": "agent",
+      "superseded_by": null
+    },
+    {
+      "seq": 52,
+      "id": "D050",
+      "when_context": "M002/S06/T03",
+      "scope": "observability",
+      "decision": "How the Phase 4 evidence-pack CLI should expose complete-pack proof outcomes",
+      "choice": "Always write deterministic proof JSON/Markdown artifacts under the pack root; only `--strict` turns an incomplete readiness/ledger proof into a non-zero exit, while non-strict runs return success with explicit incomplete-proof artifacts and no fresh manifest claim.",
+      "rationale": "The pack CLI is now the single complete-pack claim surface, so every run needs a replayable proof artifact whether it succeeds or not. Separating proof writing from strict exit behavior lets operators inspect readiness or ledger gaps without mistaking an incomplete dry run for a complete pack, and clearing the stale manifest up front prevents old success claims from surviving a failed proof attempt.",
       "revisable": "Yes",
       "made_by": "agent",
       "superseded_by": null
@@ -4533,6 +4554,61 @@
       "verdict": "❌ fail",
       "duration_ms": 82800,
       "created_at": "2026-04-08T21:32:22.013Z"
+    },
+    {
+      "id": 182,
+      "task_id": "T03",
+      "slice_id": "S06",
+      "milestone_id": "M002",
+      "command": "ruff check src/WA/visualization/phase4_pack.py scripts/run_phase4_evidence_pack.py tests/test_visualization/test_phase4_pack.py",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 40,
+      "created_at": "2026-04-08T22:04:00.433Z"
+    },
+    {
+      "id": 183,
+      "task_id": "T03",
+      "slice_id": "S06",
+      "milestone_id": "M002",
+      "command": "python scripts/run_phase4_evidence_pack.py --help",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 1300,
+      "created_at": "2026-04-08T22:04:00.433Z"
+    },
+    {
+      "id": 184,
+      "task_id": "T03",
+      "slice_id": "S06",
+      "milestone_id": "M002",
+      "command": "python -m pytest tests/test_visualization/test_phase4_pack.py tests/test_comparison/test_hotspot_ledger.py tests/test_comparison/test_scaleout_readiness.py tests/test_comparison/test_trend_contract.py tests/test_comparison/test_percentage_backbone.py tests/test_comparison/test_classification_contract.py tests/test_comparison/test_trend_hotspots.py -q",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 17450,
+      "created_at": "2026-04-08T22:04:00.433Z"
+    },
+    {
+      "id": 185,
+      "task_id": "T03",
+      "slice_id": "S06",
+      "milestone_id": "M002",
+      "command": "python scripts/run_related_tests.py src/WA/visualization/phase4_pack.py scripts/run_phase4_evidence_pack.py",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 250,
+      "created_at": "2026-04-08T22:04:00.433Z"
+    },
+    {
+      "id": 186,
+      "task_id": "T03",
+      "slice_id": "S06",
+      "milestone_id": "M002",
+      "command": "python -m pytest tests/",
+      "exit_code": 137,
+      "verdict": "❌ fail",
+      "duration_ms": 39420,
+      "created_at": "2026-04-08T22:04:00.433Z"
     }
   ]
 }

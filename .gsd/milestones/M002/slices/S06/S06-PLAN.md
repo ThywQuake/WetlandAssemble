@@ -87,7 +87,7 @@ python -m pytest tests/test_comparison/test_trend_contract.py tests/test_visuali
 python scripts/run_phase4_evidence_pack.py --help
 python -m pytest tests/test_visualization/test_phase4_pack.py tests/test_visualization/test_phase4.py -q
 python scripts/run_related_tests.py src/WA/visualization/phase4_pack.py scripts/run_phase4_evidence_pack.py src/WA/test_selection.py
-- [ ] **T03: Gate complete-pack claims behind strict readiness and ledger proof** — The slice is not done when files merely exist. This task makes the pack itself the milestone integration proof surface by requiring clean readiness plus unified-ledger reopen before a ten-region pack can claim completeness.
+- [x] **T03: Gated Phase 4 complete-pack claims behind readiness/ledger proof with deterministic proof artifacts and strict CLI exit semantics.** — The slice is not done when files merely exist. This task makes the pack itself the milestone integration proof surface by requiring clean readiness plus unified-ledger reopen before a ten-region pack can claim completeness.
 
 ## Failure Modes
 

@@ -3,6 +3,7 @@
 ## 2026-04-08
 
 - Added `src/WA/visualization/phase4_pack.py` plus `scripts/run_phase4_evidence_pack.py`, which reopen contract-backed percentage/classification/trend/ledger artifacts semantically, write percentage interannual + climatology figures, assemble one joined regional evidence table plus one unified hotspot table, emit a narrative `summary.md`, and only write a deterministic `manifest.json` after the full derived pack succeeds under a dedicated root outside `results/phase4`.
+- Tightened `scripts/run_phase4_evidence_pack.py --strict` so complete-pack claims now require a fresh readiness report, clean unified-ledger reopen for every requested region, selector/participant-key agreement, and new machine-readable + Markdown proof artifacts under the pack root before success is reported.
 - Added fixture-backed coverage in `tests/test_visualization/test_phase4_pack.py` for one-region smoke packs, ordered `--subset ten` packs, malformed/missing inputs, invalid pack roots, and fail-closed CLI behavior when one family reload breaks.
 - Updated `src/WA/test_selection.py` and `docs/testing/test-categories.md` so the new paper-pack module, CLI, and tests stay inside the focused Phase 4 related-test bundle.
 

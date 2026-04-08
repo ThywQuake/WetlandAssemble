@@ -14,6 +14,9 @@ import xarray as xr
 
 matplotlib.use("Agg")
 
+from tests.test_comparison.test_scaleout_readiness import (
+    _write_classification_family as _write_readiness_classification_family,
+)
 from WA.comparison.classification_contract import (  # noqa: E402
     CLASSIFICATION_PARTICIPANT_IDS,
     CLASSIFICATION_PARTICIPANT_SET_KEY,
@@ -28,16 +31,25 @@ from WA.comparison.percentage_backbone import (  # noqa: E402
     write_contract_percentage_summary,
     write_contract_percentage_surface,
 )
+from WA.comparison.percentage_hotspots import write_percentage_hotspot_outputs
 from WA.comparison.scaleout_readiness import DEFAULT_SCALEOUT_TREND_PARTICIPANT_IDS
+from WA.comparison.trend_agreement import TrendAgreementResult
 from WA.comparison.trend_contract import (  # noqa: E402
     trend_agreement_summary_output_path,
     trend_agreement_surface_output_path,
 )
-from WA.comparison.trend_hotspots import build_participant_set_key, normalize_participant_ids
+from WA.comparison.trend_hotspots import (
+    build_participant_set_key,
+    normalize_participant_ids,
+    write_trend_hotspot_outputs,
+)
 from WA.visualization.phase4_pack import (  # noqa: E402
     build_phase4_evidence_pack,
+    build_phase4_evidence_pack_proof,
     phase4_pack_joined_regional_evidence_output_path,
     phase4_pack_manifest_output_path,
+    phase4_pack_proof_json_output_path,
+    phase4_pack_proof_markdown_output_path,
     phase4_pack_unified_hotspot_table_output_path,
 )
 
@@ -290,6 +302,7 @@ def _write_unified_ledger(
     region,
     order: int,
     malformed_json: bool = False,
+    trend_family_key_override: str | None = None,
 ) -> None:
     ledger_path = unified_hotspot_ledger_output_path(
         contract,
@@ -322,6 +335,7 @@ def _write_unified_ledger(
         region_id=region.region_id,
         participant_ids=TREND_PARTICIPANT_IDS,
     )
+    trend_family_key = trend_family_key_override or TREND_PARTICIPANT_SET_KEY
     rows = [
         {
             "analysis_object_id": f"{region.region_id}::percentage::pct-{order:03d}",
@@ -463,7 +477,7 @@ def _write_unified_ledger(
             "region_id": region.region_id,
             "metric_family": "trend",
             "artifact_kind": "trend_hotspot_manifest",
-            "family_key": TREND_PARTICIPANT_SET_KEY,
+            "family_key": trend_family_key,
             "hotspot_id": f"trd-{region.region_id}-001",
             "hotspot_rank": 1,
             "family_percentile": 1.0,
@@ -513,12 +527,12 @@ def _write_unified_ledger(
             "contract_metadata_json": metadata_json(
                 {
                     "metric_family": "trend",
-                    "family_key": TREND_PARTICIPANT_SET_KEY,
+                    "family_key": trend_family_key,
                     "region_id": region.region_id,
                 }
             ),
             "line_specific_json": metadata_json(
-                {"participant_set_key": TREND_PARTICIPANT_SET_KEY}
+                {"participant_set_key": trend_family_key}
             ),
         },
     ]
@@ -531,6 +545,8 @@ def _write_pack_fixture(
     region_ids: list[str],
     omit_climatology: bool = False,
     malformed_ledger_json: bool = False,
+    omit_ledger: bool = False,
+    trend_family_key_override: str | None = None,
 ) -> None:
     regions = contract.resolve_regions(requested_region_ids=region_ids)
     for order, region in enumerate(regions, start=1):
@@ -546,7 +562,92 @@ def _write_pack_fixture(
             region=region,
             order=order,
             malformed_json=malformed_ledger_json,
+            trend_family_key_override=trend_family_key_override,
         )
+        if omit_ledger:
+            unified_hotspot_ledger_output_path(
+                contract,
+                ledger_key="canonical",
+                region_id=region.region_id,
+            ).unlink()
+
+
+def _make_trend_agreement_result_for_pack(region) -> TrendAgreementResult:
+    coords = _surface_coords_for_bbox(region.bbox)
+    agreement_ratio = xr.DataArray(
+        np.array([[0.5, 0.75], [1.0, 1.0]], dtype=np.float64),
+        dims=("lat", "lon"),
+        coords=coords,
+    )
+    mean_slope = xr.DataArray(
+        np.array([[0.01, 0.02], [0.03, 0.04]], dtype=np.float64),
+        dims=("lat", "lon"),
+        coords=coords,
+    )
+    slope_std = xr.DataArray(
+        np.array([[0.2, 0.4], [0.1, 0.1]], dtype=np.float64),
+        dims=("lat", "lon"),
+        coords=coords,
+    )
+    disputed = xr.DataArray(
+        agreement_ratio.values < 1.0,
+        dims=("lat", "lon"),
+        coords=coords,
+    )
+    false_mask = xr.zeros_like(disputed, dtype=bool)
+    return TrendAgreementResult(
+        overlap_window=("2001-01-01", "2010-12-31"),
+        participant_ids=TREND_PARTICIPANT_IDS,
+        agreement_ratio=agreement_ratio,
+        mean_slope=mean_slope,
+        slope_std=slope_std,
+        robust_increase=false_mask,
+        robust_decrease=false_mask,
+        robust_stable=false_mask,
+        disputed=disputed,
+        regional_summary=pd.DataFrame(
+            {
+                "region": [region.region_id, "global"],
+                "total_valid_pixels": [2, 2],
+                "mean_agreement_ratio": [0.625, 0.625],
+                "fraction_robust_increase": [0.0, 0.0],
+                "fraction_robust_decrease": [0.0, 0.0],
+                "fraction_robust_stable": [0.0, 0.0],
+                "fraction_disputed": [1.0, 1.0],
+                "mean_slope_across_datasets": [0.02, 0.02],
+            }
+        ),
+        status="computed",
+    )
+
+
+def _write_strict_proof_ready_inputs(contract, *, region_id: str) -> None:
+    region = contract.regions_by_id[region_id]
+    write_percentage_hotspot_outputs(
+        contract=contract,
+        region_id=region_id,
+        dataset_key="canonical",
+        top_n=1,
+        min_distance_deg=0.0,
+    )
+    _write_readiness_classification_family(contract, region_id)
+    write_trend_hotspot_outputs(
+        contract=contract,
+        agreement_result=_make_trend_agreement_result_for_pack(region),
+        region_id=region_id,
+        participant_ids=TREND_PARTICIPANT_IDS,
+        surface_output_path=trend_agreement_surface_output_path(
+            contract,
+            region_id=region_id,
+            participant_ids=TREND_PARTICIPANT_IDS,
+        ),
+        summary_output_path=trend_agreement_summary_output_path(
+            contract,
+            region_id=region_id,
+            participant_ids=TREND_PARTICIPANT_IDS,
+        ),
+        top_n=1,
+    )
 
 
 def _phase4_files(root: Path) -> set[str]:
@@ -748,7 +849,114 @@ def test_build_phase4_evidence_pack_rejects_malformed_ledger_json(tmp_path: Path
     assert not phase4_pack_manifest_output_path(pack_root).exists()
 
 
-def test_run_phase4_evidence_pack_help_mentions_subset_and_pack_root() -> None:
+def test_build_phase4_evidence_pack_proof_writes_complete_artifacts(tmp_path: Path) -> None:
+    phase4_root = tmp_path / "phase4"
+    pack_root = tmp_path / "pack"
+    contract = load_phase4_evidence_contract(output_root=phase4_root)
+    _write_pack_fixture(contract, region_ids=["amazon"])
+    _write_strict_proof_ready_inputs(contract, region_id="amazon")
+
+    proof = build_phase4_evidence_pack_proof(
+        phase4_output_root=phase4_root,
+        pack_output_root=pack_root,
+        requested_region_ids=["amazon"],
+        percentage_key="canonical",
+        classification_key="canonical",
+        ledger_key="canonical",
+        trend_participant_ids=TREND_PARTICIPANT_IDS,
+    )
+
+    assert proof.proof_verdict == "complete"
+    assert proof.pack_result is not None
+    assert proof.proof_json_path == phase4_pack_proof_json_output_path(pack_root).resolve()
+    assert proof.proof_markdown_path == phase4_pack_proof_markdown_output_path(pack_root).resolve()
+
+    payload = json.loads(proof.proof_json_path.read_text(encoding="utf-8"))
+    assert payload["proof_verdict"] == "complete"
+    assert payload["complete_pack_claim_allowed"] is True
+    assert payload["readiness_report"]["ready_region_ids"] == ["amazon"]
+    assert payload["pack_outputs"]["manifest_exists"] is True
+    assert payload["pack_outputs"]["output_counts"]["figure_count"] == 2
+    assert payload["regions"][0]["ledger"]["trend_family_keys"] == [
+        TREND_PARTICIPANT_SET_KEY
+    ]
+    assert payload["pack_outputs"]["manifest_path"] == str(
+        phase4_pack_manifest_output_path(pack_root).resolve()
+    )
+
+    markdown = proof.proof_markdown_path.read_text(encoding="utf-8")
+    assert "Phase 4 Complete-Pack Proof" in markdown
+    assert "amazon" in markdown
+    assert "complete_pack_claim_allowed" in markdown
+
+
+def test_build_phase4_evidence_pack_proof_reports_incomplete_readiness_and_ledger(
+    tmp_path: Path,
+) -> None:
+    phase4_root = tmp_path / "phase4"
+    pack_root = tmp_path / "pack"
+    contract = load_phase4_evidence_contract(output_root=phase4_root)
+    region = contract.regions_by_id["amazon"]
+    _write_percentage_contract_inputs(contract, region=region)
+
+    proof = build_phase4_evidence_pack_proof(
+        phase4_output_root=phase4_root,
+        pack_output_root=pack_root,
+        requested_region_ids=["amazon"],
+        trend_participant_ids=TREND_PARTICIPANT_IDS,
+    )
+
+    assert proof.proof_verdict == "incomplete"
+    assert proof.pack_result is None
+    assert not phase4_pack_manifest_output_path(pack_root).exists()
+    assert proof.proof_json_path.is_file()
+    assert proof.proof_markdown_path.is_file()
+
+    payload = json.loads(proof.proof_json_path.read_text(encoding="utf-8"))
+    assert payload["complete_pack_claim_allowed"] is False
+    assert payload["pack_outputs"]["manifest_exists"] is False
+    assert any(
+        "metric_family=classification" in reason for reason in payload["blocking_reasons"]
+    )
+    assert any(
+        "metric_family=unified-hotspot-ledger" in reason
+        for reason in payload["blocking_reasons"]
+    )
+    assert payload["regions"][0]["readiness"]["rows"][1]["status"] == "missing"
+    assert payload["regions"][0]["ledger"]["ledger_exists"] is False
+
+
+def test_build_phase4_evidence_pack_proof_rejects_ledger_participant_mismatch(
+    tmp_path: Path,
+) -> None:
+    phase4_root = tmp_path / "phase4"
+    pack_root = tmp_path / "pack"
+    contract = load_phase4_evidence_contract(output_root=phase4_root)
+    _write_pack_fixture(
+        contract,
+        region_ids=["amazon"],
+        trend_family_key_override="gwd30+wad2m",
+    )
+    _write_strict_proof_ready_inputs(contract, region_id="amazon")
+
+    proof = build_phase4_evidence_pack_proof(
+        phase4_output_root=phase4_root,
+        pack_output_root=pack_root,
+        requested_region_ids=["amazon"],
+        trend_participant_ids=TREND_PARTICIPANT_IDS,
+    )
+
+    assert proof.proof_verdict == "incomplete"
+    assert proof.pack_result is None
+    assert any(
+        "proof_stage=ledger-selector" in reason for reason in proof.blocking_reasons
+    )
+
+    payload = json.loads(proof.proof_json_path.read_text(encoding="utf-8"))
+    assert payload["regions"][0]["ledger"]["trend_family_keys"] == ["gwd30+wad2m"]
+
+
+def test_run_phase4_evidence_pack_help_mentions_subset_pack_root_and_strict() -> None:
     repo_root = Path(__file__).resolve().parents[2]
     completed = subprocess.run(
         [sys.executable, "scripts/run_phase4_evidence_pack.py", "--help"],
@@ -763,9 +971,10 @@ def test_run_phase4_evidence_pack_help_mentions_subset_and_pack_root() -> None:
     assert "ten" in completed.stdout
     assert "--pack-output-root" in completed.stdout
     assert "--phase4-output-root" in completed.stdout
+    assert "--strict" in completed.stdout
 
 
-def test_run_phase4_evidence_pack_cli_fails_closed_before_manifest_on_reload_error(
+def test_run_phase4_evidence_pack_cli_writes_incomplete_proof_without_strict(
     tmp_path: Path,
 ) -> None:
     repo_root = Path(__file__).resolve().parents[2]
@@ -773,6 +982,7 @@ def test_run_phase4_evidence_pack_cli_fails_closed_before_manifest_on_reload_err
     pack_root = tmp_path / "pack"
     contract = load_phase4_evidence_contract(output_root=phase4_root)
     _write_pack_fixture(contract, region_ids=["amazon"], malformed_ledger_json=True)
+    _write_strict_proof_ready_inputs(contract, region_id="amazon")
 
     completed = subprocess.run(
         [
@@ -797,8 +1007,51 @@ def test_run_phase4_evidence_pack_cli_fails_closed_before_manifest_on_reload_err
         check=False,
     )
 
-    assert completed.returncode != 0
+    assert completed.returncode == 0
     assert not phase4_pack_manifest_output_path(pack_root).exists()
+    assert phase4_pack_proof_json_output_path(pack_root).is_file()
     combined = completed.stdout + completed.stderr
-    assert "stage=pack" in combined
+    assert "stage=pack-proof action=incomplete" in combined
     assert "unified-hotspot-ledger" in combined
+
+
+def test_run_phase4_evidence_pack_cli_strict_fails_on_incomplete_proof(
+    tmp_path: Path,
+) -> None:
+    repo_root = Path(__file__).resolve().parents[2]
+    phase4_root = tmp_path / "phase4"
+    pack_root = tmp_path / "pack"
+    contract = load_phase4_evidence_contract(output_root=phase4_root)
+    _write_pack_fixture(contract, region_ids=["amazon"], malformed_ledger_json=True)
+    _write_strict_proof_ready_inputs(contract, region_id="amazon")
+
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "scripts/run_phase4_evidence_pack.py",
+            "--region",
+            "amazon",
+            "--phase4-output-root",
+            str(phase4_root),
+            "--pack-output-root",
+            str(pack_root),
+            "--ledger-key",
+            "canonical",
+            "--percentage-key",
+            "canonical",
+            "--classification-key",
+            "canonical",
+            "--strict",
+        ],
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert completed.returncode == 2
+    assert not phase4_pack_manifest_output_path(pack_root).exists()
+    assert phase4_pack_proof_markdown_output_path(pack_root).is_file()
+    combined = completed.stdout + completed.stderr
+    assert "stage=pack-proof action=incomplete" in combined
+    assert "strict=True" in combined

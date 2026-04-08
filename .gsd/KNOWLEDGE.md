@@ -108,3 +108,9 @@
 - In this repo, `load_phase4_unified_hotspot_ledger(...)` / `load_contract_unified_hotspot_ledger(...)` return the original ledger columns **plus** parsed helper columns like `contract_metadata` and `line_specific`.
 - If a downstream pack/export wants a deterministic CSV, re-select `UNIFIED_HOTSPOT_LEDGER_COLUMNS` before writing; otherwise pandas will serialize Python dict reprs for those helper columns and quietly change the output schema.
 - This matters for `src/WA/visualization/phase4_pack.py`, which needs the semantic reload convenience in memory but must preserve the ledger’s stable on-disk column contract in the derived hotspot table.
+
+## 2026-04-09 — Strict paper-pack proof depends on hotspot-family readiness, not just pack-safe reloads
+
+- In this repo’s Phase 4 paper-pack path, semantic reload of percentage/classification/trend summaries and the unified ledger is **not** sufficient for a strict complete-pack claim.
+- `build_phase4_evidence_pack_proof(...)` also depends on the three hotspot-family contract artifacts (`hotspot_manifest`, `classification_hotspot_manifest`, `trend_hotspot_manifest`) because scale-out readiness is the gate that authorizes a complete-pack claim.
+- This matters for local dry runs and fixture design: a paper pack can render figures/tables from pack inputs while strict proof still reports `incomplete` until the readiness hotspot families exist and reload cleanly.

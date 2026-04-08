@@ -30,7 +30,7 @@ from WA.comparison.trend_hotspots import (  # noqa: E402
 )
 from WA.visualization.phase4_pack import (  # noqa: E402
     DEFAULT_PHASE4_PACK_OUTPUT_ROOT,
-    build_phase4_evidence_pack,
+    build_phase4_evidence_pack_proof,
 )
 
 logger = logging.getLogger(__name__)
@@ -40,11 +40,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
             "Build a derived Phase 4 paper-facing evidence pack from semantic reloads "
-            "alone. The pack reopens contract-backed percentage/classification/trend/"
-            "ledger artifacts, writes percentage interannual + climatology figures, "
-            "one joined regional evidence table, one unified hotspot table, one "
-            "narrative summary, and one deterministic manifest under a pack root that "
-            "must stay outside results/phase4."
+            "alone. The pack claim surface now writes strict readiness + ledger "
+            "proof artifacts before it can report a complete pack. The derived pack "
+            "still reopens contract-backed percentage/classification/trend/ledger "
+            "artifacts, writes percentage interannual + climatology figures, one "
+            "joined regional evidence table, one unified hotspot table, one narrative "
+            "summary, and one deterministic manifest under a pack root that must stay "
+            "outside results/phase4."
         )
     )
     parser.add_argument("--regions-file", default=str(DEFAULT_PHASE4_REGIONS_FILE))
@@ -105,6 +107,17 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--strict",
+        action="store_true",
+        help=(
+            "Fail closed unless readiness rows are all ready, every requested unified "
+            "ledger reopens cleanly, selector keys match, and the pack writes a fresh "
+            "manifest. Without --strict, the CLI still writes explicit incomplete-proof "
+            "artifacts but returns success so operators can inspect gaps before the "
+            "final rerun."
+        ),
+    )
+    parser.add_argument(
         "--log-level",
         default="INFO",
         choices=("DEBUG", "INFO", "WARNING", "ERROR"),
@@ -143,38 +156,79 @@ def main(argv: list[str] | None = None) -> int:
             participant_set_key,
             exc,
         )
-        raise
+        return 1
 
     selector_label = args.subset or (
         "explicit-region-list" if args.region else "canonical"
     )
     logger.info(
-        "stage=pack selector=%s participant_set_key=%s region_ids=%s",
+        "stage=pack selector=%s strict=%s participant_set_key=%s region_ids=%s",
         selector_label,
+        args.strict,
         participant_set_key,
         [region.region_id for region in regions],
     )
 
-    result = build_phase4_evidence_pack(
-        phase4_output_root=args.phase4_output_root,
-        pack_output_root=args.pack_output_root,
-        regions_file=args.regions_file,
-        subset=args.subset,
-        requested_region_ids=args.region or None,
-        percentage_key=args.percentage_key,
-        classification_key=args.classification_key,
-        ledger_key=args.ledger_key,
-        trend_participant_ids=participant_ids,
-    )
+    try:
+        proof = build_phase4_evidence_pack_proof(
+            phase4_output_root=args.phase4_output_root,
+            pack_output_root=args.pack_output_root,
+            regions_file=args.regions_file,
+            subset=args.subset,
+            requested_region_ids=args.region or None,
+            percentage_key=args.percentage_key,
+            classification_key=args.classification_key,
+            ledger_key=args.ledger_key,
+            trend_participant_ids=participant_ids,
+        )
+    except Exception as exc:
+        logger.error(
+            "stage=pack-proof action=failed strict=%s selector=%s participant_set_key=%s "
+            "error=%s",
+            args.strict,
+            selector_label,
+            participant_set_key,
+            exc,
+        )
+        return 1
 
+    if proof.pack_build_error is not None:
+        logger.error(
+            "stage=pack-proof action=build-error strict=%s verdict=%s proof_json=%s "
+            "proof_markdown=%s error=%s",
+            args.strict,
+            proof.proof_verdict,
+            proof.proof_json_path,
+            proof.proof_markdown_path,
+            proof.pack_build_error,
+        )
+        return 1
+
+    if proof.proof_verdict != "complete":
+        log = logger.error if args.strict else logger.warning
+        log(
+            "stage=pack-proof action=incomplete strict=%s proof_json=%s proof_markdown=%s "
+            "manifest=%s blocking_reasons=%s",
+            args.strict,
+            proof.proof_json_path,
+            proof.proof_markdown_path,
+            proof.manifest_path,
+            list(proof.blocking_reasons),
+        )
+        return 2 if args.strict else 0
+
+    assert proof.pack_result is not None  # pragma: no cover - guarded by verdict
     logger.info(
-        "stage=pack action=cli-complete regions=%s manifest=%s summary=%s "
-        "joined_table=%s hotspot_table=%s",
-        list(result.resolved_region_ids),
-        result.manifest_path,
-        result.summary_path,
-        result.joined_regional_evidence_path,
-        result.unified_hotspot_table_path,
+        "stage=pack-proof action=complete strict=%s regions=%s manifest=%s summary=%s "
+        "joined_table=%s hotspot_table=%s proof_json=%s proof_markdown=%s",
+        args.strict,
+        list(proof.resolved_region_ids),
+        proof.pack_result.manifest_path,
+        proof.pack_result.summary_path,
+        proof.pack_result.joined_regional_evidence_path,
+        proof.pack_result.unified_hotspot_table_path,
+        proof.proof_json_path,
+        proof.proof_markdown_path,
     )
     return 0
 
