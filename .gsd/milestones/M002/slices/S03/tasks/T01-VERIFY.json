@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "taskId": "T01",
+  "unitId": "M002/S03/T01",
+  "timestamp": 1775655553913,
+  "passed": true,
+  "discoverySource": "task-plan",
+  "checks": [
+    {
+      "command": "ruff check src/WA/comparison/evidence_contract.py tests/test_comparison/test_evidence_contract.py\npython -m pytest tests/test_comparison/test_evidence_contract.py -q",
+      "exitCode": 0,
+      "durationMs": 1445,
+      "verdict": "pass"
+    }
+  ]
+}

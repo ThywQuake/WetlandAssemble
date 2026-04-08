@@ -1,0 +1,32 @@
+{
+  "template": "bugfix",
+  "templateName": "Bug Fix",
+  "description": "Traceback (most recent call last): File \"/lustre/home/2200013429/repos/WA2/scripts/run_phase4_regional.py\", line 151, in <module> main() ~~~~^^ File \"/lustre/home/2200013429/repos/WA2/scripts/run_phase4_regional.py\", line 118, in main region_mask = build_or_load_phase4_berkeley_valid_mask( region=region, ...<3 lines>... skip_existing=args.skip, ) File \"/lustre/home/2200013429/repos/WA2/src/WA/comparison/phase4_regional.py\", line 1652, in build_or_load_phase4_berkeley_valid_mask mask_source_time_range = _resolve_phase4_berkeley_mask_source_time_range( standardized_dir=standardized_dir, requested_time_range=time_range, ) File \"/lustre/home/2200013429/repos/WA2/src/WA/comparison/phase4_regional.py\", line 1714, in _resolve_phase4_berkeley_mask_source_time_range source_paths = standardized.resolve_file_paths( \"berkeley_rwawc\", time_range=requested_time_range, ) File \"/lustre/home/2200013429/repos/WA2/src/WA/standardized_loader.py\", line 149, in resolve_file_paths raise FileNotFoundError( f\"No standardized files for {base_id} overlap {time_range!r}\" ) FileNotFoundError: No standardized files for berkeley_rwawc overlap ('2017-01-01', '2017-12-31')",
+  "branch": "gsd/bugfix/traceback-most-recent-call-last-file-lus",
+  "phases": [
+    {
+      "name": "triage",
+      "index": 0,
+      "status": "active"
+    },
+    {
+      "name": "fix",
+      "index": 1,
+      "status": "pending"
+    },
+    {
+      "name": "verify",
+      "index": 2,
+      "status": "pending"
+    },
+    {
+      "name": "ship",
+      "index": 3,
+      "status": "pending"
+    }
+  ],
+  "currentPhase": 0,
+  "startedAt": "2026-04-07T13:04:04.536Z",
+  "updatedAt": "2026-04-07T13:04:04.536Z",
+  "artifactDir": "/Users/mac/Code/WA/.gsd/workflows/bugfixes/260407-1-traceback-most-recent-call-last-file-lus"
+}

@@ -1,0 +1,6 @@
+{"ts":"2026-04-06T19:29:11.502Z","flowId":"733599e5-ed8c-4d9c-9e0a-0b10fc68bdc4","seq":0,"eventType":"worktree-enter","data":{"milestoneId":"M001","wtPath":"/Users/mac/Code/WA/.gsd/worktrees/M001","created":true}}
+{"ts":"2026-04-06T19:29:26.973Z","flowId":"95567fab-49af-462b-9667-9194b6434b43","seq":0,"eventType":"worktree-enter","data":{"milestoneId":"M001","wtPath":"/Users/mac/Code/WA/.gsd/worktrees/M001","created":false}}
+{"ts":"2026-04-06T20:15:23.912Z","flowId":"c0611d26-95b5-406a-93df-aeb4e42e4dd2","seq":0,"eventType":"worktree-enter","data":{"milestoneId":"M001","wtPath":"/Users/mac/Code/WA/.gsd/worktrees/M001","created":false}}
+{"ts":"2026-04-06T20:32:03.201Z","flowId":"b16fd8c2-9f62-42bc-bdf8-f3afa5ca66d1","seq":0,"eventType":"worktree-enter","data":{"milestoneId":"M001","wtPath":"/Users/mac/Code/WA/.gsd/worktrees/M001","created":false}}
+{"ts":"2026-04-06T23:26:30.934Z","flowId":"d9e76b6d-74bd-492a-9bea-1257d131c00d","seq":0,"eventType":"worktree-merge-start","data":{"milestoneId":"M001","mode":"worktree"}}
+{"ts":"2026-04-06T23:26:31.564Z","flowId":"ef95dab5-a2ce-4fb1-ae63-3aeea9222699","seq":2,"eventType":"terminal","data":{"reason":"no-active-milestone"}}
