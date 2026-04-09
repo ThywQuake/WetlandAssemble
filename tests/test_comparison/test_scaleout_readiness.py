@@ -36,6 +36,13 @@ from WA.comparison.trend_hotspots import (
 
 PERCENTAGE_DATASET_IDS = ("gwd30", "wad2m")
 TREND_PARTICIPANT_IDS = ("gwd30", "wad2m")
+FULL_CONTRACT_TREND_PARTICIPANT_IDS = (
+    "gwd30",
+    "giems_mc",
+    "topmodel",
+    "swamps",
+    "wad2m",
+)
 
 
 def _region_coords(bbox: tuple[float, float, float, float]) -> dict[str, list[float]]:
@@ -313,7 +320,11 @@ def _write_classification_family(contract, region_id: str) -> None:
     )
 
 
-def _make_agreement_result(bbox: tuple[float, float, float, float]) -> TrendAgreementResult:
+def _make_agreement_result(
+    bbox: tuple[float, float, float, float],
+    *,
+    participant_ids: tuple[str, ...],
+) -> TrendAgreementResult:
     coords = _region_coords(bbox)
     agreement_ratio = xr.DataArray(
         np.array([[0.5, 0.75], [1.0, 1.0]], dtype=np.float64),
@@ -338,7 +349,7 @@ def _make_agreement_result(bbox: tuple[float, float, float, float]) -> TrendAgre
     false_mask = xr.zeros_like(disputed, dtype=bool)
     return TrendAgreementResult(
         overlap_window=("2001-01-01", "2010-12-31"),
-        participant_ids=list(TREND_PARTICIPANT_IDS),
+        participant_ids=list(participant_ids),
         agreement_ratio=agreement_ratio,
         mean_slope=mean_slope,
         slope_std=slope_std,
@@ -362,8 +373,13 @@ def _make_agreement_result(bbox: tuple[float, float, float, float]) -> TrendAgre
     )
 
 
-def _write_trend_family(contract, region_id: str) -> None:
-    participant_set_key = build_participant_set_key(TREND_PARTICIPANT_IDS)
+def _write_trend_family(
+    contract,
+    region_id: str,
+    *,
+    participant_ids: tuple[str, ...] = TREND_PARTICIPANT_IDS,
+) -> None:
+    participant_set_key = build_participant_set_key(participant_ids)
     surface_path = contract.artifact_output_path(
         kind="trend_agreement_surface",
         dataset_or_key=participant_set_key,
@@ -380,9 +396,12 @@ def _write_trend_family(contract, region_id: str) -> None:
     summary_path.write_text("agreement,summary\n", encoding="utf-8")
     write_trend_hotspot_outputs(
         contract=contract,
-        agreement_result=_make_agreement_result(contract.regions_by_id[region_id].bbox),
+        agreement_result=_make_agreement_result(
+            contract.regions_by_id[region_id].bbox,
+            participant_ids=participant_ids,
+        ),
         region_id=region_id,
-        participant_ids=TREND_PARTICIPANT_IDS,
+        participant_ids=participant_ids,
         surface_output_path=surface_path,
         summary_output_path=summary_path,
         top_n=2,
@@ -515,6 +534,43 @@ def test_write_scaleout_readiness_report_writes_csv_and_json_for_ten_subset(
     assert payload["resolved_region_ids"] == list(contract.ordered_ten_region_ids)
     assert payload["ready_region_ids"] == []
     assert payload["rows"][0]["metric_family"] == "percentage"
+
+
+def test_write_scaleout_readiness_report_marks_ten_region_contract_ready_in_order(
+    tmp_path: Path,
+) -> None:
+    contract = load_phase4_evidence_contract(output_root=tmp_path)
+    for region_id in contract.ordered_ten_region_ids:
+        _write_percentage_family(contract, region_id)
+        _write_classification_family(contract, region_id)
+        _write_trend_family(
+            contract,
+            region_id,
+            participant_ids=FULL_CONTRACT_TREND_PARTICIPANT_IDS,
+        )
+
+    report = write_scaleout_readiness_report(
+        contract=contract,
+        subset="ten",
+        trend_participant_ids=FULL_CONTRACT_TREND_PARTICIPANT_IDS,
+    )
+
+    payload = json.loads(report.json_path.read_text(encoding="utf-8"))
+
+    assert report.csv_path.name == (
+        "subset-ten__canonical__canonical__"
+        "giems_mc+gwd30+swamps+topmodel+wad2m__scaleout_readiness.csv"
+    )
+    assert report.ready_region_ids == contract.ordered_ten_region_ids
+    assert report.incomplete_region_ids == ()
+    assert report.table["region_id"].drop_duplicates().tolist() == list(
+        contract.ordered_ten_region_ids
+    )
+    assert set(report.table["status"]) == {"ready"}
+    assert report.table["region_ready"].astype(bool).all()
+    assert payload["ready_region_ids"] == list(contract.ordered_ten_region_ids)
+    assert payload["incomplete_region_ids"] == []
+    assert all(row["status"] == "ready" for row in payload["rows"])
 
 
 def test_run_phase4_scaleout_readiness_help_mentions_statuses_and_subset() -> None:

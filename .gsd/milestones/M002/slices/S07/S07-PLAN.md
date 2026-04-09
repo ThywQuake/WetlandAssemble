@@ -170,7 +170,7 @@ rsync -avz \
   2200013429@wm2-data.pku.edu.cn:/lustre/home/2200013429/repos/WA2/results/phase4/proof/phase4-trend-contract-submit.tsv \
   results/phase4/proof/
 test -s results/phase4/proof/phase4-trend-contract-submit.tsv
-- [ ] **T04: Reopen readiness and unified ledgers only after the authenticated outputs exist** — Why: readiness and ledger are still the S07 acceptance gate, but they must now run only after the authenticated HPC rerun has produced real percentage/classification/trend outputs. This task turns the old downstream proof into an explicit fail-closed post-materialization gate.
+- [x] **T04: Pinned the T04 fail-closed gate with exact ten-region readiness/ledger regressions and a stop-state proof note showing authenticated outputs are still missing.** — Why: readiness and ledger are still the S07 acceptance gate, but they must now run only after the authenticated HPC rerun has produced real percentage/classification/trend outputs. This task turns the old downstream proof into an explicit fail-closed post-materialization gate.
 
 Steps
 1. In the authenticated HPC repo that now contains all three upstream families, run `scripts/run_phase4_scaleout_readiness.py` with `--subset ten`, canonical percentage/classification keys, and the same five trend dataset ids from T03.

@@ -30,9 +30,20 @@ from WA.comparison.trend_agreement import TrendAgreementResult
 from WA.comparison.trend_hotspots import write_trend_hotspot_outputs
 
 TREND_PARTICIPANT_IDS = ["wad2m", "gwd30"]
+FULL_CONTRACT_TREND_PARTICIPANT_IDS = [
+    "gwd30",
+    "giems_mc",
+    "topmodel",
+    "swamps",
+    "wad2m",
+]
 
 
-def _make_agreement_result() -> TrendAgreementResult:
+def _make_agreement_result(
+    *,
+    region_id: str,
+    participant_ids: list[str],
+) -> TrendAgreementResult:
     coords = {"lat": [1.0, 0.0], "lon": [100.0, 101.0]}
     agreement_ratio = xr.DataArray(
         np.array([[0.5, 0.75], [1.0, 1.0]], dtype=np.float64),
@@ -57,7 +68,7 @@ def _make_agreement_result() -> TrendAgreementResult:
     false_mask = xr.zeros_like(disputed, dtype=bool)
     return TrendAgreementResult(
         overlap_window=("2001-01-01", "2010-12-31"),
-        participant_ids=TREND_PARTICIPANT_IDS,
+        participant_ids=list(participant_ids),
         agreement_ratio=agreement_ratio,
         mean_slope=mean_slope,
         slope_std=slope_std,
@@ -67,7 +78,7 @@ def _make_agreement_result() -> TrendAgreementResult:
         disputed=disputed,
         regional_summary=pd.DataFrame(
             {
-                "region": ["amazon", "global"],
+                "region": [region_id, "global"],
                 "total_valid_pixels": [2, 2],
                 "mean_agreement_ratio": [0.625, 0.625],
                 "fraction_robust_increase": [0.0, 0.0],
@@ -81,17 +92,22 @@ def _make_agreement_result() -> TrendAgreementResult:
     )
 
 
-def _write_dummy_agreement_inputs(contract) -> tuple[Path, Path]:
-    participant_set_key = "gwd30+wad2m"
+def _write_dummy_agreement_inputs(
+    contract,
+    *,
+    region_id: str,
+    participant_ids: list[str],
+) -> tuple[Path, Path]:
+    participant_set_key = "+".join(sorted(participant_ids))
     surface_path = contract.artifact_output_path(
         kind="trend_agreement_surface",
         dataset_or_key=participant_set_key,
-        region_id="amazon",
+        region_id=region_id,
     )
     summary_path = contract.artifact_output_path(
         kind="trend_agreement_summary",
         dataset_or_key=participant_set_key,
-        region_id="amazon",
+        region_id=region_id,
     )
     surface_path.parent.mkdir(parents=True, exist_ok=True)
     summary_path.parent.mkdir(parents=True, exist_ok=True)
@@ -192,12 +208,12 @@ def _write_generic_hotspot_family(
     return manifest_path, table_path
 
 
-def _base_percentage_rows() -> list[dict[str, Any]]:
+def _base_percentage_rows(*, region_id: str) -> list[dict[str, Any]]:
     return [
         {
-            "hotspot_id": "pct-amazon-001",
+            "hotspot_id": f"pct-{region_id}-001",
             "hotspot_rank": 1,
-            "region_id": "amazon",
+            "region_id": region_id,
             "dataset_key": "canonical",
             "center_lat": 0.8,
             "center_lon": 100.2,
@@ -206,9 +222,9 @@ def _base_percentage_rows() -> list[dict[str, Any]]:
             "wetland_area_km2": 125.0,
         },
         {
-            "hotspot_id": "pct-amazon-002",
+            "hotspot_id": f"pct-{region_id}-002",
             "hotspot_rank": 2,
-            "region_id": "amazon",
+            "region_id": region_id,
             "dataset_key": "canonical",
             "center_lat": 0.4,
             "center_lon": 100.8,
@@ -219,12 +235,12 @@ def _base_percentage_rows() -> list[dict[str, Any]]:
     ]
 
 
-def _base_classification_rows() -> list[dict[str, Any]]:
+def _base_classification_rows(*, region_id: str) -> list[dict[str, Any]]:
     return [
         {
-            "hotspot_id": "cls-amazon-001",
+            "hotspot_id": f"cls-{region_id}-001",
             "hotspot_rank": 1,
-            "region_id": "amazon",
+            "region_id": region_id,
             "dataset_key": "canonical",
             "center_lat": 0.9,
             "center_lon": 100.1,
@@ -236,27 +252,39 @@ def _base_classification_rows() -> list[dict[str, Any]]:
     ]
 
 
-def _write_source_families(contract) -> None:
+def _write_source_families(
+    contract,
+    *,
+    region_id: str = "amazon",
+    trend_participant_ids: list[str] = TREND_PARTICIPANT_IDS,
+) -> None:
     _write_generic_hotspot_family(
         contract,
         metric_family="percentage",
-        region_id="amazon",
+        region_id=region_id,
         dataset_key="canonical",
-        rows=_base_percentage_rows(),
+        rows=_base_percentage_rows(region_id=region_id),
     )
     _write_generic_hotspot_family(
         contract,
         metric_family="classification",
-        region_id="amazon",
+        region_id=region_id,
         dataset_key="canonical",
-        rows=_base_classification_rows(),
+        rows=_base_classification_rows(region_id=region_id),
     )
-    surface_path, summary_path = _write_dummy_agreement_inputs(contract)
+    surface_path, summary_path = _write_dummy_agreement_inputs(
+        contract,
+        region_id=region_id,
+        participant_ids=trend_participant_ids,
+    )
     write_trend_hotspot_outputs(
         contract=contract,
-        agreement_result=_make_agreement_result(),
-        region_id="amazon",
-        participant_ids=TREND_PARTICIPANT_IDS,
+        agreement_result=_make_agreement_result(
+            region_id=region_id,
+            participant_ids=trend_participant_ids,
+        ),
+        region_id=region_id,
+        participant_ids=trend_participant_ids,
         surface_output_path=surface_path,
         summary_output_path=summary_path,
         top_n=2,
@@ -376,12 +404,19 @@ def test_build_unified_hotspot_ledger_requires_all_families(tmp_path: Path) -> N
         metric_family="percentage",
         region_id="amazon",
         dataset_key="canonical",
-        rows=_base_percentage_rows(),
+        rows=_base_percentage_rows(region_id="amazon"),
     )
-    surface_path, summary_path = _write_dummy_agreement_inputs(contract)
+    surface_path, summary_path = _write_dummy_agreement_inputs(
+        contract,
+        region_id="amazon",
+        participant_ids=TREND_PARTICIPANT_IDS,
+    )
     write_trend_hotspot_outputs(
         contract=contract,
-        agreement_result=_make_agreement_result(),
+        agreement_result=_make_agreement_result(
+            region_id="amazon",
+            participant_ids=TREND_PARTICIPANT_IDS,
+        ),
         region_id="amazon",
         participant_ids=TREND_PARTICIPANT_IDS,
         surface_output_path=surface_path,
@@ -498,6 +533,84 @@ def test_build_unified_hotspot_ledger_rejects_duplicate_analysis_object_candidat
         )
 
 
+def test_run_phase4_hotspot_ledger_writes_ten_subset_representative_ledgers(
+    tmp_path: Path,
+) -> None:
+    contract = load_phase4_evidence_contract(output_root=tmp_path)
+    for region_id in contract.ordered_ten_region_ids:
+        _write_source_families(
+            contract,
+            region_id=region_id,
+            trend_participant_ids=FULL_CONTRACT_TREND_PARTICIPANT_IDS,
+        )
+
+    repo_root = Path(__file__).resolve().parents[2]
+    command = [
+        sys.executable,
+        "scripts/run_phase4_hotspot_ledger.py",
+        "--output-root",
+        str(tmp_path),
+        "--subset",
+        "ten",
+        "--ledger-key",
+        "canonical",
+        "--percentage-key",
+        "canonical",
+        "--classification-key",
+        "canonical",
+        "--no-skip",
+    ]
+    for dataset_id in FULL_CONTRACT_TREND_PARTICIPANT_IDS:
+        command.extend(["--trend-dataset-id", dataset_id])
+
+    completed = subprocess.run(
+        command,
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert completed.returncode == 0
+    combined_output = completed.stderr + completed.stdout
+    assert "stage=ledger region=amazon action=ready" in combined_output
+    assert "stage=ledger region=northernaus action=ready" in combined_output
+
+    amazon_ledger = unified_hotspot_ledger_output_path(
+        contract,
+        ledger_key="canonical",
+        region_id="amazon",
+    )
+    northernaus_ledger = unified_hotspot_ledger_output_path(
+        contract,
+        ledger_key="canonical",
+        region_id="northernaus",
+    )
+    assert amazon_ledger.is_file()
+    assert northernaus_ledger.is_file()
+    ledger_paths = list(
+        (tmp_path / "unified_hotspot_ledgers").rglob("*_unified_hotspot_ledger.csv")
+    )
+    assert len(ledger_paths) == len(contract.ordered_ten_region_ids)
+
+    amazon_bundle = load_contract_unified_hotspot_ledger(
+        contract=contract,
+        region_id="amazon",
+        ledger_key="canonical",
+    )
+    northernaus_bundle = load_contract_unified_hotspot_ledger(
+        contract=contract,
+        region_id="northernaus",
+        ledger_key="canonical",
+    )
+    for bundle in (amazon_bundle, northernaus_bundle):
+        assert set(bundle.table["metric_family"]) == {
+            "percentage",
+            "classification",
+            "trend",
+        }
+
+
 def test_run_phase4_hotspot_ledger_help_mentions_skip_ledger_and_readiness() -> None:
     repo_root = Path(__file__).resolve().parents[2]
     completed = subprocess.run(
@@ -523,12 +636,19 @@ def test_run_phase4_hotspot_ledger_fails_closed_on_missing_family(tmp_path: Path
         metric_family="percentage",
         region_id="amazon",
         dataset_key="canonical",
-        rows=_base_percentage_rows(),
+        rows=_base_percentage_rows(region_id="amazon"),
     )
-    surface_path, summary_path = _write_dummy_agreement_inputs(contract)
+    surface_path, summary_path = _write_dummy_agreement_inputs(
+        contract,
+        region_id="amazon",
+        participant_ids=TREND_PARTICIPANT_IDS,
+    )
     write_trend_hotspot_outputs(
         contract=contract,
-        agreement_result=_make_agreement_result(),
+        agreement_result=_make_agreement_result(
+            region_id="amazon",
+            participant_ids=TREND_PARTICIPANT_IDS,
+        ),
         region_id="amazon",
         participant_ids=TREND_PARTICIPANT_IDS,
         surface_output_path=surface_path,

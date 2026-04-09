@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "taskId": "T03",
+  "unitId": "M002/S07/T03",
+  "timestamp": 1775707627229,
+  "passed": false,
+  "discoverySource": "task-plan",
+  "checks": [
+    {
+      "command": "# Run from an authenticated workstation / 需在已认证工作站执行\nrsync -avz --delete --exclude-from=.gitignore ./ \\\n  2200013429@wm2-data.pku.edu.cn:/lustre/home/2200013429/repos/WA2/\nssh 2200013429@wm2-data.pku.edu.cn <<'SH'\nset -euo pipefail\ncd /lustre/home/2200013429/repos/WA2\npython scripts/run_phase4_percentage_contract.py \\\n  --subset ten \\\n  --output-root results/phase4 \\\n  --standardized-dir /lustre/home/2200013429/Wetland_Assemble/data/standardized \\\n  --dataset-key canonical \\\n  --surface-year 2016 \\\n  --start-year 1990 \\\n  --end-year 2020 \\\n  --no-skip\npython scripts/run_phase4_classification_contract.py \\\n  --subset ten \\\n  --standardized-dir /lustre/home/2200013429/Wetland_Assemble/data/standardized \\\n  --output-root results/phase4 \\\n  --classification-key canonical \\\n  --year 2016 \\\n  --phase36-output-dir results/phase3.6 \\\n  --phase36-cache-dir results/cache/phase3_6 \\\n  --phase37-output-dir results/phase3.7_hotspots \\\n  --phase37-cache-dir results/cache/phase3_7 \\\n  --no-skip\nbash scripts/submit_phase4_trend_contract.sh \\\n  --repo \"$PWD\" \\\n  --python-bin \"$PWD/.venv/bin/python\" \\\n  --standardized-dir /lustre/home/2200013429/Wetland_Assemble/data/standardized \\\n  --output-root results/phase4 \\\n  --subset ten \\\n  --dataset-id gwd30 \\\n  --dataset-id giems_mc \\\n  --dataset-id topmodel \\\n  --dataset-id swamps \\\n  --dataset-id wad2m \\\n  --aggregation annual \\\n  --start-year 1990 \\\n  --end-year 2020 \\\n  --min-observations 5 \\\n  --min-overlap-years 5 \\\n  --top-hotspots 10 \\\n  --cpus 2 \\\n  --time 480 \\\n  --partition C064M0256G \\\n  --jobs-base temp/slurm-jobs-s07 \\\n  --tmp-root temp/slurm-tmp-s07 \\\n  --no-progress\ntest -f results/phase4/hotspot_manifests/amazon/canonical__amazon__hotspot_manifest.json\ntest -f results/phase4/hotspot_manifests/northernaus/canonical__northernaus__hotspot_manifest.json\ntest -f results/phase4/classification_hotspot_manifests/amazon/canonical__amazon__classification_hotspot_manifest.json\ntest -f results/phase4/classification_hotspot_manifests/northernaus/canonical__northernaus__classification_hotspot_manifest.json\ntest -f results/phase4/trend_hotspot_manifests/amazon/giems_mc+gwd30+swamps+topmodel+wad2m__amazon__trend_hotspot_manifest.json\ntest -f results/phase4/trend_hotspot_manifests/northernaus/giems_mc+gwd30+swamps+topmodel+wad2m__northernaus__trend_hotspot_manifest.json\nSH\nrsync -avz \\\n  2200013429@wm2-data.pku.edu.cn:/lustre/home/2200013429/repos/WA2/results/phase4/proof/phase4-trend-contract-submit.tsv \\\n  results/phase4/proof/\ntest -s results/phase4/proof/phase4-trend-contract-submit.tsv",
+      "exitCode": 1,
+      "durationMs": 65801,
+      "verdict": "fail"
+    }
+  ],
+  "retryAttempt": 1,
+  "maxRetries": 2
+}

@@ -138,3 +138,15 @@
 - `scripts/submit_phase4_trend_contract.sh` imports `WA.comparison.evidence_contract` during preflight region resolution, which can transitively require repo dependencies like `yaml` before any job script is emitted.
 - The standalone `pytest` toolchain may execute under a different interpreter from the repo venv, so fake-repo tests that make `--python-bin` fall back to `sys.executable` can fail with `ModuleNotFoundError: yaml` even when the real repo dry-run works.
 - In `tests/test_submit_phase4_trend_contract.py`, point the fake repo interpreter at `.venv/bin/python` (or another dependency-complete repo interpreter) so failures reflect wrapper logic and not harness interpreter drift.
+
+## 2026-04-09 — Use `uv run --with pytest --python .venv/bin/python` when repo deps and pytest live in split envs
+
+- In this repo snapshot, `.venv/bin/python` has the scientific stack (`numpy`, `pandas`, `xarray`) but no `pytest`, while the standalone `pytest` tool runs under Python 3.14 and cannot import the repo’s Python 3.13 wheels.
+- The working verification recipe is `uv run --with pytest --python .venv/bin/python python -m pytest ...`, which creates a temporary runner that can see both `pytest` and the repo dependency set without mutating `.venv`.
+- This matters for Phase 4 comparison tests: bare `pytest` / `uv run pytest` can fail at collection with `ModuleNotFoundError: numpy` even though the underlying code runs correctly under the repo interpreter.
+
+## 2026-04-09 — Do not mistake local T04 readiness diagnostics for synced-back ten-region proof
+
+- `python scripts/run_phase4_scaleout_readiness.py --subset ten ...` will happily write a deterministic subset-ten CSV/JSON even when every family is still missing; in that state `ready_region_ids` stays empty and `incomplete_region_ids` lists all ten contract regions.
+- `python scripts/run_phase4_hotspot_ledger.py --subset ten ... --no-skip` fails closed on the first missing family and auto-writes only a single-region readiness diagnostic (for example `regions-amazon__...__scaleout_readiness.json`) plus `stage=ledger action=family-context` logs.
+- Neither the all-missing subset-ten readiness report nor the single-region ledger diagnostic counts as S07 completion or S08 handoff proof; only authenticated, synced-back all-green readiness artifacts plus reopened representative ledgers do.
