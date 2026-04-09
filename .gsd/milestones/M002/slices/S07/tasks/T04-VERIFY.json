@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "taskId": "T04",
+  "unitId": "M002/S07/T04",
+  "timestamp": 1775708843031,
+  "passed": false,
+  "discoverySource": "task-plan",
+  "checks": [
+    {
+      "command": "# Run from an authenticated workstation / 需在已认证工作站执行\nssh 2200013429@wm2-data.pku.edu.cn <<'SH'\nset -euo pipefail\ncd /lustre/home/2200013429/repos/WA2\npython scripts/run_phase4_scaleout_readiness.py \\\n  --subset ten \\\n  --output-root results/phase4 \\\n  --percentage-key canonical \\\n  --classification-key canonical \\\n  --trend-dataset-id gwd30 \\\n  --trend-dataset-id giems_mc \\\n  --trend-dataset-id topmodel \\\n  --trend-dataset-id swamps \\\n  --trend-dataset-id wad2m\npython - <<'PY'\nimport json\nfrom pathlib import Path\npath = Path('results/phase4/scaleout_readiness/subset-ten__canonical__canonical__giems_mc+gwd30+swamps+topmodel+wad2m__scaleout_readiness.json')\npayload = json.loads(path.read_text())\nexpected = ['amazon', 'orinoco', 'pantanal', 'indogangetic', 'mekong', 'sudd', 'congo', 'okavango', 'borneo', 'northernaus']\nassert payload['ready_region_ids'] == expected, payload['ready_region_ids']\nassert payload['incomplete_region_ids'] == [], payload['incomplete_region_ids']\nassert all(row['status'] == 'ready' for row in payload['rows']), 'non-ready row present'\nPY\npython scripts/run_phase4_hotspot_ledger.py \\\n  --subset ten \\\n  --output-root results/phase4 \\\n  --ledger-key canonical \\\n  --percentage-key canonical \\\n  --classification-key canonical \\\n  --trend-dataset-id gwd30 \\\n  --trend-dataset-id giems_mc \\\n  --trend-dataset-id topmodel \\\n  --trend-dataset-id swamps \\\n  --trend-dataset-id wad2m \\\n  --no-skip\ntest -f results/phase4/unified_hotspot_ledgers/amazon/canonical__amazon__unified_hotspot_ledger.csv\ntest -f results/phase4/unified_hotspot_ledgers/northernaus/canonical__northernaus__unified_hotspot_ledger.csv\nSH\nrsync -avz \\\n  2200013429@wm2-data.pku.edu.cn:/lustre/home/2200013429/repos/WA2/results/phase4/scaleout_readiness/ \\\n  results/phase4/scaleout_readiness/\nrsync -avz \\\n  2200013429@wm2-data.pku.edu.cn:/lustre/home/2200013429/repos/WA2/results/phase4/unified_hotspot_ledgers/ \\\n  results/phase4/unified_hotspot_ledgers/\ntest -f results/phase4/unified_hotspot_ledgers/amazon/canonical__amazon__unified_hotspot_ledger.csv\ntest -f results/phase4/unified_hotspot_ledgers/northernaus/canonical__northernaus__unified_hotspot_ledger.csv",
+      "exitCode": 127,
+      "durationMs": 120071,
+      "verdict": "fail"
+    }
+  ],
+  "retryAttempt": 1,
+  "maxRetries": 2
+}

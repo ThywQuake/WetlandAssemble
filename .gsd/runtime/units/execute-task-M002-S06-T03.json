@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "unitType": "execute-task",
+  "unitId": "M002/S06/T03",
+  "startedAt": 1775683990123,
+  "updatedAt": 1775685790086,
+  "phase": "recovered",
+  "wrapupWarningSent": true,
+  "continueHereFired": false,
+  "timeoutAt": 1775685790037,
+  "lastProgressAt": 1775685790086,
+  "progressCount": 1,
+  "lastProgressKind": "hard-recovery-retry",
+  "recovery": {
+    "planPath": ".gsd/milestones/M002/slices/S06/S06-PLAN.md",
+    "summaryPath": ".gsd/milestones/M002/slices/S06/tasks/T03-SUMMARY.md",
+    "summaryExists": true,
+    "taskChecked": false,
+    "nextActionAdvanced": false,
+    "mustHaveCount": 3,
+    "mustHavesMentionedInSummary": 3
+  },
+  "recoveryAttempts": 1,
+  "lastRecoveryReason": "hard"
+}

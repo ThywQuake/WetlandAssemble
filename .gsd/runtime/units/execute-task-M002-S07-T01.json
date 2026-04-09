@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "unitType": "execute-task",
+  "unitId": "M002/S07/T01",
+  "startedAt": 1775688654686,
+  "updatedAt": 1775689254687,
+  "phase": "dispatched",
+  "wrapupWarningSent": false,
+  "continueHereFired": false,
+  "timeoutAt": null,
+  "lastProgressAt": 1775689254687,
+  "progressCount": 0,
+  "lastProgressKind": "tool-in-flight",
+  "recoveryAttempts": 0
+}

@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "unitType": "replan-slice",
+  "unitId": "M002/S07",
+  "startedAt": 1775690149380,
+  "updatedAt": 1775690149380,
+  "phase": "dispatched",
+  "wrapupWarningSent": false,
+  "continueHereFired": false,
+  "timeoutAt": null,
+  "lastProgressAt": 1775690149380,
+  "progressCount": 0,
+  "lastProgressKind": "dispatch",
+  "recoveryAttempts": 0
+}
