@@ -29,6 +29,7 @@ PROGRESS=1
 VERBOSE=0
 DRY_RUN=0
 SUMMARY_FILE=""
+PARTICIPANT_SET_KEY=""
 REGION_FILTERS=()
 DATASET_IDS=()
 DEFAULT_DATASET_IDS=(gwd30 giems_mc topmodel swamps wad2m)
@@ -110,6 +111,30 @@ for region_id in contract.resolve_region_ids(subset=subset, requested_region_ids
 PY
 }
 
+resolve_participant_set_key() {
+    local repo_root="${SCRIPT_DIR}/.."
+    local dataset_csv=""
+    if [[ ${#DATASET_IDS[@]} -gt 0 ]]; then
+        dataset_csv="$(IFS=,; printf '%s' "${DATASET_IDS[*]}")"
+    fi
+
+    "${PYTHON_BIN}" - <<'PY' "${repo_root}" "${dataset_csv}"
+from pathlib import Path
+import sys
+
+repo_root = Path(sys.argv[1]).resolve()
+dataset_csv = sys.argv[2].strip()
+dataset_ids = [item for item in dataset_csv.split(",") if item]
+sys.path.insert(0, str(repo_root / "src"))
+from WA.comparison.trend_hotspots import build_participant_set_key  # noqa: E402
+
+try:
+    print(build_participant_set_key(dataset_ids))
+except Exception as exc:
+    raise SystemExit(f"Invalid --dataset-id values: {exc}")
+PY
+}
+
 build_region_script() {
     local region="$1"
     local job_name="phase4-trend-contract-${region}-${TIMESTAMP}"
@@ -171,7 +196,7 @@ build_region_script() {
         echo '  exit 1'
         echo 'fi'
         echo
-        echo "echo \"=== Phase4 trend contract region=${region} aggregation=${AGGREGATION} years=${START_YEAR}-${END_YEAR} ===\""
+        echo "echo \"=== Phase4 trend contract region=${region} participant_set_key=${PARTICIPANT_SET_KEY} aggregation=${AGGREGATION} years=${START_YEAR}-${END_YEAR} ===\""
         echo 'echo "Start: $(date)"'
         printf '%q scripts/run_phase4_trend_contract.py' "${PYTHON_BIN}"
         local arg
@@ -343,6 +368,8 @@ if [[ ! -x "${PYTHON_BIN}" ]]; then
     exit 1
 fi
 
+PARTICIPANT_SET_KEY="$(resolve_participant_set_key)"
+
 mkdir -p "${JOBS_BASE}"
 SUMMARY_FILE="${JOBS_BASE}/phase4-trend-contract-${TIMESTAMP}.tsv"
 printf 'region\tjob_name\tjob_id\tscript\n' > "${SUMMARY_FILE}"
@@ -366,6 +393,7 @@ echo "Regions file: ${REGIONS_FILE}"
 echo "Subset:       ${selector_label}"
 echo "Regions:      ${region_csv}"
 echo "Datasets:     ${dataset_csv}"
+echo "Participant set key: ${PARTICIPANT_SET_KEY}"
 echo "Aggregation:  ${AGGREGATION}"
 echo "Years:        ${START_YEAR}-${END_YEAR}"
 echo "Output root:  ${OUTPUT_ROOT}"

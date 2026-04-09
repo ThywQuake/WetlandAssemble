@@ -132,3 +132,9 @@
 - The project `sync-hpc` route resolves to `rsync`/`ssh` against `2200013429@wm2-data.pku.edu.cn:/lustre/home/2200013429/repos/WA2/`, with a Mac-local wrapper under `/Users/mac/.ssh/script/with_pkuhpc_auth.sh` in the normal user workflow.
 - Inside this non-interactive container, the host is reachable, but both raw `ssh` and `rsync` fail at `OTP Verification Fail!` / `Permission denied (keyboard-interactive)` because there is no interactive terminal or `ssh-askpass` path to satisfy the challenge.
 - For HPC-only tasks, treat that as an external execution boundary and preserve exact rerun commands/proof notes rather than misdiagnosing the stop state as a producer-code failure.
+
+## 2026-04-09 — Trend submit wrapper tests must delegate to a dependency-complete repo Python
+
+- `scripts/submit_phase4_trend_contract.sh` imports `WA.comparison.evidence_contract` during preflight region resolution, which can transitively require repo dependencies like `yaml` before any job script is emitted.
+- The standalone `pytest` toolchain may execute under a different interpreter from the repo venv, so fake-repo tests that make `--python-bin` fall back to `sys.executable` can fail with `ModuleNotFoundError: yaml` even when the real repo dry-run works.
+- In `tests/test_submit_phase4_trend_contract.py`, point the fake repo interpreter at `.venv/bin/python` (or another dependency-complete repo interpreter) so failures reflect wrapper logic and not harness interpreter drift.

@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "taskId": "T02",
+  "unitId": "M002/S07/T02",
+  "timestamp": 1775690146887,
+  "passed": false,
+  "discoverySource": "task-plan",
+  "checks": [
+    {
+      "command": "python scripts/run_phase4_percentage_contract.py \\\n  --subset ten \\\n  --output-root results/phase4 \\\n  --standardized-dir /lustre/home/2200013429/Wetland_Assemble/data/standardized \\\n  --surface-year 2016 \\\n  --start-year 1990 \\\n  --end-year 2020 \\\n  --no-skip\npython scripts/run_phase4_classification_contract.py \\\n  --subset ten \\\n  --standardized-dir /lustre/home/2200013429/Wetland_Assemble/data/standardized \\\n  --output-root results/phase4 \\\n  --year 2016 \\\n  --phase36-output-dir results/phase3.6 \\\n  --phase36-cache-dir results/cache/phase3_6 \\\n  --phase37-output-dir results/phase3.7_hotspots \\\n  --phase37-cache-dir results/cache/phase3_7 \\\n  --no-skip\ntest -f results/phase4/hotspot_manifests/amazon/canonical__amazon__hotspot_manifest.json\ntest -f results/phase4/hotspot_manifests/northernaus/canonical__northernaus__hotspot_manifest.json\ntest -f results/phase4/classification_hotspot_manifests/amazon/canonical__amazon__classification_hotspot_manifest.json\ntest -f results/phase4/classification_hotspot_manifests/northernaus/canonical__northernaus__classification_hotspot_manifest.json",
+      "exitCode": 1,
+      "durationMs": 2453,
+      "verdict": "fail"
+    }
+  ],
+  "retryAttempt": 1,
+  "maxRetries": 2
+}

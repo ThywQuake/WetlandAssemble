@@ -1,11 +1,10 @@
 ---
 estimated_steps: 12
 estimated_files: 8
-skills_used:
-  - sync-hpc
+skills_used: []
 ---
 
-# T01: Freeze the ten-region HPC command ladder and prove the trend wrapper dry-run
+# T01: Fixed the trend submit preflight to use the repo interpreter and froze the ten-region Phase 4 command ladder with a copied dry-run proof bundle.
 
 Why: catch selector/key drift before any real ten-region compute so later tasks do not debug stale participant sets or hand-written region lists.
 

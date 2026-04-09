@@ -75,16 +75,16 @@ It now spans two layers:
 - Validation: mapped
 - Notes: The subset is for proof ordering, not for shrinking final scope.
 
-### R107 — The full ten-region analysis must be reproducible through HPC-safe cache / split / merge execution
+### R107 — The full ten-region analysis must be reproducible through explicit HPC-safe cache, split, merge, manifest, and sync-back patterns rather than one-shot wide runs or container-only claims.
 - Class: operability
 - Status: active
-- Description: The ten-region outputs must be reproducible through explicit HPC-safe cache, split, merge, and manifest patterns rather than one-shot wide runs.
+- Description: The full ten-region analysis must be reproducible through explicit HPC-safe cache, split, merge, manifest, and sync-back patterns rather than one-shot wide runs or container-only claims.
 - Why it matters: Wide geospatial jobs are too fragile to trust without a resumable execution model.
 - Source: inferred
 - Primary owning slice: M002/S05
-- Supporting slices: M002/S06
+- Supporting slices: M002/S06, M002/S07, M002/S08
 - Validation: mapped
-- Notes: This requirement inherits M001's proof-boundary discipline and current Phase 4 route truth.
+- Notes: Auto-mode may prepare, diagnose, and document reruns, but completion still requires authenticated HPC execution plus synced-back proof artifacts; OTP-gated remote legs remain explicit external boundaries.
 
 ### R108 — Hotspot-cause explanation must be driven primarily by quantitative auxiliary evidence
 - Class: core-capability
@@ -148,9 +148,9 @@ It now spans two layers:
 - Why it matters: The engineering work is successful only if it directly supports paper writing and review.
 - Source: inferred
 - Primary owning slice: M002/S06
-- Supporting slices: M003 (provisional), M004 (provisional)
+- Supporting slices: M002/S07, M002/S08, M003 (provisional), M004 (provisional)
 - Validation: mapped
-- Notes: “Paper-ready” here means traceable and reproducible, not final journal formatting.
+- Notes: Paper-ready packs can claim completion only from regenerated science artifacts plus synced-back readiness/ledger evidence; local smoke outputs or fixture-only packs are insufficient.
 
 ## Validated
 
@@ -333,13 +333,13 @@ It now spans two layers:
 | R104 | core-capability | active | M002/S02 | M002/S04, M002/S06 | mapped |
 | R105 | integration | active | M002/S04 | M002/S01, M002/S02, M002/S03 | mapped |
 | R106 | operability | active | M002/S01 | M002/S05 | mapped |
-| R107 | operability | active | M002/S05 | M002/S06 | mapped |
+| R107 | operability | active | M002/S05 | M002/S06, M002/S07, M002/S08 | mapped |
 | R108 | core-capability | active | M003 (provisional) | none | unmapped |
 | R109 | integration | active | M003 (provisional) | none | unmapped |
 | R110 | quality-attribute | active | M003 (provisional) | none | unmapped |
 | R111 | differentiator | active | M004 (provisional) | none | unmapped |
 | R112 | core-capability | active | M004 (provisional) | none | unmapped |
-| R113 | launchability | active | M002/S06 | M003 (provisional), M004 (provisional) | mapped |
+| R113 | launchability | active | M002/S06 | M002/S07, M002/S08, M003 (provisional), M004 (provisional) | mapped |
 | R001 | core-capability | validated | M001/S01 | M001/S05 | validated |
 | R002 | core-capability | validated | M001/S02 | M001/S01, M001/S03 | validated |
 | R003 | operability | validated | M001/S03 | M001/S02, M001/S04 | validated |

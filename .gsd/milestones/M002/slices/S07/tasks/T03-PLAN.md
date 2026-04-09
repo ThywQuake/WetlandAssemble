@@ -1,50 +1,86 @@
 ---
-estimated_steps: 12
-estimated_files: 8
-skills_used:
-  - hpc-analyze
-  - sync-hpc
+estimated_steps: 13
+estimated_files: 10
+skills_used: []
 ---
 
-# T03: Submit and monitor the ten-region trend fanout to completion
+# T03: Run the authenticated HPC producer/trend bundle and sync back proof artifacts
 
-Why: the trend line is the only leg with one-region-per-job fanout and checkpointed rerun semantics, so it needs its own monitored operational boundary.
+Why: T02 proved the remaining work cannot be completed from this auto-mode container because the real ten-region inputs live behind OTP-gated HPC access. This task converts the rest of S07 into an authenticated-session execution boundary instead of pretending the missing percentage/classification families already exist.
 
-## Steps
-1. Reuse the T01 command ladder to submit the real wrapper on HPC with explicit `--repo`, `--python-bin`, standardized root, `--subset ten`, annual `1990..2020`, `--no-progress`, and the five dataset ids `gwd30`, `giems_mc`, `topmodel`, `swamps`, `wad2m`.
-2. Copy the wrapper summary TSV into `results/phase4/proof/phase4-trend-contract-submit.tsv`, then monitor the ten job ids until every region finishes; record retries or failed regions instead of trusting partial completion.
-3. Spot-check representative agreement and hotspot outputs plus checkpoint reuse on rerun; if a job fails because of code, patch only the touched trend/wrapper/test files locally, rerun focused tests, resync, and resubmit only the failed region(s).
-4. Write `results/phase4/proof/phase4-trend-fanout.md` in bilingual form, capturing the submit summary, rerun history, and the final participant-set key used by readiness and ledger.
+## Execution Override
+- Override `2026-04-09T03:32:26.852Z` has been applied and resolved in `.gsd/OVERRIDES.md`.
+- Per D053 (superseding D052's temporary active-override note), auto-mode should carry this task through local prep, proof bookkeeping, and any code-fix loop, but it must stop at the OTP-authenticated HPC boundary instead of pretending the remote run is container-executable.
+- If the authenticated HPC run exposes a real code defect, return to local auto-mode for the focused fix/test/resync cycle, then rerun only the failed family or region jobs.
 
-## Must-Haves
-- [ ] All ten regions complete under `participant_set_key=giems_mc+gwd30+swamps+topmodel+wad2m`.
-- [ ] The copied submit summary TSV accounts for every region job and becomes part of the slice proof bundle.
-- [ ] Trend reruns stay on the wrapper/checkpoint route; use direct `run_phase4_trend_contract.py` only for one-region debugging.
+Steps
+1. From an authenticated workstation, use the project sync-hpc/rsync route to sync the repo to `/lustre/home/2200013429/repos/WA2/`; keep the frozen `--subset ten`, `dataset_key=canonical`, `classification_key=canonical`, and trend dataset ids `gwd30`, `giems_mc`, `topmodel`, `swamps`, `wad2m`.
+2. In that authenticated HPC repo, rerun the real ten-region percentage and classification commands with `--no-skip`, then verify representative first/last region hotspot manifests on HPC before moving on.
+3. Still in the authenticated HPC repo, submit the trend wrapper with the explicit repo/python/std-root/jobs dirs from T01, monitor all ten region jobs to completion, and record retries or failed region reruns instead of trusting partial completion.
+4. Copy the trend submit TSV plus representative percentage/classification/trend manifests back into the repo proof bundle, and write `results/phase4/proof/phase4-trend-fanout.md` in bilingual form with the authenticated rerun boundary, job ids, retries, synced-back paths, and the final participant-set key.
+5. If any remote failure is caused by code, patch only the touched producer/wrapper/test files locally, rerun focused checks, resync, and rerun only the failed family or failed region jobs.
 
-## Done when
-The submit summary accounts for all ten region jobs, and representative first/last region trend agreement and hotspot outputs exist on disk for readiness to consume.
+Must-Haves
+- [ ] No one resumes S07 from the auto-mode container alone; the OTP-authenticated HPC session is the required execution environment.
+- [ ] The percentage/classification families are materially present before the trend submit summary is treated as proof.
+- [ ] All ten trend regions finish under `participant_set_key=giems_mc+gwd30+swamps+topmodel+wad2m`, and the copied submit TSV accounts for every region job.
+
+Done when
+The authenticated HPC repo has real ten-region percentage/classification outputs plus completed trend jobs, and the repo proof bundle contains the copied submit TSV, representative first/last manifests, and a bilingual rerun note.
 
 ## Inputs
 
 - `results/phase4/proof/phase4-ten-region-command-ladder.md`
 - `results/phase4/proof/phase4-trend-contract-dry-run.tsv`
+- `results/phase4/proof/phase4-producer-materialization.md`
+- `docs/stashes/2026-04-09-021-m002-s07-t02-producer-materialization-blocked.md`
+- `scripts/run_phase4_percentage_contract.py`
+- `scripts/run_phase4_classification_contract.py`
 - `scripts/submit_phase4_trend_contract.sh`
 - `scripts/run_phase4_trend_contract.py`
-- `src/WA/comparison/trends.py`
-- `src/WA/comparison/trend_contract.py`
 
 ## Expected Output
 
 - `results/phase4/proof/phase4-trend-contract-submit.tsv`
+- `results/phase4/proof/phase4-trend-fanout.md`
+- `results/phase4/hotspot_manifests/amazon/canonical__amazon__hotspot_manifest.json`
+- `results/phase4/hotspot_manifests/northernaus/canonical__northernaus__hotspot_manifest.json`
+- `results/phase4/classification_hotspot_manifests/amazon/canonical__amazon__classification_hotspot_manifest.json`
+- `results/phase4/classification_hotspot_manifests/northernaus/canonical__northernaus__classification_hotspot_manifest.json`
 - `results/phase4/trend_hotspot_manifests/amazon/giems_mc+gwd30+swamps+topmodel+wad2m__amazon__trend_hotspot_manifest.json`
 - `results/phase4/trend_hotspot_manifests/northernaus/giems_mc+gwd30+swamps+topmodel+wad2m__northernaus__trend_hotspot_manifest.json`
-- `results/phase4/proof/phase4-trend-fanout.md`
 
 ## Verification
 
+# Run from an authenticated workstation / 需在已认证工作站执行
+rsync -avz --delete --exclude-from=.gitignore ./ \
+  2200013429@wm2-data.pku.edu.cn:/lustre/home/2200013429/repos/WA2/
+ssh 2200013429@wm2-data.pku.edu.cn <<'SH'
+set -euo pipefail
+cd /lustre/home/2200013429/repos/WA2
+python scripts/run_phase4_percentage_contract.py \
+  --subset ten \
+  --output-root results/phase4 \
+  --standardized-dir /lustre/home/2200013429/Wetland_Assemble/data/standardized \
+  --dataset-key canonical \
+  --surface-year 2016 \
+  --start-year 1990 \
+  --end-year 2020 \
+  --no-skip
+python scripts/run_phase4_classification_contract.py \
+  --subset ten \
+  --standardized-dir /lustre/home/2200013429/Wetland_Assemble/data/standardized \
+  --output-root results/phase4 \
+  --classification-key canonical \
+  --year 2016 \
+  --phase36-output-dir results/phase3.6 \
+  --phase36-cache-dir results/cache/phase3_6 \
+  --phase37-output-dir results/phase3.7_hotspots \
+  --phase37-cache-dir results/cache/phase3_7 \
+  --no-skip
 bash scripts/submit_phase4_trend_contract.sh \
-  --repo "$HOME/repos/WA" \
-  --python-bin "$HOME/repos/WA/.venv/bin/python" \
+  --repo "$PWD" \
+  --python-bin "$PWD/.venv/bin/python" \
   --standardized-dir /lustre/home/2200013429/Wetland_Assemble/data/standardized \
   --output-root results/phase4 \
   --subset ten \
@@ -62,10 +98,20 @@ bash scripts/submit_phase4_trend_contract.sh \
   --cpus 2 \
   --time 480 \
   --partition C064M0256G \
+  --jobs-base temp/slurm-jobs-s07 \
+  --tmp-root temp/slurm-tmp-s07 \
   --no-progress
-test -s results/phase4/proof/phase4-trend-contract-submit.tsv
+test -f results/phase4/hotspot_manifests/amazon/canonical__amazon__hotspot_manifest.json
+test -f results/phase4/hotspot_manifests/northernaus/canonical__northernaus__hotspot_manifest.json
+test -f results/phase4/classification_hotspot_manifests/amazon/canonical__amazon__classification_hotspot_manifest.json
+test -f results/phase4/classification_hotspot_manifests/northernaus/canonical__northernaus__classification_hotspot_manifest.json
 test -f results/phase4/trend_hotspot_manifests/amazon/giems_mc+gwd30+swamps+topmodel+wad2m__amazon__trend_hotspot_manifest.json
 test -f results/phase4/trend_hotspot_manifests/northernaus/giems_mc+gwd30+swamps+topmodel+wad2m__northernaus__trend_hotspot_manifest.json
+SH
+rsync -avz \
+  2200013429@wm2-data.pku.edu.cn:/lustre/home/2200013429/repos/WA2/results/phase4/proof/phase4-trend-contract-submit.tsv \
+  results/phase4/proof/
+test -s results/phase4/proof/phase4-trend-contract-submit.tsv
 
 ## Observability Impact
 

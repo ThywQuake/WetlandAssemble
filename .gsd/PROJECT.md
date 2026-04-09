@@ -16,7 +16,7 @@ One reproducible, paper-aligned evidence backbone that can show **where wetland 
 
 ## Current State
 
-M001 is complete. All M002 slices are now complete in-code, including S06’s paper-pack and strict complete-pack proof surfaces. The remaining gap is no longer local implementation; it is **external-input materialization and milestone-level proof on HPC**.
+M001 is complete. M002 is complete in-code through S06, while S07 and S08 now carry the remaining proof work. The resolved 2026-04-09 `auto` override is now captured as the standing D053 execution rule: auto-mode still owns local verification, logging, proof bookkeeping, and targeted fix/resync loops, but the OTP-authenticated HPC sync/submit/readiness/ledger leg remains an explicit external boundary. The remaining gap is therefore no longer local implementation; it is **authenticated external-input materialization plus milestone-level proof closure across S07 and S08**.
 
 What is now stable in-code for M002:
 
@@ -57,17 +57,17 @@ What is **not** closed yet:
 
 ## Current Recommended Route
 
-The next practical step is **not more local implementation**. It is to run the full M002 proof ladder on HPC, then validate and close the milestone.
+The next practical step is still **not more local implementation**. Per D053, auto-mode remains the local planning/repair posture, but the S07 producer/readiness/ledger ladder must run from an authenticated workstation/HPC session and fail closed if OTP access is unavailable; only after those artifacts are synced back should S08 rerun the strict paper-pack proof and milestone closeout surfaces.
 
 Recommended order:
 
-1. sync the repo to HPC via `rsync`
+1. from an authenticated workstation, sync the repo to HPC via `rsync`
 2. run `scripts/run_phase4_percentage_contract.py --subset ten --no-skip`
 3. run `scripts/run_phase4_classification_contract.py --subset ten --no-skip`
 4. fan out trend regeneration with `bash scripts/submit_phase4_trend_contract.sh --repo "$HOME/repos/WA" ... --subset ten --no-progress`
 5. scan completeness with `scripts/run_phase4_scaleout_readiness.py --subset ten`
 6. build the cross-line final gate with `scripts/run_phase4_hotspot_ledger.py --subset ten --no-skip`
-7. run `python scripts/run_phase4_evidence_pack.py --subset ten --strict ...`
+7. after the S07 artifacts are synced back into the repo, run `python scripts/run_phase4_evidence_pack.py --subset ten --strict ...`
 8. inspect `results/figures/phase4_pack/manifest.json` and `results/figures/phase4_pack/complete_pack_proof.{json,md}`
 9. validate M002, then complete the milestone
 
@@ -108,5 +108,7 @@ See `.gsd/REQUIREMENTS.md` for the explicit capability contract, requirement sta
   - [x] S04 Unified hotspot ledger and cross-line evidence surfaces
   - [x] S05 Ten-region scale-out with reproducible HPC-safe execution
   - [x] S06 Paper-ready evidence pack and milestone integration proof
+  - [ ] S07 Ten-region HPC materialization and readiness/ledger proof
+  - [ ] S08 Strict paper-pack proof and evidence-audit repair
 - [ ] M003: 热点成因解释与质量差异分析 — explain hotspot causes with quantitative auxiliary evidence plus land-cover context and turn those explanations into dataset-quality judgments
 - [ ] M004: Fraction-First 融合与多目标验证 — build a balanced scorecard and validate a fraction-first fused product against explicit baselines

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "exported_at": "2026-04-08T23:15:35.401Z",
+  "exported_at": "2026-04-09T04:06:57.514Z",
   "milestones": [
     {
       "id": "M001",
@@ -2122,45 +2122,60 @@
       "milestone_id": "M002",
       "slice_id": "S07",
       "id": "T03",
-      "title": "Submit and monitor the ten-region trend fanout to completion",
-      "status": "pending",
-      "one_liner": "",
-      "narrative": "",
-      "verification_result": "",
+      "title": "Pinned the trend-wrapper boundary checks and wrote the authenticated fanout sync-back proof note.",
+      "status": "complete",
+      "one_liner": "Pinned the trend-wrapper boundary checks and wrote the authenticated fanout sync-back proof note.",
+      "narrative": "Reloaded the replanned T03 contract, the resolved S07 override, and the existing S07 proof bundle, then confirmed the repo still lacks synced-back ten-region percentage/classification/trend artifacts. A focused local test failure showed harness drift rather than a wrapper defect: the fake-repo wrapper tests were delegating to `sys.executable`, which in the standalone pytest toolchain lacked `yaml`, while the real trend-wrapper dry-run still succeeded with `$PWD/.venv/bin/python`. I fixed that harness narrowly in `tests/test_submit_phase4_trend_contract.py`, expanded the regression surface to pin default `topmodel`, ten-row submit accounting, one-region debug reruns, and fail-closed bad `--repo` / bad `--python-bin` / duplicate dataset ids, then wrote `results/phase4/proof/phase4-trend-fanout.md` as the bilingual authenticated-boundary and sync-back note. I also appended a `.gsd/KNOWLEDGE.md` entry for the repo-python test requirement and wrote a compact stash handoff in `docs/stashes/2026-04-09-025-m002-s07-t03-trend-fanout-boundary.md`.",
+      "verification_result": "Verified wrapper shell syntax, the live Phase 4 percentage/classification/trend CLI help surfaces, the focused wrapper pytest subset under `uv run`, the real ten-region/five-dataset dry-run wrapper invocation, and the presence of the dry-run TSV plus new T03 proof/stash artifacts. Rechecked that raw SSH remains blocked by OTP keyboard-interactive auth from this container and that the real copied submit TSV is still absent locally, so the task result remains intentionally mixed rather than falsely green.",
       "duration": "",
-      "completed_at": null,
+      "completed_at": "2026-04-09T04:06:57.484Z",
       "blocker_discovered": false,
-      "deviations": "",
-      "known_issues": "",
-      "key_files": [],
-      "key_decisions": [],
-      "full_summary_md": "",
-      "description": "Why: the trend line is the only leg with one-region-per-job fanout and checkpointed rerun semantics, so it needs its own monitored operational boundary.\n\n## Steps\n1. Reuse the T01 command ladder to submit the real wrapper on HPC with explicit `--repo`, `--python-bin`, standardized root, `--subset ten`, annual `1990..2020`, `--no-progress`, and the five dataset ids `gwd30`, `giems_mc`, `topmodel`, `swamps`, `wad2m`.\n2. Copy the wrapper summary TSV into `results/phase4/proof/phase4-trend-contract-submit.tsv`, then monitor the ten job ids until every region finishes; record retries or failed regions instead of trusting partial completion.\n3. Spot-check representative agreement and hotspot outputs plus checkpoint reuse on rerun; if a job fails because of code, patch only the touched trend/wrapper/test files locally, rerun focused tests, resync, and resubmit only the failed region(s).\n4. Write `results/phase4/proof/phase4-trend-fanout.md` in bilingual form, capturing the submit summary, rerun history, and the final participant-set key used by readiness and ledger.\n\n## Must-Haves\n- [ ] All ten regions complete under `participant_set_key=giems_mc+gwd30+swamps+topmodel+wad2m`.\n- [ ] The copied submit summary TSV accounts for every region job and becomes part of the slice proof bundle.\n- [ ] Trend reruns stay on the wrapper/checkpoint route; use direct `run_phase4_trend_contract.py` only for one-region debugging.\n\n## Done when\nThe submit summary accounts for all ten region jobs, and representative first/last region trend agreement and hotspot outputs exist on disk for readiness to consume.",
-      "estimate": "1d",
+      "deviations": "The written task plan expects a real authenticated workstation/HPC rsync, producer rerun, trend submit, and sync-back. Per the resolved override and the still-failing OTP boundary, I stopped at local proof bookkeeping plus focused wrapper-test hardening instead of pretending the remote run was container-executable or fabricating a copied submit TSV.",
+      "known_issues": "The real authenticated HPC run is still outstanding, so T04 remains blocked on genuine synced-back percentage/classification/trend artifacts. Also, `.venv/bin/python` still lacks a local `pytest` module in this snapshot, so the focused related-test verification ran through `uv run pytest` while the runtime CLIs continued to use the repo venv interpreter.",
+      "key_files": [
+        "tests/test_submit_phase4_trend_contract.py",
+        "results/phase4/proof/phase4-trend-fanout.md",
+        ".gsd/KNOWLEDGE.md",
+        "docs/stashes/2026-04-09-025-m002-s07-t03-trend-fanout-boundary.md"
+      ],
+      "key_decisions": [
+        "Kept T03 fail-closed by documenting the authenticated fanout boundary and sync-back requirements locally without fabricating the missing submit TSV or SLURM job ids."
+      ],
+      "full_summary_md": "---\nid: T03\nparent: S07\nmilestone: M002\nkey_files:\n  - tests/test_submit_phase4_trend_contract.py\n  - results/phase4/proof/phase4-trend-fanout.md\n  - .gsd/KNOWLEDGE.md\n  - docs/stashes/2026-04-09-025-m002-s07-t03-trend-fanout-boundary.md\nkey_decisions:\n  - Kept T03 fail-closed by documenting the authenticated fanout boundary and sync-back requirements locally without fabricating the missing submit TSV or SLURM job ids.\nduration: \nverification_result: mixed\ncompleted_at: 2026-04-09T04:06:57.483Z\nblocker_discovered: false\n---\n\n# T03: Pinned the trend-wrapper boundary checks and wrote the authenticated fanout sync-back proof note.\n\n**Pinned the trend-wrapper boundary checks and wrote the authenticated fanout sync-back proof note.**\n\n## What Happened\n\nReloaded the replanned T03 contract, the resolved S07 override, and the existing S07 proof bundle, then confirmed the repo still lacks synced-back ten-region percentage/classification/trend artifacts. A focused local test failure showed harness drift rather than a wrapper defect: the fake-repo wrapper tests were delegating to `sys.executable`, which in the standalone pytest toolchain lacked `yaml`, while the real trend-wrapper dry-run still succeeded with `$PWD/.venv/bin/python`. I fixed that harness narrowly in `tests/test_submit_phase4_trend_contract.py`, expanded the regression surface to pin default `topmodel`, ten-row submit accounting, one-region debug reruns, and fail-closed bad `--repo` / bad `--python-bin` / duplicate dataset ids, then wrote `results/phase4/proof/phase4-trend-fanout.md` as the bilingual authenticated-boundary and sync-back note. I also appended a `.gsd/KNOWLEDGE.md` entry for the repo-python test requirement and wrote a compact stash handoff in `docs/stashes/2026-04-09-025-m002-s07-t03-trend-fanout-boundary.md`.\n\n## Verification\n\nVerified wrapper shell syntax, the live Phase 4 percentage/classification/trend CLI help surfaces, the focused wrapper pytest subset under `uv run`, the real ten-region/five-dataset dry-run wrapper invocation, and the presence of the dry-run TSV plus new T03 proof/stash artifacts. Rechecked that raw SSH remains blocked by OTP keyboard-interactive auth from this container and that the real copied submit TSV is still absent locally, so the task result remains intentionally mixed rather than falsely green.\n\n## Verification Evidence\n\n| # | Command | Exit Code | Verdict | Duration |\n|---|---------|-----------|---------|----------|\n| 1 | `bash -n scripts/submit_phase4_trend_contract.sh` | 0 | ✅ pass | 1ms |\n| 2 | `python scripts/run_phase4_percentage_contract.py --help >/tmp/wa_t03_pct_help.txt` | 0 | ✅ pass | 1233ms |\n| 3 | `python scripts/run_phase4_classification_contract.py --help >/tmp/wa_t03_cls_help.txt` | 0 | ✅ pass | 1235ms |\n| 4 | `python scripts/run_phase4_trend_contract.py --help >/tmp/wa_t03_trend_help.txt` | 0 | ✅ pass | 1041ms |\n| 5 | `uv run pytest tests/test_submit_phase4_trend_contract.py -q` | 0 | ✅ pass | 9482ms |\n| 6 | `bash scripts/submit_phase4_trend_contract.sh --dry-run --repo \"$PWD\" --python-bin \"$PWD/.venv/bin/python\" --standardized-dir /lustre/home/2200013429/Wetland_Assemble/data/standardized --output-root results/phase4 --subset ten --dataset-id gwd30 --dataset-id giems_mc --dataset-id topmodel --dataset-id swamps --dataset-id wad2m --aggregation annual --start-year 1990 --end-year 2020 --min-observations 5 --min-overlap-years 5 --top-hotspots 10 --cpus 2 --time 480 --partition C064M0256G --jobs-base temp/slurm-jobs-s07 --tmp-root temp/slurm-tmp-s07 --no-progress >/tmp/wa_t03_dry_run.txt` | 0 | ✅ pass | 2069ms |\n| 7 | `test -s results/phase4/proof/phase4-trend-contract-dry-run.tsv && test -f results/phase4/proof/phase4-trend-fanout.md && test -f docs/stashes/2026-04-09-025-m002-s07-t03-trend-fanout-boundary.md` | 0 | ✅ pass | 0ms |\n| 8 | `ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/tmp/known_hosts_wa_t03 -o ConnectTimeout=10 2200013429@wm2-data.pku.edu.cn 'hostname'` | 255 | ❌ fail | 6777ms |\n| 9 | `test -s results/phase4/proof/phase4-trend-contract-submit.tsv` | 1 | ❌ fail | 0ms |\n\n## Deviations\n\nThe written task plan expects a real authenticated workstation/HPC rsync, producer rerun, trend submit, and sync-back. Per the resolved override and the still-failing OTP boundary, I stopped at local proof bookkeeping plus focused wrapper-test hardening instead of pretending the remote run was container-executable or fabricating a copied submit TSV.\n\n## Known Issues\n\nThe real authenticated HPC run is still outstanding, so T04 remains blocked on genuine synced-back percentage/classification/trend artifacts. Also, `.venv/bin/python` still lacks a local `pytest` module in this snapshot, so the focused related-test verification ran through `uv run pytest` while the runtime CLIs continued to use the repo venv interpreter.\n\n## Files Created/Modified\n\n- `tests/test_submit_phase4_trend_contract.py`\n- `results/phase4/proof/phase4-trend-fanout.md`\n- `.gsd/KNOWLEDGE.md`\n- `docs/stashes/2026-04-09-025-m002-s07-t03-trend-fanout-boundary.md`\n",
+      "description": "Why: T02 proved the remaining work cannot be completed from this auto-mode container because the real ten-region inputs live behind OTP-gated HPC access. This task converts the rest of S07 into an authenticated-session execution boundary instead of pretending the missing percentage/classification families already exist.\n\nSteps\n1. From an authenticated workstation, use the project sync-hpc/rsync route to sync the repo to `/lustre/home/2200013429/repos/WA2/`; keep the frozen `--subset ten`, `dataset_key=canonical`, `classification_key=canonical`, and trend dataset ids `gwd30`, `giems_mc`, `topmodel`, `swamps`, `wad2m`.\n2. In that authenticated HPC repo, rerun the real ten-region percentage and classification commands with `--no-skip`, then verify representative first/last region hotspot manifests on HPC before moving on.\n3. Still in the authenticated HPC repo, submit the trend wrapper with the explicit repo/python/std-root/jobs dirs from T01, monitor all ten region jobs to completion, and record retries or failed region reruns instead of trusting partial completion.\n4. Copy the trend submit TSV plus representative percentage/classification/trend manifests back into the repo proof bundle, and write `results/phase4/proof/phase4-trend-fanout.md` in bilingual form with the authenticated rerun boundary, job ids, retries, synced-back paths, and the final participant-set key.\n5. If any remote failure is caused by code, patch only the touched producer/wrapper/test files locally, rerun focused checks, resync, and rerun only the failed family or failed region jobs.\n\nMust-Haves\n- [ ] No one resumes S07 from the auto-mode container alone; the OTP-authenticated HPC session is the required execution environment.\n- [ ] The percentage/classification families are materially present before the trend submit summary is treated as proof.\n- [ ] All ten trend regions finish under `participant_set_key=giems_mc+gwd30+swamps+topmodel+wad2m`, and the copied submit TSV accounts for every region job.\n\nDone when\nThe authenticated HPC repo has real ten-region percentage/classification outputs plus completed trend jobs, and the repo proof bundle contains the copied submit TSV, representative first/last manifests, and a bilingual rerun note.",
+      "estimate": "1.5d",
       "files": [
+        "results/phase4/proof/phase4-producer-materialization.md",
+        "results/phase4/proof/phase4-trend-contract-submit.tsv",
+        "results/phase4/proof/phase4-trend-fanout.md",
+        "scripts/run_phase4_percentage_contract.py",
+        "scripts/run_phase4_classification_contract.py",
         "scripts/submit_phase4_trend_contract.sh",
         "scripts/run_phase4_trend_contract.py",
-        "src/WA/comparison/trends.py",
-        "src/WA/comparison/trend_contract.py",
         "tests/test_submit_phase4_trend_contract.py",
         "tests/test_comparison/test_trend_contract.py",
-        "tests/test_comparison/test_trends.py",
-        "results/phase4/proof/phase4-trend-fanout.md"
+        "tests/test_comparison/test_trends.py"
       ],
-      "verify": "bash scripts/submit_phase4_trend_contract.sh \\\n  --repo \"$HOME/repos/WA\" \\\n  --python-bin \"$HOME/repos/WA/.venv/bin/python\" \\\n  --standardized-dir /lustre/home/2200013429/Wetland_Assemble/data/standardized \\\n  --output-root results/phase4 \\\n  --subset ten \\\n  --dataset-id gwd30 \\\n  --dataset-id giems_mc \\\n  --dataset-id topmodel \\\n  --dataset-id swamps \\\n  --dataset-id wad2m \\\n  --aggregation annual \\\n  --start-year 1990 \\\n  --end-year 2020 \\\n  --min-observations 5 \\\n  --min-overlap-years 5 \\\n  --top-hotspots 10 \\\n  --cpus 2 \\\n  --time 480 \\\n  --partition C064M0256G \\\n  --no-progress\ntest -s results/phase4/proof/phase4-trend-contract-submit.tsv\ntest -f results/phase4/trend_hotspot_manifests/amazon/giems_mc+gwd30+swamps+topmodel+wad2m__amazon__trend_hotspot_manifest.json\ntest -f results/phase4/trend_hotspot_manifests/northernaus/giems_mc+gwd30+swamps+topmodel+wad2m__northernaus__trend_hotspot_manifest.json",
+      "verify": "# Run from an authenticated workstation / 需在已认证工作站执行\nrsync -avz --delete --exclude-from=.gitignore ./ \\\n  2200013429@wm2-data.pku.edu.cn:/lustre/home/2200013429/repos/WA2/\nssh 2200013429@wm2-data.pku.edu.cn <<'SH'\nset -euo pipefail\ncd /lustre/home/2200013429/repos/WA2\npython scripts/run_phase4_percentage_contract.py \\\n  --subset ten \\\n  --output-root results/phase4 \\\n  --standardized-dir /lustre/home/2200013429/Wetland_Assemble/data/standardized \\\n  --dataset-key canonical \\\n  --surface-year 2016 \\\n  --start-year 1990 \\\n  --end-year 2020 \\\n  --no-skip\npython scripts/run_phase4_classification_contract.py \\\n  --subset ten \\\n  --standardized-dir /lustre/home/2200013429/Wetland_Assemble/data/standardized \\\n  --output-root results/phase4 \\\n  --classification-key canonical \\\n  --year 2016 \\\n  --phase36-output-dir results/phase3.6 \\\n  --phase36-cache-dir results/cache/phase3_6 \\\n  --phase37-output-dir results/phase3.7_hotspots \\\n  --phase37-cache-dir results/cache/phase3_7 \\\n  --no-skip\nbash scripts/submit_phase4_trend_contract.sh \\\n  --repo \"$PWD\" \\\n  --python-bin \"$PWD/.venv/bin/python\" \\\n  --standardized-dir /lustre/home/2200013429/Wetland_Assemble/data/standardized \\\n  --output-root results/phase4 \\\n  --subset ten \\\n  --dataset-id gwd30 \\\n  --dataset-id giems_mc \\\n  --dataset-id topmodel \\\n  --dataset-id swamps \\\n  --dataset-id wad2m \\\n  --aggregation annual \\\n  --start-year 1990 \\\n  --end-year 2020 \\\n  --min-observations 5 \\\n  --min-overlap-years 5 \\\n  --top-hotspots 10 \\\n  --cpus 2 \\\n  --time 480 \\\n  --partition C064M0256G \\\n  --jobs-base temp/slurm-jobs-s07 \\\n  --tmp-root temp/slurm-tmp-s07 \\\n  --no-progress\ntest -f results/phase4/hotspot_manifests/amazon/canonical__amazon__hotspot_manifest.json\ntest -f results/phase4/hotspot_manifests/northernaus/canonical__northernaus__hotspot_manifest.json\ntest -f results/phase4/classification_hotspot_manifests/amazon/canonical__amazon__classification_hotspot_manifest.json\ntest -f results/phase4/classification_hotspot_manifests/northernaus/canonical__northernaus__classification_hotspot_manifest.json\ntest -f results/phase4/trend_hotspot_manifests/amazon/giems_mc+gwd30+swamps+topmodel+wad2m__amazon__trend_hotspot_manifest.json\ntest -f results/phase4/trend_hotspot_manifests/northernaus/giems_mc+gwd30+swamps+topmodel+wad2m__northernaus__trend_hotspot_manifest.json\nSH\nrsync -avz \\\n  2200013429@wm2-data.pku.edu.cn:/lustre/home/2200013429/repos/WA2/results/phase4/proof/phase4-trend-contract-submit.tsv \\\n  results/phase4/proof/\ntest -s results/phase4/proof/phase4-trend-contract-submit.tsv",
       "inputs": [
         "results/phase4/proof/phase4-ten-region-command-ladder.md",
         "results/phase4/proof/phase4-trend-contract-dry-run.tsv",
+        "results/phase4/proof/phase4-producer-materialization.md",
+        "docs/stashes/2026-04-09-021-m002-s07-t02-producer-materialization-blocked.md",
+        "scripts/run_phase4_percentage_contract.py",
+        "scripts/run_phase4_classification_contract.py",
         "scripts/submit_phase4_trend_contract.sh",
-        "scripts/run_phase4_trend_contract.py",
-        "src/WA/comparison/trends.py",
-        "src/WA/comparison/trend_contract.py"
+        "scripts/run_phase4_trend_contract.py"
       ],
       "expected_output": [
         "results/phase4/proof/phase4-trend-contract-submit.tsv",
+        "results/phase4/proof/phase4-trend-fanout.md",
+        "results/phase4/hotspot_manifests/amazon/canonical__amazon__hotspot_manifest.json",
+        "results/phase4/hotspot_manifests/northernaus/canonical__northernaus__hotspot_manifest.json",
+        "results/phase4/classification_hotspot_manifests/amazon/canonical__amazon__classification_hotspot_manifest.json",
+        "results/phase4/classification_hotspot_manifests/northernaus/canonical__northernaus__classification_hotspot_manifest.json",
         "results/phase4/trend_hotspot_manifests/amazon/giems_mc+gwd30+swamps+topmodel+wad2m__amazon__trend_hotspot_manifest.json",
-        "results/phase4/trend_hotspot_manifests/northernaus/giems_mc+gwd30+swamps+topmodel+wad2m__northernaus__trend_hotspot_manifest.json",
-        "results/phase4/proof/phase4-trend-fanout.md"
+        "results/phase4/trend_hotspot_manifests/northernaus/giems_mc+gwd30+swamps+topmodel+wad2m__northernaus__trend_hotspot_manifest.json"
       ],
       "observability_impact": "- Signals added/changed: wrapper stdout plus per-job `job.<id>.out/err` logs, `stage=trend-load`, `stage=trend-write`, agreement, and hotspot logs remain the primary runtime diagnostics.\n- How a future agent inspects this: start from `results/phase4/proof/phase4-trend-contract-submit.tsv`, then inspect the matching SLURM logs and representative `results/phase4/trend_hotspot_manifests/` files.\n- Failure state exposed: stalled or failed regions remain visible by job id, copied submit summary, and region-scoped checkpoint/output paths rather than disappearing inside one wide batch run.",
       "full_plan_md": "",
@@ -2170,7 +2185,7 @@
       "milestone_id": "M002",
       "slice_id": "S07",
       "id": "T04",
-      "title": "Prove all-green readiness and rebuild the ten unified hotspot ledgers",
+      "title": "Reopen readiness and unified ledgers only after the authenticated outputs exist",
       "status": "pending",
       "one_liner": "",
       "narrative": "",
@@ -2183,18 +2198,19 @@
       "key_files": [],
       "key_decisions": [],
       "full_summary_md": "",
-      "description": "Why: readiness plus unified-ledger reopen is the actual S07 acceptance boundary, not file counting or one-region smoke output.\n\n## Steps\n1. Run `scripts/run_phase4_scaleout_readiness.py` with `--subset ten`, canonical percentage/classification keys, and the same five trend dataset ids used in T03; inspect the CSV/JSON first and rerun upstream producer families if any row is `missing` or `partial`.\n2. Assert from the JSON payload that `ready_region_ids` exactly equals the ordered ten-region contract list, then capture the report paths and any rerun notes in `results/phase4/proof/phase4-readiness-ledger-proof.md`.\n3. Run `scripts/run_phase4_hotspot_ledger.py --subset ten --no-skip` with the same keys/participant ids, then verify representative first/last region ledgers reopen cleanly from disk.\n4. If readiness or ledger exposes a real code bug, patch only the touched readiness/ledger files and focused tests locally, resync, rerun readiness, then rerun ledger; do not hand-edit downstream artifacts.\n\n## Must-Haves\n- [ ] The readiness CSV/JSON exists and every region/family row is `ready`.\n- [ ] Ten `canonical__<region>__unified_hotspot_ledger.csv` files exist under `results/phase4/unified_hotspot_ledgers/`.\n- [ ] The proof note records the report paths, representative ledger paths, and the exact remaining handoff to S08 strict pack proof.\n\n## Done when\nThe ten-region readiness report is all-green and the unified ledgers reopen without family-context errors, making S07's producer -> readiness -> ledger ladder operationally true.",
-      "estimate": "3h",
+      "description": "Why: readiness and ledger are still the S07 acceptance gate, but they must now run only after the authenticated HPC rerun has produced real percentage/classification/trend outputs. This task turns the old downstream proof into an explicit fail-closed post-materialization gate.\n\nSteps\n1. In the authenticated HPC repo that now contains all three upstream families, run `scripts/run_phase4_scaleout_readiness.py` with `--subset ten`, canonical percentage/classification keys, and the same five trend dataset ids from T03.\n2. Assert from the readiness JSON that `ready_region_ids` exactly equals `amazon, orinoco, pantanal, indogangetic, mekong, sudd, congo, okavango, borneo, northernaus`, `incomplete_region_ids` is empty, and every row status is `ready`; if not, stop and use the diagnostics to rerun only the missing upstream family/region via T03.\n3. Run `scripts/run_phase4_hotspot_ledger.py --subset ten --no-skip` with the same keys/participant ids, verify representative first/last region ledgers on HPC, and then copy the readiness reports plus representative ledgers back into the repo.\n4. Write `results/phase4/proof/phase4-readiness-ledger-proof.md` in bilingual form, recording the readiness report paths, representative ledger paths, any targeted reruns, and the exact S08 handoff after the authenticated sync-back.\n5. If readiness or ledger exposes a real code bug, patch only the touched readiness/ledger files locally, rerun focused checks, resync, rerun readiness, then rerun ledger; do not hand-edit downstream artifacts.\n\nMust-Haves\n- [ ] The readiness CSV/JSON exists and every region/family row is `ready` on real ten-region outputs.\n- [ ] `ready_region_ids` matches the ordered ten-region contract list exactly, with no `missing` or `partial` rows hidden by manual edits.\n- [ ] Ten unified ledgers reopen from disk under `results/phase4/unified_hotspot_ledgers/`, and the copied proof note records the exact S08 handoff.\n\nDone when\nThe authenticated rerun produces an all-green readiness report and reopened ten-region unified ledgers, and the repo proof bundle contains the copied readiness artifacts plus the bilingual ledger proof note.",
+      "estimate": "4h",
       "files": [
+        "results/phase4/proof/phase4-trend-fanout.md",
+        "results/phase4/proof/phase4-readiness-ledger-proof.md",
         "scripts/run_phase4_scaleout_readiness.py",
         "scripts/run_phase4_hotspot_ledger.py",
         "src/WA/comparison/scaleout_readiness.py",
         "src/WA/comparison/hotspot_ledger.py",
         "tests/test_comparison/test_scaleout_readiness.py",
-        "tests/test_comparison/test_hotspot_ledger.py",
-        "results/phase4/proof/phase4-readiness-ledger-proof.md"
+        "tests/test_comparison/test_hotspot_ledger.py"
       ],
-      "verify": "python scripts/run_phase4_scaleout_readiness.py \\\n  --subset ten \\\n  --output-root results/phase4 \\\n  --percentage-key canonical \\\n  --classification-key canonical \\\n  --trend-dataset-id gwd30 \\\n  --trend-dataset-id giems_mc \\\n  --trend-dataset-id topmodel \\\n  --trend-dataset-id swamps \\\n  --trend-dataset-id wad2m\npython - <<'PY'\nimport json\nfrom pathlib import Path\npath = Path('results/phase4/scaleout_readiness/subset-ten__canonical__canonical__giems_mc+gwd30+swamps+topmodel+wad2m__scaleout_readiness.json')\npayload = json.loads(path.read_text())\nexpected = ['amazon', 'orinoco', 'pantanal', 'indogangetic', 'mekong', 'sudd', 'congo', 'okavango', 'borneo', 'northernaus']\nassert payload['ready_region_ids'] == expected, payload['ready_region_ids']\nassert payload['incomplete_region_ids'] == [], payload['incomplete_region_ids']\nassert all(row['status'] == 'ready' for row in payload['rows']), 'non-ready row present'\nPY\npython scripts/run_phase4_hotspot_ledger.py \\\n  --subset ten \\\n  --output-root results/phase4 \\\n  --ledger-key canonical \\\n  --percentage-key canonical \\\n  --classification-key canonical \\\n  --trend-dataset-id gwd30 \\\n  --trend-dataset-id giems_mc \\\n  --trend-dataset-id topmodel \\\n  --trend-dataset-id swamps \\\n  --trend-dataset-id wad2m \\\n  --no-skip\ntest -f results/phase4/unified_hotspot_ledgers/amazon/canonical__amazon__unified_hotspot_ledger.csv\ntest -f results/phase4/unified_hotspot_ledgers/northernaus/canonical__northernaus__unified_hotspot_ledger.csv",
+      "verify": "# Run from an authenticated workstation / 需在已认证工作站执行\nssh 2200013429@wm2-data.pku.edu.cn <<'SH'\nset -euo pipefail\ncd /lustre/home/2200013429/repos/WA2\npython scripts/run_phase4_scaleout_readiness.py \\\n  --subset ten \\\n  --output-root results/phase4 \\\n  --percentage-key canonical \\\n  --classification-key canonical \\\n  --trend-dataset-id gwd30 \\\n  --trend-dataset-id giems_mc \\\n  --trend-dataset-id topmodel \\\n  --trend-dataset-id swamps \\\n  --trend-dataset-id wad2m\npython - <<'PY'\nimport json\nfrom pathlib import Path\npath = Path('results/phase4/scaleout_readiness/subset-ten__canonical__canonical__giems_mc+gwd30+swamps+topmodel+wad2m__scaleout_readiness.json')\npayload = json.loads(path.read_text())\nexpected = ['amazon', 'orinoco', 'pantanal', 'indogangetic', 'mekong', 'sudd', 'congo', 'okavango', 'borneo', 'northernaus']\nassert payload['ready_region_ids'] == expected, payload['ready_region_ids']\nassert payload['incomplete_region_ids'] == [], payload['incomplete_region_ids']\nassert all(row['status'] == 'ready' for row in payload['rows']), 'non-ready row present'\nPY\npython scripts/run_phase4_hotspot_ledger.py \\\n  --subset ten \\\n  --output-root results/phase4 \\\n  --ledger-key canonical \\\n  --percentage-key canonical \\\n  --classification-key canonical \\\n  --trend-dataset-id gwd30 \\\n  --trend-dataset-id giems_mc \\\n  --trend-dataset-id topmodel \\\n  --trend-dataset-id swamps \\\n  --trend-dataset-id wad2m \\\n  --no-skip\ntest -f results/phase4/unified_hotspot_ledgers/amazon/canonical__amazon__unified_hotspot_ledger.csv\ntest -f results/phase4/unified_hotspot_ledgers/northernaus/canonical__northernaus__unified_hotspot_ledger.csv\nSH\nrsync -avz \\\n  2200013429@wm2-data.pku.edu.cn:/lustre/home/2200013429/repos/WA2/results/phase4/scaleout_readiness/ \\\n  results/phase4/scaleout_readiness/\nrsync -avz \\\n  2200013429@wm2-data.pku.edu.cn:/lustre/home/2200013429/repos/WA2/results/phase4/unified_hotspot_ledgers/ \\\n  results/phase4/unified_hotspot_ledgers/\ntest -f results/phase4/unified_hotspot_ledgers/amazon/canonical__amazon__unified_hotspot_ledger.csv\ntest -f results/phase4/unified_hotspot_ledgers/northernaus/canonical__northernaus__unified_hotspot_ledger.csv",
       "inputs": [
         "results/phase4/proof/phase4-producer-materialization.md",
         "results/phase4/proof/phase4-trend-contract-submit.tsv",
@@ -2825,6 +2841,30 @@
       "decision": "Where downstream pack consumers should reopen trend-agreement artifacts",
       "choice": "Keep trend-agreement pair validation and semantic reload helpers in `src/WA/comparison/trend_contract.py`, and keep `src/WA/visualization/phase4.py` wrappers thin so pack code never imports script-private helpers or infers contract paths.",
       "rationale": "S06/T01 promoted the agreement reopen path out of `scripts/run_phase4_trend_contract.py`, added strict pair-level validation with `region_id` and `participant_set_key` context, and let both the runner and the pack layer share one semantic reload path. This prevents path-guess drift and keeps failure diagnostics consistent across contract, visualization, and pack code.",
+      "revisable": "Yes",
+      "made_by": "agent",
+      "superseded_by": null
+    },
+    {
+      "seq": 54,
+      "id": "D052",
+      "when_context": "M002/S07/T03 override auto",
+      "scope": "execution",
+      "decision": "How the active S07 work should interpret the user auto override under OTP-gated HPC constraints",
+      "choice": "Keep active execution mode on auto, but treat the OTP-authenticated HPC sync/submit leg as an explicit external execution boundary that must fail closed with exact commands and proof targets rather than being re-planned as local container work.",
+      "rationale": "The override changes planning posture for the active slice, but it does not remove the real authentication boundary observed in T02. Recording this preserves auto-mode intent while preventing future agents from pretending the container can complete OTP-gated HPC work or from weakening the proof contract.",
+      "revisable": "Yes",
+      "made_by": "human",
+      "superseded_by": null
+    },
+    {
+      "seq": 55,
+      "id": "D053",
+      "when_context": "M002/S07 override propagation",
+      "scope": "execution",
+      "decision": "How the resolved S07 auto override should be treated after plan propagation",
+      "choice": "Supersede D052's temporary active-override note with a standing execution rule: auto-mode owns local prep, proof bookkeeping, and focused fix/resync loops, while OTP-authenticated HPC materialization/readiness/ledger work remains a fail-closed external boundary until artifacts are synced back.",
+      "rationale": "The override has now been propagated across the active S07 plan surface and milestone-level planning docs. Leaving it marked as an active planning exception would imply unresolved ambiguity and could invite repeated container-side retries of OTP-gated work. Converting it into a standing rule preserves the user's auto posture without weakening the real proof boundary.",
       "revisable": "Yes",
       "made_by": "agent",
       "superseded_by": null
@@ -5096,6 +5136,105 @@
       "verdict": "❌ fail",
       "duration_ms": 0,
       "created_at": "2026-04-08T23:15:35.382Z"
+    },
+    {
+      "id": 207,
+      "task_id": "T03",
+      "slice_id": "S07",
+      "milestone_id": "M002",
+      "command": "bash -n scripts/submit_phase4_trend_contract.sh",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 1,
+      "created_at": "2026-04-09T04:06:57.484Z"
+    },
+    {
+      "id": 208,
+      "task_id": "T03",
+      "slice_id": "S07",
+      "milestone_id": "M002",
+      "command": "python scripts/run_phase4_percentage_contract.py --help >/tmp/wa_t03_pct_help.txt",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 1233,
+      "created_at": "2026-04-09T04:06:57.484Z"
+    },
+    {
+      "id": 209,
+      "task_id": "T03",
+      "slice_id": "S07",
+      "milestone_id": "M002",
+      "command": "python scripts/run_phase4_classification_contract.py --help >/tmp/wa_t03_cls_help.txt",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 1235,
+      "created_at": "2026-04-09T04:06:57.484Z"
+    },
+    {
+      "id": 210,
+      "task_id": "T03",
+      "slice_id": "S07",
+      "milestone_id": "M002",
+      "command": "python scripts/run_phase4_trend_contract.py --help >/tmp/wa_t03_trend_help.txt",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 1041,
+      "created_at": "2026-04-09T04:06:57.484Z"
+    },
+    {
+      "id": 211,
+      "task_id": "T03",
+      "slice_id": "S07",
+      "milestone_id": "M002",
+      "command": "uv run pytest tests/test_submit_phase4_trend_contract.py -q",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 9482,
+      "created_at": "2026-04-09T04:06:57.484Z"
+    },
+    {
+      "id": 212,
+      "task_id": "T03",
+      "slice_id": "S07",
+      "milestone_id": "M002",
+      "command": "bash scripts/submit_phase4_trend_contract.sh --dry-run --repo \"$PWD\" --python-bin \"$PWD/.venv/bin/python\" --standardized-dir /lustre/home/2200013429/Wetland_Assemble/data/standardized --output-root results/phase4 --subset ten --dataset-id gwd30 --dataset-id giems_mc --dataset-id topmodel --dataset-id swamps --dataset-id wad2m --aggregation annual --start-year 1990 --end-year 2020 --min-observations 5 --min-overlap-years 5 --top-hotspots 10 --cpus 2 --time 480 --partition C064M0256G --jobs-base temp/slurm-jobs-s07 --tmp-root temp/slurm-tmp-s07 --no-progress >/tmp/wa_t03_dry_run.txt",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 2069,
+      "created_at": "2026-04-09T04:06:57.484Z"
+    },
+    {
+      "id": 213,
+      "task_id": "T03",
+      "slice_id": "S07",
+      "milestone_id": "M002",
+      "command": "test -s results/phase4/proof/phase4-trend-contract-dry-run.tsv && test -f results/phase4/proof/phase4-trend-fanout.md && test -f docs/stashes/2026-04-09-025-m002-s07-t03-trend-fanout-boundary.md",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 0,
+      "created_at": "2026-04-09T04:06:57.484Z"
+    },
+    {
+      "id": 214,
+      "task_id": "T03",
+      "slice_id": "S07",
+      "milestone_id": "M002",
+      "command": "ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/tmp/known_hosts_wa_t03 -o ConnectTimeout=10 2200013429@wm2-data.pku.edu.cn 'hostname'",
+      "exit_code": 255,
+      "verdict": "❌ fail",
+      "duration_ms": 6777,
+      "created_at": "2026-04-09T04:06:57.484Z"
+    },
+    {
+      "id": 215,
+      "task_id": "T03",
+      "slice_id": "S07",
+      "milestone_id": "M002",
+      "command": "test -s results/phase4/proof/phase4-trend-contract-submit.tsv",
+      "exit_code": 1,
+      "verdict": "❌ fail",
+      "duration_ms": 0,
+      "created_at": "2026-04-09T04:06:57.484Z"
     }
   ]
 }

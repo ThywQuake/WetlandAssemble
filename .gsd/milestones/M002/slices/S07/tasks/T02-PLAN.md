@@ -1,11 +1,10 @@
 ---
 estimated_steps: 12
 estimated_files: 8
-skills_used:
-  - sync-hpc
+skills_used: []
 ---
 
-# T02: Materialize the ten-region percentage and classification contract families
+# T02: Documented the blocked T02 producer-materialization boundary, proved the percentage/classification fail-closed surfaces locally, and captured the exact authenticated HPC rerun commands.
 
 Why: readiness and ledger cannot prove anything until the percentage and classification families exist materially for the full ordered ten-region set.
 
